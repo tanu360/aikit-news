@@ -1,0 +1,213 @@
+import { NextRequest } from "next/server";
+import { chatJimmy, chatJimmyWithTools } from "@/lib/jimmy";
+import type { ChatJimmyTool } from "@/lib/jimmy";
+import {
+  buildAnswerSystemPrompt,
+  buildRouterSystemPrompt,
+  todayISODate,
+} from "@/lib/prompts";
+import type { WeatherCardData } from "@/lib/types";
+import { getWeather } from "@/lib/weather";
+
+const WEATHER_TOOL: ChatJimmyTool = {
+  type: "function",
+  function: {
+    name: "get_weather",
+    description:
+      "Get current weather and the next few hours of forecast for a location.",
+    parameters: {
+      type: "object",
+      properties: {
+        location: {
+          type: "string",
+          description:
+            "City, region, or place name, resolved from the user's request.",
+        },
+        units: {
+          type: "string",
+          enum: ["metric"],
+          description: "Always use metric units so the weather card shows Celsius.",
+        },
+      },
+      required: ["location"],
+    },
+  },
+};
+
+function stripTrailingReferences(text: string): string {
+  return text
+    .replace(
+      /\n+\*?\*?(?:References|Sources|Bibliography|Key findings|Citations|Note)\*?\*?:?\s*\n(?:\s*[-*]?\s*\[?\d+\]?[^\n]*\n?)*/gi,
+      ""
+    )
+    .replace(/\[(\d+)(?:\s*,\s*(\d+))+\]/g, (match: string) => {
+      const nums = match.match(/\d+/g) || [];
+      return nums.map((n: string) => `[${n}]`).join("");
+    })
+    .trimEnd();
+}
+
+interface RequestBody {
+  messages: Array<{ role: string; content: string }>;
+  searchResults?: Array<{
+    title?: string;
+    url?: string;
+    text?: string;
+    highlights?: string[];
+  }>;
+  mode?: "router" | "answer";
+}
+
+function sseData(data: Record<string, unknown>): string {
+  return `data: ${JSON.stringify(data)}\n\n`;
+}
+
+function getStringArg(
+  args: Record<string, unknown>,
+  key: string
+): string | undefined {
+  const value = args[key];
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function formatWeatherAnswer(weather: WeatherCardData): string {
+  const temp = `${weather.temperature}${weather.temperatureUnit}`;
+  const feelsLike =
+    typeof weather.apparentTemperature === "number"
+      ? `, feels like ${weather.apparentTemperature}${weather.temperatureUnit}`
+      : "";
+  const hiLo =
+    typeof weather.high === "number" && typeof weather.low === "number"
+      ? ` Today's high is ${weather.high}${weather.temperatureUnit} and the low is ${weather.low}${weather.temperatureUnit}.`
+      : "";
+  const details = [
+    typeof weather.humidity === "number" ? `humidity is ${weather.humidity}%` : "",
+    typeof weather.windSpeed === "number"
+      ? `wind is ${weather.windSpeed} ${weather.windUnit}`
+      : "",
+  ].filter(Boolean);
+  const detailText =
+    details.length > 0 ? ` ${details.join(" and ")}.` : "";
+
+  return `The current temperature in ${weather.location} is about ${temp}${feelsLike}, with ${weather.condition.toLowerCase()}.${hiLo}${detailText}`;
+}
+
+export async function POST(req: NextRequest) {
+  const tEntry = Date.now();
+  const body = (await req.json()) as RequestBody;
+  const tParsed = Date.now();
+
+  const { messages = [], searchResults = [], mode } = body;
+  const effectiveMode: "router" | "answer" =
+    mode === "router" ? "router" : "answer";
+
+  const today = todayISODate();
+  const systemContent =
+    effectiveMode === "router"
+      ? buildRouterSystemPrompt(today)
+      : buildAnswerSystemPrompt(searchResults, today);
+
+  const tPromptBuilt = Date.now();
+
+  try {
+    let weatherCard: WeatherCardData | null = null;
+    let weatherDuration = 0;
+    let content = "";
+    let tChatjimmyDone = 0;
+
+    if (effectiveMode === "router") {
+      const completion = await chatJimmyWithTools(
+        [{ role: "system", content: systemContent }, ...messages],
+        [WEATHER_TOOL]
+      );
+      tChatjimmyDone = Date.now();
+      const weatherCall = completion.toolCalls.find(
+        (toolCall) => toolCall.name === "get_weather"
+      );
+
+      if (weatherCall) {
+        const location = getStringArg(weatherCall.arguments, "location");
+        const units = getStringArg(weatherCall.arguments, "units");
+
+        if (!location) {
+          content = "Which city or place should I check the weather for?";
+        } else {
+          const tWeatherStart = Date.now();
+          weatherCard = await getWeather(location, units);
+          weatherDuration = Date.now() - tWeatherStart;
+          content = formatWeatherAnswer(weatherCard);
+        }
+      } else {
+        content = completion.content;
+      }
+    } else {
+      content = await chatJimmy([
+        { role: "system", content: systemContent },
+        ...messages,
+      ]);
+      tChatjimmyDone = Date.now();
+    }
+
+    if (effectiveMode === "answer") {
+      content = stripTrailingReferences(content);
+    }
+    const tStripped = Date.now();
+
+    const serverTiming = [
+      `mode;desc="${effectiveMode}"`,
+      `req_parse;dur=${tParsed - tEntry}`,
+      `build_prompt;dur=${tPromptBuilt - tParsed}`,
+      `chatjimmy;dur=${tChatjimmyDone - tPromptBuilt}`,
+      `weather;dur=${weatherDuration}`,
+      `strip;dur=${tStripped - tChatjimmyDone}`,
+      `total;dur=${tStripped - tEntry}`,
+    ].join(", ");
+
+    const encoder = new TextEncoder();
+    const chunkSize = 12;
+    const stream = new ReadableStream({
+      start(controller) {
+        if (weatherCard) {
+          controller.enqueue(
+            encoder.encode(
+              sseData({
+                type: "weather",
+                weather: weatherCard,
+              })
+            )
+          );
+        }
+
+        for (let i = 0; i < content.length; i += chunkSize) {
+          const chunk = content.slice(i, i + chunkSize);
+          controller.enqueue(
+            encoder.encode(
+              sseData({
+                choices: [{ delta: { content: chunk } }],
+              })
+            )
+          );
+        }
+        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+        controller.close();
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+        "Server-Timing": serverTiming,
+        "x-debug-timing": serverTiming,
+        "Access-Control-Expose-Headers": "Server-Timing, x-debug-timing",
+      },
+    });
+  } catch (error) {
+    console.error("Chat error:", error);
+    return new Response(
+      JSON.stringify({ error: "Failed to connect to chat API" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
+}
