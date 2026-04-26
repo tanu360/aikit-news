@@ -191,7 +191,7 @@ export default function ChatInput({
             transition: themeColorTransition,
           }}
         >
-          <div className="px-4 pt-4 pb-3">
+          <div className="relative px-4 pt-4 pb-3">
             <textarea
               ref={textareaRef}
               value={value}
@@ -210,8 +210,34 @@ export default function ChatInput({
                 minHeight: `${minTextareaHeight}px`,
                 letterSpacing: "-0.01em",
                 caretColor: "var(--color-accent)",
+                paddingRight: hasValue ? "2.25rem" : undefined,
               }}
             />
+
+            <motion.button
+              type="submit"
+              disabled={disabled || !hasValue}
+              animate={{
+                scale: isActive ? 1 : 0.8,
+                opacity: isActive ? 1 : 0,
+                width: isActive ? 28 : 0,
+              }}
+              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              className="absolute bottom-3 right-4 flex h-7 items-center justify-center overflow-hidden rounded-lg transition-colors duration-200 disabled:pointer-events-none"
+              style={{
+                backgroundColor: isActive ? "var(--color-ink-primary)" : "transparent",
+                minWidth: 0,
+                transitionTimingFunction: "var(--theme-ease)",
+              }}
+            >
+              <HugeiconsIcon
+                icon={ArrowUp02Icon}
+                size={15}
+                strokeWidth={2}
+                primaryColor="currentColor"
+                style={{ color: "var(--color-icon-on-fill)" }}
+              />
+            </motion.button>
 
             <AnimatePresence>
               {(attachedFile || fileError) && (
@@ -305,7 +331,29 @@ export default function ChatInput({
           />
 
           <div className="flex items-center justify-between px-3 py-2">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={disabled}
+                title="Attach text file"
+                className="flex h-7 w-7 items-center justify-center rounded-full transition-[background-color,color] duration-200 disabled:opacity-30"
+                style={{
+                  backgroundColor: attachedFile
+                    ? "var(--color-accent-muted-strong)"
+                    : "var(--color-ink-primary)",
+                  color: "var(--color-icon-on-fill)",
+                  border: "none",
+                }}
+              >
+                <HugeiconsIcon
+                  icon={Attachment01Icon}
+                  size={13}
+                  strokeWidth={1.8}
+                  primaryColor="currentColor"
+                />
+              </button>
+
               <button
                 type="button"
                 onClick={() => onAgentModeChange(!agentMode)}
@@ -319,7 +367,7 @@ export default function ChatInput({
                     ? "var(--color-accent-muted)"
                     : "transparent",
                   color: agentControlColor,
-                  border: "1px solid",
+                  border: agentMode ? "1px solid" : "1px solid transparent",
                   borderColor: agentMode
                     ? "color-mix(in oklch, var(--color-accent) 20%, transparent)"
                     : "transparent",
@@ -360,78 +408,22 @@ export default function ChatInput({
                   )}
                 </AnimatePresence>
               </button>
-
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={disabled}
-                title="Attach text file"
-                className="flex h-7 w-7 items-center justify-center rounded-full transition-[background-color,border-color,color] duration-200 disabled:opacity-30"
-                style={{
-                  backgroundColor: attachedFile
-                    ? "var(--color-accent-muted)"
-                    : "transparent",
-                  color: attachedFile
-                    ? "var(--color-accent-muted-strong)"
-                    : "var(--color-ink-tertiary)",
-                  border: "1px solid",
-                  borderColor: attachedFile
-                    ? "color-mix(in oklch, var(--color-accent) 20%, transparent)"
-                    : "transparent",
-                }}
-              >
-                <HugeiconsIcon
-                  icon={Attachment01Icon}
-                  size={13}
-                  strokeWidth={1.8}
-                  primaryColor="currentColor"
-                />
-              </button>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5">
-                <HugeiconsIcon
-                  icon={CpuIcon}
-                  size={13}
-                  strokeWidth={1.8}
-                  primaryColor="currentColor"
-                  style={{ color: "var(--color-ink-tertiary)" }}
-                />
-                <span
-                  className="text-[12px] font-medium"
-                  style={{ color: "var(--color-ink-secondary)" }}
-                >
-                  {modelName}
-                </span>
-              </div>
-
-              <motion.button
-                type="submit"
-                disabled={disabled || !hasValue}
-                animate={{
-                  scale: isActive ? 1 : 0.85,
-                  opacity: isActive ? 1 : 0,
-                  width: isActive ? 28 : 0,
-                }}
-                transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                className="flex h-7 items-center justify-center overflow-hidden rounded-lg transition-colors duration-200 disabled:pointer-events-none"
-                style={{
-                  backgroundColor: isActive
-                    ? "var(--color-ink-primary)"
-                    : "transparent",
-                  minWidth: 0,
-                  transitionTimingFunction: "var(--theme-ease)",
-                }}
+            <div className="flex items-center gap-1.5">
+              <HugeiconsIcon
+                icon={CpuIcon}
+                size={13}
+                strokeWidth={1.8}
+                primaryColor="currentColor"
+                style={{ color: "var(--color-ink-tertiary)" }}
+              />
+              <span
+                className="text-[12px] font-medium"
+                style={{ color: "var(--color-ink-secondary)" }}
               >
-                <HugeiconsIcon
-                  icon={ArrowUp02Icon}
-                  size={15}
-                  strokeWidth={2}
-                  primaryColor="currentColor"
-                  style={{ color: "var(--color-icon-on-fill)" }}
-                />
-              </motion.button>
+                {modelName}
+              </span>
             </div>
           </div>
         </div>

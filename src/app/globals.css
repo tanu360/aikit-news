@@ -287,7 +287,7 @@ html[data-magicui-theme-vt="active"]::view-transition-group(root) {
   justify-content: center;
   border: 0;
   border-radius: 999px;
-  color: var(--color-ink-primary);
+  color: var(--color-header-action-hover);
   background-color: transparent;
   cursor: pointer;
   text-decoration: none;
@@ -299,7 +299,7 @@ html[data-magicui-theme-vt="active"]::view-transition-group(root) {
 
 .header-action-button:hover,
 .header-action-button:focus-visible {
-  color: var(--color-header-action-hover);
+  color: var(--color-ink-primary);
   background-color: transparent;
 }
 
