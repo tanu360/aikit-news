@@ -403,7 +403,7 @@ export default function Sidebar({
           >
             <span
               aria-hidden="true"
-              className="flex h-24 w-6 items-center justify-center rounded-r-2xl"
+              className="flex h-24 w-5 items-center justify-center rounded-r-2xl"
               style={{
                 backgroundColor: "var(--color-surface-secondary)",
                 border: "1px solid var(--color-border-light)",
