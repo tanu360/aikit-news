@@ -96,7 +96,7 @@ export default function Sidebar({
       }}
     >
       <div
-        className="flex shrink-0 items-center px-3 pb-2 pt-3"
+        className="flex h-11 shrink-0 items-center px-3"
         style={{ gap: 8 }}
       >
         <div
@@ -280,7 +280,7 @@ export default function Sidebar({
         <div
           className={
             isOpen
-              ? "flex h-9 overflow-hidden"
+              ? "flex h-11 overflow-hidden"
               : "flex flex-col overflow-hidden"
           }
           style={{
