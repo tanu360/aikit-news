@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import type { ReactNode } from "react";
 import type { Message } from "@/lib/types";
 import SearchTimeline from "./SearchTimeline";
 import DeepResearchTimeline from "./DeepResearchTimeline";
@@ -10,11 +11,26 @@ import WeatherCard from "./WeatherCard";
 interface MessageBubbleProps {
   message: Message;
   isStreaming?: boolean;
+  searchQuery?: string;
+}
+
+function highlightText(text: string, query: string, darkBg = false): ReactNode {
+  if (!query.trim()) return text;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const parts = text.split(new RegExp(`(${escaped})`, "gi"));
+  return parts.map((part, i) =>
+    part.toLowerCase() === query.toLowerCase() ? (
+      <mark key={i} className={darkBg ? "search-match-dark" : "search-match"}>
+        {part}
+      </mark>
+    ) : part
+  );
 }
 
 export default function MessageBubble({
   message,
   isStreaming,
+  searchQuery = "",
 }: MessageBubbleProps) {
   if (message.role === "user") {
     return (
@@ -27,13 +43,10 @@ export default function MessageBubble({
       >
         <div
           className="max-w-[85%] rounded-2xl rounded-br-md px-4 py-2.5"
-          style={{
-            background: "var(--color-ink-primary)",
-            color: "var(--color-surface-primary)",
-          }}
+          style={{ background: "var(--color-ink-primary)", color: "var(--color-surface-primary)" }}
         >
           <p className="text-[13.5px] leading-relaxed sm:text-[14.5px]">
-            {message.content}
+            {highlightText(message.content, searchQuery, true)}
           </p>
         </div>
       </motion.div>
@@ -83,7 +96,7 @@ export default function MessageBubble({
 
         {message.content && (
           <div className="prose">
-            <MarkdownRenderer content={message.content} sources={sources} />
+            <MarkdownRenderer content={message.content} sources={sources} searchQuery={searchQuery} />
             {isStreaming && (
               <span
                 className="ml-0.5 inline-block h-4.5 w-0.5 align-text-bottom animate-pulse-soft"

@@ -5,9 +5,12 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
+  Add01Icon,
   ArtificialIntelligence04Icon,
+  GithubIcon,
   MarketAnalysisIcon,
   News01Icon,
+  Search01Icon,
   StartUp01Icon,
   SunCloud01Icon,
 } from "@hugeicons/core-free-icons";
@@ -25,7 +28,7 @@ import { SVG3D } from "3dsvg";
 import ChatInput from "@/components/ChatInput";
 import MessageBubble from "@/components/MessageBubble";
 import Sidebar from "@/components/Sidebar";
-import { useIsDarkTheme } from "@/components/ui/ThemeToggler";
+import ThemeToggler, { useIsDarkTheme } from "@/components/ui/ThemeToggler";
 
 const LOGO_PATH =
   "m256 0c-141.38 0-256 114.62-256 256s114.62 256 256 256 256-114.62 256-256-114.62-256-256-256zm0 375.36a119.36 119.36 0 1 1 119.36-119.36 119.36 119.36 0 0 1 -119.36 119.36z";
@@ -177,10 +180,13 @@ export default function Home() {
   const [activeChatId, setActiveChatId] = useState<string>("");
   const [showSettings, setShowSettings] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [isCompactViewport, setIsCompactViewport] = useState(false);
   const isDark = useIsDarkTheme();
   const logo3DTheme = isDark ? LOGO_3D_THEME.dark : LOGO_3D_THEME.light;
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const scrollTargetRef = useRef<string | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chatsRef = useRef<Chat[]>([]);
@@ -865,6 +871,9 @@ export default function Home() {
   };
 
   const hasMessages = messages.length > 0;
+  const matchedCount = searchQuery.trim()
+    ? messages.filter((m) => m.content.toLowerCase().includes(searchQuery.toLowerCase())).length
+    : 0;
 
   return (
     <div
@@ -902,15 +911,151 @@ export default function Home() {
     >
       <Sidebar
         isOpen={sidebarOpen}
-        onToggle={() => setSidebarOpen((s) => !s)}
+        onToggle={() => { if (isCompactViewport) setSidebarOpen((s) => !s); }}
         chats={chats}
         activeChatId={activeChatId}
-        onNewChat={startNewChat}
         onSelectChat={loadChat}
         onDeleteChat={deleteChat}
         disabled={isLoading}
       />
       <div className="square-grid-bg flex min-w-0 flex-1 flex-col">
+        <header className="relative z-10 shrink-0 px-3 pt-3 sm:px-4 sm:pt-4">
+          <nav
+            className="mx-auto flex h-12 items-center justify-between border px-2.5 sm:h-13 sm:px-3"
+            style={{
+              width: "min(100%, 58rem)",
+              borderRadius: 22,
+              backgroundColor: "var(--color-surface-secondary)",
+              borderColor: "var(--color-border-light)",
+            }}
+          >
+            <div className="flex min-w-0 flex-1 items-center">
+              <button
+                type="button"
+                onClick={() => { if (isCompactViewport) setSidebarOpen((s) => !s); }}
+                aria-label="Toggle sidebar"
+                title="Toggle sidebar"
+                className="flex shrink-0 items-center justify-center"
+                style={{
+                  width: 32,
+                  height: 32,
+                  color: "var(--color-ink-primary)",
+                  WebkitTapHighlightColor: "transparent",
+                }}
+              >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 512 512"
+                  xmlns="http://www.w3.org/2000/svg"
+                  style={{ width: 17, height: 17 }}
+                >
+                  <path fill="currentColor" d={LOGO_PATH} />
+                </svg>
+              </button>
+              <span
+                className="select-none font-semibold"
+                style={{ fontSize: 16, color: "var(--color-ink-primary)", letterSpacing: 0 }}
+              >
+                AiKit
+              </span>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-1.5">
+              <a
+                href="https://github.com/tanu360"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors duration-150"
+                style={{ color: "var(--color-ink-secondary)", backgroundColor: "var(--color-surface-tertiary)" }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "var(--color-ink-primary)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--color-ink-secondary)"; }}
+                aria-label="GitHub tanu360"
+                title="GitHub tanu360"
+              >
+                <HugeiconsIcon
+                  icon={GithubIcon}
+                  size={14}
+                  strokeWidth={1.8}
+                  primaryColor="currentColor"
+                />
+              </a>
+
+              <ThemeToggler
+                className="shrink-0 rounded-full transition-colors duration-150"
+                iconSize={14}
+                style={{
+                  width: 32,
+                  height: 32,
+                  color: "var(--color-ink-secondary)",
+                  backgroundColor: "var(--color-surface-tertiary)",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "var(--color-ink-primary)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--color-ink-secondary)"; }}
+                aria-label="Toggle theme"
+                title="Toggle theme"
+              />
+
+              {searchOpen ? (
+                <div
+                  className="hidden h-8 items-center gap-1.5 rounded-full px-3 sm:flex"
+                  style={{ backgroundColor: "var(--color-surface-tertiary)", minWidth: 160 }}
+                >
+                  <HugeiconsIcon icon={Search01Icon} size={13} strokeWidth={1.8} primaryColor="var(--color-ink-tertiary)" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Escape") { setSearchOpen(false); setSearchQuery(""); } }}
+                    onBlur={() => { if (!searchQuery) setSearchOpen(false); }}
+                    placeholder="Search chats..."
+                    className="flex-1 bg-transparent text-[12px] outline-none"
+                    style={{ color: "var(--color-ink-primary)", letterSpacing: 0 }}
+                  />
+                  {searchQuery && (
+                    <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-semibold" style={{ backgroundColor: "var(--color-accent)", color: "var(--color-icon-on-fill)" }}>
+                      {matchedCount}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}
+                  className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors duration-150 sm:flex"
+                  style={{ color: "var(--color-ink-secondary)", backgroundColor: "var(--color-surface-tertiary)" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "var(--color-ink-primary)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = "var(--color-ink-secondary)"; }}
+                  aria-label="Search chats"
+                  title="Search chats"
+                >
+                  <HugeiconsIcon icon={Search01Icon} size={14} strokeWidth={1.8} primaryColor="currentColor" />
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={startNewChat}
+                disabled={isLoading}
+                className="flex h-8 items-center gap-1 rounded-full px-2 text-[12px] font-medium disabled:opacity-45 sm:px-2.5"
+                style={{
+                  color: "#fff",
+                  backgroundColor: "var(--color-accent)",
+                  letterSpacing: 0,
+                }}
+              >
+                <HugeiconsIcon
+                  icon={Add01Icon}
+                  size={14}
+                  strokeWidth={1.9}
+                  primaryColor="currentColor"
+                />
+                <span className="hidden sm:inline">New</span>
+              </button>
+            </div>
+          </nav>
+        </header>
+
         <div ref={chatContainerRef} className="flex-1 overflow-y-auto">
           {!hasMessages && (
             <motion.div
@@ -977,7 +1122,7 @@ export default function Home() {
           {hasMessages && (
             <div
               className="chat-shell mx-auto px-4 py-4 sm:py-6"
-              style={{ width: "min(100%, 46rem)" }}
+              style={{ width: "min(100%, 58rem)" }}
             >
               <div className="flex flex-col gap-4 sm:gap-5">
                 {messages.map((message) => (
@@ -989,6 +1134,7 @@ export default function Home() {
                       message.role === "assistant" &&
                       message.id === messages[messages.length - 1]?.id
                     }
+                    searchQuery={searchQuery}
                   />
                 ))}
               </div>
@@ -999,7 +1145,7 @@ export default function Home() {
         <div className="shrink-0 px-4 pb-4 pt-2 sm:pb-5">
           <div
             className="chat-shell relative mx-auto"
-            style={{ width: "min(100%, 46rem)" }}
+            style={{ width: "min(100%, 58rem)" }}
           >
             <motion.div
               className="pointer-events-none absolute right-0 bottom-full mb-2"

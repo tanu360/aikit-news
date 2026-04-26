@@ -249,6 +249,40 @@
   --color-suggestion-text-hover: oklch(0.78 0 0);
 }
 
+@keyframes wobble {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-3px); }
+  40% { transform: translateX(3px); }
+  60% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
+}
+
+@keyframes bounce-highlight {
+  0%, 100% { color: #2563eb; transform: translateY(0); }
+  25%       { color: #2563eb; transform: translateY(-2px); }
+  50%       { color: #16a34a; transform: translateY(0); }
+  75%       { color: #16a34a; transform: translateY(-2px); }
+}
+@keyframes bounce-highlight-dark {
+  0%, 100% { color: #93c5fd; transform: translateY(0); }
+  25%       { color: #93c5fd; transform: translateY(-2px); }
+  50%       { color: #86efac; transform: translateY(0); }
+  75%       { color: #86efac; transform: translateY(-2px); }
+}
+
+.search-match {
+  background-color: transparent !important;
+  font-weight: 600;
+  display: inline-block;
+  animation: bounce-highlight 0.9s ease-in-out infinite !important;
+}
+.search-match-dark {
+  background-color: transparent !important;
+  font-weight: 600;
+  display: inline-block;
+  animation: bounce-highlight-dark 0.9s ease-in-out infinite !important;
+}
+
 @keyframes fadeIn {
   0% {
     opacity: 0;
