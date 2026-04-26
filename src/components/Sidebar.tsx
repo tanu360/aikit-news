@@ -279,33 +279,6 @@ export default function Sidebar({
                 borderTop: `1px solid ${inputSeparatorFocusedColor}`,
               }}
             >
-              <motion.button
-                type="button"
-                onClick={onToggle}
-                whileTap={{ scale: 0.98 }}
-                transition={{ duration: 0.14, ease }}
-                className={segmentActionClass}
-                style={segmentActionStyle}
-                aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
-                title={isOpen ? "Collapse sidebar" : "Expand sidebar"}
-                onMouseEnter={segmentHoverIn}
-                onMouseLeave={segmentHoverOut}
-              >
-                <HugeiconsIcon
-                  icon={isOpen ? PanelLeftCloseIcon : PanelLeftOpenIcon}
-                  size={14}
-                  strokeWidth={1.8}
-                  primaryColor="currentColor"
-                />
-              </motion.button>
-
-              <div
-                className={isOpen ? "h-full w-px" : "h-px w-full"}
-                style={{
-                  backgroundColor: inputSeparatorFocusedColor,
-                }}
-              />
-
               <motion.a
                 href="https://github.com/tanu360"
                 target="_blank"
@@ -348,6 +321,33 @@ export default function Sidebar({
                 onMouseEnter={segmentHoverIn}
                 onMouseLeave={segmentHoverOut}
               />
+
+              <div
+                className={isOpen ? "h-full w-px" : "h-px w-full"}
+                style={{
+                  backgroundColor: inputSeparatorFocusedColor,
+                }}
+              />
+
+              <motion.button
+                type="button"
+                onClick={onToggle}
+                whileTap={{ scale: 0.98 }}
+                transition={{ duration: 0.14, ease }}
+                className={segmentActionClass}
+                style={segmentActionStyle}
+                aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
+                title={isOpen ? "Collapse sidebar" : "Expand sidebar"}
+                onMouseEnter={segmentHoverIn}
+                onMouseLeave={segmentHoverOut}
+              >
+                <HugeiconsIcon
+                  icon={isOpen ? PanelLeftCloseIcon : PanelLeftOpenIcon}
+                  size={14}
+                  strokeWidth={1.8}
+                  primaryColor="currentColor"
+                />
+              </motion.button>
             </div>
           </div>
         </div>
