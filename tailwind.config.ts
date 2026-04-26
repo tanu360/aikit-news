@@ -10,6 +10,8 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: [
+          "var(--font-geist-sans)",
+          "Geist",
           "Inter",
           "-apple-system",
           "BlinkMacSystemFont",
@@ -17,7 +19,13 @@ const config: Config = {
           "Roboto",
           "sans-serif",
         ],
-        mono: ["JetBrains Mono", "Fira Code", "monospace"],
+        mono: [
+          "var(--font-geist-mono)",
+          "Geist Mono",
+          "JetBrains Mono",
+          "Fira Code",
+          "monospace",
+        ],
       },
       colors: {
         surface: {

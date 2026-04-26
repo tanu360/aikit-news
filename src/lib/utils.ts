@@ -1,3 +1,9 @@
+type ClassValue = string | number | false | null | undefined;
+
+export function cn(...classes: ClassValue[]): string {
+  return classes.filter(Boolean).join(" ");
+}
+
 export function getFaviconUrl(url: string): string {
   try {
     const domain = new URL(url).hostname;

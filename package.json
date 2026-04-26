@@ -4,9 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:fresh": "npm run clean && next dev",
     "build": "next build",
+    "build:fresh": "npm run clean && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "clean": "rm -rf .next .turbo node_modules/.cache tsconfig.tsbuildinfo"
   },
   "dependencies": {
     "@hugeicons/core-free-icons": "^4.1.1",

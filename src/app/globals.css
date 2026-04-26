@@ -50,6 +50,7 @@
   );
   --color-accent-dot: color-mix(in oklch, var(--color-accent) 55%, transparent);
   --color-icon-on-fill: oklch(99% 0 0);
+  --color-header-action-hover: oklch(55.2% 0.016 285.938);
   --color-selection: color-mix(in oklch, var(--color-accent) 18%, transparent);
   --color-control-hover: var(--color-surface-hover);
   --color-result-row-hover: var(--color-surface-secondary);
@@ -111,6 +112,7 @@
     --color-accent-muted-strong: oklch(0.78 0.12 255);
     --color-accent-dot: oklch(0.72 0.16 255 / 0.88);
     --color-icon-on-fill: oklch(0.195 0 0);
+    --color-header-action-hover: oklch(87.1% 0.006 286.286);
     --color-selection: oklch(0.68 0.18 255 / 0.22);
     --color-control-hover: var(--color-surface-tertiary);
     --color-result-row-hover: var(--color-surface-tertiary);
@@ -158,6 +160,7 @@
   );
   --color-accent-dot: color-mix(in oklch, var(--color-accent) 55%, transparent);
   --color-icon-on-fill: oklch(99% 0 0);
+  --color-header-action-hover: oklch(55.2% 0.016 285.938);
   --color-selection: color-mix(in oklch, var(--color-accent) 18%, transparent);
   --color-control-hover: var(--color-surface-hover);
   --color-result-row-hover: var(--color-surface-secondary);
@@ -196,6 +199,7 @@
   --color-accent-muted-strong: oklch(0.78 0.12 255);
   --color-accent-dot: oklch(0.72 0.16 255 / 0.88);
   --color-icon-on-fill: oklch(0.195 0 0);
+  --color-header-action-hover: oklch(87.1% 0.006 286.286);
   --color-selection: oklch(0.68 0.18 255 / 0.22);
   --color-control-hover: var(--color-surface-tertiary);
   --color-result-row-hover: var(--color-surface-tertiary);
@@ -263,6 +267,61 @@ body {
   transition:
     background-color var(--theme-duration) var(--theme-ease),
     color var(--theme-duration) var(--theme-ease);
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+html[data-magicui-theme-vt="active"]::view-transition-group(root) {
+  animation-duration: var(--magicui-theme-toggle-vt-duration);
+}
+
+.header-action-button {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  color: var(--color-ink-primary);
+  background-color: transparent;
+  cursor: pointer;
+  text-decoration: none;
+  transform: translateZ(0);
+  transition:
+    color 120ms var(--theme-ease),
+    transform 160ms var(--theme-ease);
+}
+
+.header-action-button:hover,
+.header-action-button:focus-visible {
+  color: var(--color-header-action-hover);
+  background-color: transparent;
+}
+
+.header-action-button:focus-visible {
+  outline: 1px solid var(--color-input-ring);
+  outline-offset: 2px;
+}
+
+.header-action-button:active {
+  transform: scale(0.94);
+}
+
+.theme-toggle-icon {
+  transform-origin: center;
+  will-change: transform;
+}
+
+html[data-magicui-theme-vt="active"] .theme-toggle-button {
+  background-color: transparent;
+  color: var(--color-ink-primary);
+  opacity: 1;
+  transition-duration: 0ms;
 }
 
 .square-grid-bg {
