@@ -367,27 +367,18 @@ export default function Sidebar({
       {isCompact && (
         <AnimatePresence>
           {isOpen && (
-            <>
-              <motion.button
-                type="button"
-                aria-label="Close sidebar drawer"
-                className="fixed inset-0 z-30 bg-black/28 lg:hidden"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                onClick={onToggle}
-              />
-              <motion.div
-                className="fixed inset-y-0 left-0 z-40 w-[65vw] lg:hidden"
-                initial={{ x: "-100%" }}
-                animate={{ x: 0 }}
-                exit={{ x: "-100%" }}
-                transition={{ duration: 0.24, ease }}
-              >
-                {sidebarPanel}
-              </motion.div>
-            </>
+            <motion.div
+              className="fixed inset-0 z-40 lg:hidden"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Sidebar"
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ duration: 0.24, ease }}
+            >
+              {sidebarPanel}
+            </motion.div>
           )}
         </AnimatePresence>
       )}

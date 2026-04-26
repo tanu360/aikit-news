@@ -904,32 +904,6 @@ export default function Home() {
         resetSidebarTouchTracking();
       }}
     >
-      <button
-        type="button"
-        onClick={() => setSidebarOpen((open) => !open)}
-        className={`${sidebarOpen ? "hidden" : "flex"} absolute left-4 top-4 z-50 items-center gap-2 lg:hidden`}
-        style={{
-          color: "var(--color-ink-primary)",
-          backgroundColor: "transparent",
-        }}
-        aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
-        title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
-      >
-        <svg
-          viewBox="0 0 512 512"
-          xmlns="http://www.w3.org/2000/svg"
-          style={{ width: 18, height: 18 }}
-          aria-hidden="true"
-        >
-          <path fill="currentColor" d={LOGO_PATH} />
-        </svg>
-        <span
-          className="truncate select-none font-semibold"
-          style={{ fontSize: 13, letterSpacing: 0 }}
-        >
-          AiKit News
-        </span>
-      </button>
       <Sidebar
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen((s) => !s)}
