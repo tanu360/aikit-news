@@ -276,9 +276,7 @@ export default function Sidebar({
               }
               style={{
                 backgroundColor: inputShellFillColor,
-                borderTop: isOpen
-                  ? undefined
-                  : `1px solid ${inputSeparatorFocusedColor}`,
+                borderTop: `1px solid ${inputSeparatorFocusedColor}`,
               }}
             >
               <motion.button
