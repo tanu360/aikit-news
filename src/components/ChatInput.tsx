@@ -17,7 +17,28 @@ import { useIsDarkTheme } from "@/components/ui/ThemeToggler";
 
 const MODEL_NAME = process.env.NEXT_PUBLIC_CHATJIMMY_MODEL || "";
 const FILE_SIZE_LIMIT = 16 * 1024;
-const ACCEPTED_TYPES = ".txt,.md,.mdx,.csv,.json,.jsonc,.ts,.tsx,.js,.jsx,.mjs,.cjs,.py,.html,.htm,.css,.scss,.sass,.less,.yaml,.yml,.xml,.log,.toml,.ini,.cfg,.conf,.env,.sh,.bash,.zsh,.fish,.sql,.rs,.go,.java,.c,.cpp,.cc,.h,.hpp,.rb,.php,.swift,.kt,.dart,.r,.tex,.vue,.svelte,.graphql,.gql,.proto";
+const ACCEPTED_FILE_EXTENSIONS = [
+  ".txt", ".md", ".mdx", ".csv", ".json", ".jsonc", ".ts", ".tsx",
+  ".js", ".jsx", ".mjs", ".cjs", ".py", ".html", ".htm", ".css",
+  ".scss", ".sass", ".less", ".yaml", ".yml", ".xml", ".log", ".toml",
+  ".ini", ".cfg", ".conf", ".env", ".sh", ".bash", ".zsh", ".fish",
+  ".sql", ".rs", ".go", ".java", ".c", ".cpp", ".cc", ".h", ".hpp",
+  ".rb", ".php", ".swift", ".kt", ".dart", ".r", ".tex", ".vue",
+  ".svelte", ".graphql", ".gql", ".proto",
+] as const;
+const ACCEPTED_TYPES = ACCEPTED_FILE_EXTENSIONS.join(",");
+const BLOCKED_FILE_TYPE_PREFIXES = ["image/", "video/", "audio/"] as const;
+
+function isSupportedAttachment(file: File): boolean {
+  const lowerName = file.name.toLowerCase();
+  const hasSupportedExtension = ACCEPTED_FILE_EXTENSIONS.some((extension) =>
+    lowerName.endsWith(extension)
+  );
+  const hasBlockedMediaType = BLOCKED_FILE_TYPE_PREFIXES.some((prefix) =>
+    file.type.startsWith(prefix)
+  );
+  return hasSupportedExtension && !hasBlockedMediaType;
+}
 
 function truncateFileName(name: string): string {
   const dotIdx = name.lastIndexOf(".");
@@ -140,6 +161,14 @@ export default function ChatInput({
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
+
+    if (!isSupportedAttachment(file)) {
+      setFileError(
+        "Only text/code files are supported. Images and videos are not allowed."
+      );
+      onFileAttach(null);
+      return;
+    }
 
     if (file.size > FILE_SIZE_LIMIT) {
       setFileError(`File too large — ${formatFileSize(file.size)} (limit: 16 KB)`);
