@@ -89,13 +89,13 @@ export default function SearchTimeline({
 
         <div className="flex flex-1 items-center gap-2 overflow-hidden">
           <span
-            className="truncate text-[13px] font-medium tracking-tight"
+            className="truncate text-[13px] font-medium"
             style={{ color: "var(--color-ink-secondary)" }}
           >
             {status === "searching" ? "Searching" : "Searched"}
           </span>
           <span
-            className="truncate text-[13px] tracking-tight"
+            className="truncate text-[13px]"
             style={{ color: "var(--color-ink-primary)" }}
           >
             &ldquo;{query}&rdquo;

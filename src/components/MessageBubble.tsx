@@ -32,7 +32,7 @@ export default function MessageBubble({
             color: "var(--color-surface-primary)",
           }}
         >
-          <p className="text-[13.5px] leading-relaxed tracking-tight sm:text-[14.5px]">
+          <p className="text-[13.5px] leading-relaxed sm:text-[14.5px]">
             {message.content}
           </p>
         </div>
@@ -86,7 +86,7 @@ export default function MessageBubble({
             <MarkdownRenderer content={message.content} sources={sources} />
             {isStreaming && (
               <span
-                className="ml-0.5 inline-block h-[18px] w-[2px] align-text-bottom animate-pulse-soft"
+                className="ml-0.5 inline-block h-4.5 w-0.5 align-text-bottom animate-pulse-soft"
                 style={{ background: "var(--color-ink-primary)" }}
               />
             )}

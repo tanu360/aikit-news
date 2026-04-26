@@ -76,3 +76,11 @@ export interface Message {
   allSources?: SearchResult[];
   timestamp: number;
 }
+
+export interface Chat {
+  id: string;
+  title: string;
+  messages: Message[];
+  createdAt: number;
+  updatedAt: number;
+}

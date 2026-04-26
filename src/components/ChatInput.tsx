@@ -41,6 +41,11 @@ interface ChatInputProps {
   onAgentModeChange: (mode: boolean) => void;
   attachedFile: AttachedFile | null;
   onFileAttach: (file: AttachedFile | null) => void;
+  systemPrompt: string;
+  onSystemPromptChange: (v: string) => void;
+  topK: number;
+  onTopKChange: (v: number) => void;
+  showSettings: boolean;
 }
 
 export default function ChatInput({
@@ -53,6 +58,11 @@ export default function ChatInput({
   onAgentModeChange,
   attachedFile,
   onFileAttach,
+  systemPrompt,
+  onSystemPromptChange,
+  topK,
+  onTopKChange,
+  showSettings,
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -182,7 +192,7 @@ export default function ChatInput({
         className="rounded-[22px] p-1"
         style={{
           border: focused
-            ? "1px solid var(--color-border-default)"
+            ? "1px solid color-mix(in oklch, var(--color-border-light) 45%, transparent)"
             : "1px solid var(--color-border-light)",
           backgroundColor: "var(--color-surface-tertiary)",
           transition: themeColorTransition,
@@ -195,13 +205,70 @@ export default function ChatInput({
               ? "var(--color-input-bg-focus)"
               : "var(--color-input-bg)",
             border: focused
-              ? "1px solid var(--color-border-default)"
+              ? "1px solid color-mix(in oklch, var(--color-border-light) 45%, transparent)"
               : "1px solid var(--color-border-light)",
             backdropFilter: "blur(20px) saturate(180%)",
             WebkitBackdropFilter: "blur(20px) saturate(180%)",
             transition: themeColorTransition,
           }}
         >
+          <AnimatePresence>
+            {showSettings && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                className="overflow-hidden"
+              >
+                <div className="px-4 pt-3 pb-3 flex flex-col gap-3">
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[11px] font-medium" style={{ color: "var(--color-ink-tertiary)" }}>
+                      System prompt
+                    </span>
+                    <textarea
+                      value={systemPrompt}
+                      onChange={(e) => onSystemPromptChange(e.target.value)}
+                      placeholder="You are a helpful assistant."
+                      rows={3}
+                      className="w-full resize-none rounded-xl px-3 py-2 text-[13px] leading-relaxed outline-none"
+                      style={{
+                        color: "var(--color-ink-primary)",
+                        backgroundColor: "var(--color-surface-secondary)",
+                        border: "1px solid var(--color-border-light)",
+                        caretColor: "var(--color-accent)",
+                        transition: themeColorTransition,
+                      }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-medium" style={{ color: "var(--color-ink-tertiary)" }}>
+                      Top K
+                    </span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={topK}
+                      onChange={(e) => {
+                        const v = Math.max(1, Math.min(100, Number(e.target.value) || 1));
+                        onTopKChange(v);
+                      }}
+                      className="w-16 text-center rounded-lg px-2 py-1 text-[12px] font-medium outline-none"
+                      style={{
+                        color: "var(--color-ink-primary)",
+                        backgroundColor: "var(--color-surface-secondary)",
+                        border: "1px solid var(--color-border-light)",
+                        transition: themeColorTransition,
+                      }}
+                    />
+                  </div>
+                </div>
+                <div style={{ height: "1px", backgroundColor: "color-mix(in oklch, var(--color-border-light) 45%, transparent)" }} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <div className="relative px-4 pt-4 pb-3">
             <textarea
               ref={textareaRef}
@@ -219,7 +286,7 @@ export default function ChatInput({
                 color: "var(--color-ink-primary)",
                 maxHeight: "180px",
                 minHeight: `${minTextareaHeight}px`,
-                letterSpacing: "-0.01em",
+                letterSpacing: 0,
                 caretColor: "var(--color-accent)",
                 paddingRight: hasValue ? "2.25rem" : undefined,
               }}
@@ -300,7 +367,7 @@ export default function ChatInput({
                         style={{ color: "var(--color-ink-ghost)", flexShrink: 0 }}
                       />
                       <span
-                        className="shrink-0 font-medium tracking-tight"
+                        className="shrink-0 font-medium"
                         style={{ color: "var(--color-ink-primary)" }}
                       >
                         {truncateFileName(attachedFile.name)}
@@ -337,7 +404,7 @@ export default function ChatInput({
             className="mx-0"
             style={{
               height: "1px",
-              backgroundColor: focused
+              backgroundColor: focused && isDark
                 ? "var(--color-input-border)"
                 : "color-mix(in oklch, var(--color-border-light) 45%, transparent)",
               transition: "background-color 220ms var(--theme-ease)",
@@ -416,7 +483,7 @@ export default function ChatInput({
                 <span
                   className="transition-colors duration-200"
                   style={{
-                    letterSpacing: agentMode ? "0.01em" : "0",
+                    letterSpacing: 0,
                     transitionTimingFunction: "var(--theme-ease)",
                   }}
                 >
@@ -437,7 +504,7 @@ export default function ChatInput({
               </button>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="9" viewBox="0 0 256 171" style={{ flexShrink: 0 }}>
                 <defs>
                   <linearGradient id="meta-a" x1="13.878%" x2="89.144%" y1="55.934%" y2="58.694%">
@@ -456,7 +523,7 @@ export default function ChatInput({
                 <path fill="url(#meta-b)" d="M73.312 27.802c-10.923 0-20.2 7.666-27.963 19.39-10.976 16.568-17.698 41.245-17.698 64.944 0 9.775 2.146 17.28 4.95 21.82L9.027 149.482C2.973 139.413 0 126.202 0 111.148 0 83.772 7.514 55.24 21.802 33.206 34.48 13.666 52.774 0 73.757 0l-.445 27.802Z"/>
               </svg>
               <span
-                className="text-[12px] font-medium tracking-tight"
+                className="text-[12px] font-medium"
                 style={{ color: "var(--color-ink-secondary)", opacity: 0.55 }}
               >
                 {modelName}

@@ -27,6 +27,11 @@ export interface ChatJimmyCompletion {
   finishReason?: string;
 }
 
+export interface ChatJimmyOptions {
+  topK?: number;
+  systemPrompt?: string;
+}
+
 function compactSystemPrompt(text: string): string {
   if (text.length <= MAX_SYSTEM_PROMPT_CHARS) {
     return text;
@@ -101,7 +106,8 @@ function parseToolArguments(value: unknown): Record<string, unknown> {
 
 async function requestChatJimmy(
   messages: ChatJimmyMessage[],
-  tools?: ChatJimmyTool[]
+  tools?: ChatJimmyTool[],
+  options?: ChatJimmyOptions
 ): Promise<ChatJimmyCompletion> {
   if (!CHATJIMMY_API_URL || !CHATJIMMY_API_KEY || !CHATJIMMY_MODEL) {
     throw new Error(
@@ -122,9 +128,9 @@ async function requestChatJimmy(
       model: CHATJIMMY_MODEL,
       messages: preparedMessages,
       stream: false,
-      ...(tools && tools.length > 0
-        ? { tools, tool_choice: "auto" }
-        : {}),
+      ...(options?.topK != null ? { top_k: options.topK } : {}),
+      ...(options?.systemPrompt ? { chatOptions: { systemPrompt: options.systemPrompt } } : {}),
+      ...(tools && tools.length > 0 ? { tools, tool_choice: "auto" } : {}),
     }),
   });
 
@@ -182,14 +188,16 @@ async function requestChatJimmy(
 
 export async function chatJimmyWithTools(
   messages: ChatJimmyMessage[],
-  tools: ChatJimmyTool[]
+  tools: ChatJimmyTool[],
+  options?: ChatJimmyOptions
 ): Promise<ChatJimmyCompletion> {
-  return requestChatJimmy(messages, tools);
+  return requestChatJimmy(messages, tools, options);
 }
 
 export async function chatJimmy(
-  messages: ChatJimmyMessage[]
+  messages: ChatJimmyMessage[],
+  options?: ChatJimmyOptions
 ): Promise<string> {
-  const completion = await requestChatJimmy(messages);
+  const completion = await requestChatJimmy(messages, undefined, options);
   return completion.content;
 }

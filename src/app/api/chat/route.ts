@@ -56,6 +56,8 @@ interface RequestBody {
     highlights?: string[];
   }>;
   mode?: "router" | "answer";
+  topK?: number;
+  systemPrompt?: string;
 }
 
 function sseData(data: Record<string, unknown>): string {
@@ -97,7 +99,11 @@ export async function POST(req: NextRequest) {
   const body = (await req.json()) as RequestBody;
   const tParsed = Date.now();
 
-  const { messages = [], searchResults = [], mode } = body;
+  const { messages = [], searchResults = [], mode, topK, systemPrompt } = body;
+  const jimmyOpts = {
+    ...(topK != null ? { topK } : {}),
+    ...(systemPrompt?.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
+  };
   const effectiveMode: "router" | "answer" =
     mode === "router" ? "router" : "answer";
 
@@ -118,7 +124,8 @@ export async function POST(req: NextRequest) {
     if (effectiveMode === "router") {
       const completion = await chatJimmyWithTools(
         [{ role: "system", content: systemContent }, ...messages],
-        [WEATHER_TOOL]
+        [WEATHER_TOOL],
+        jimmyOpts
       );
       tChatjimmyDone = Date.now();
       const weatherCall = completion.toolCalls.find(
@@ -144,7 +151,7 @@ export async function POST(req: NextRequest) {
       content = await chatJimmy([
         { role: "system", content: systemContent },
         ...messages,
-      ]);
+      ], jimmyOpts);
       tChatjimmyDone = Date.now();
     }
 

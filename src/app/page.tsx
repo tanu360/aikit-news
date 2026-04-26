@@ -6,7 +6,6 @@ import { motion } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   ArtificialIntelligence04Icon,
-  GithubIcon,
   MarketAnalysisIcon,
   News01Icon,
   StartUp01Icon,
@@ -14,16 +13,19 @@ import {
 } from "@hugeicons/core-free-icons";
 import type {
   AttachedFile,
+  Chat,
   Message,
   SearchResult,
   ResearchStep,
   WeatherCardData,
 } from "@/lib/types";
 import { generateId, parseSSEStream, stripCitations } from "@/lib/utils";
+import { loadAllChats, persistChat, removeChat } from "@/lib/chatStore";
 import { SVG3D } from "3dsvg";
 import ChatInput from "@/components/ChatInput";
 import MessageBubble from "@/components/MessageBubble";
-import ThemeToggler, { useIsDarkTheme } from "@/components/ui/ThemeToggler";
+import Sidebar from "@/components/Sidebar";
+import { useIsDarkTheme } from "@/components/ui/ThemeToggler";
 
 const LOGO_PATH =
   "m256 0c-141.38 0-256 114.62-256 256s114.62 256 256 256 256-114.62 256-256-114.62-256-256-256zm0 375.36a119.36 119.36 0 1 1 119.36-119.36 119.36 119.36 0 0 1 -119.36 119.36z";
@@ -158,10 +160,18 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [agentMode, setAgentMode] = useState(false);
   const [attachedFile, setAttachedFile] = useState<AttachedFile | null>(null);
+  const [systemPrompt, setSystemPrompt] = useState("");
+  const [topK, setTopK] = useState(8);
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string>("");
+  const [showSettings, setShowSettings] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const isDark = useIsDarkTheme();
   const logo3DTheme = isDark ? LOGO_3D_THEME.dark : LOGO_3D_THEME.light;
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const scrollTargetRef = useRef<string | null>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const chatsRef = useRef<Chat[]>([]);
 
   useEffect(() => {
     if (!scrollTargetRef.current) return;
@@ -186,6 +196,127 @@ export default function Home() {
       });
     });
   }, [messages]);
+
+  function startNewChat() {
+    const id = crypto.randomUUID();
+    const chat: Chat = {
+      id,
+      title: "",
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    setChats((prev) => {
+      const next = [chat, ...prev];
+      chatsRef.current = next;
+      return next;
+    });
+    setActiveChatId(id);
+    setMessages([]);
+    setInput("");
+    setAttachedFile(null);
+    void persistChat(chat);
+  }
+
+  function loadChat(id: string) {
+    const chat = chats.find((c) => c.id === id);
+    if (!chat) return;
+    setActiveChatId(id);
+    setMessages(chat.messages);
+    setInput("");
+    setAttachedFile(null);
+  }
+
+  function deleteChat(id: string) {
+    void removeChat(id);
+    const nextChats = chats.filter((c) => c.id !== id);
+    chatsRef.current = nextChats;
+    setChats(nextChats);
+
+    if (id !== activeChatId) return;
+
+    setInput("");
+    setAttachedFile(null);
+
+    if (nextChats.length > 0) {
+      setActiveChatId(nextChats[0].id);
+      setMessages(nextChats[0].messages);
+    } else {
+      const newId = crypto.randomUUID();
+      const fresh: Chat = {
+        id: newId,
+        title: "",
+        messages: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      chatsRef.current = [fresh];
+      setChats([fresh]);
+      setActiveChatId(newId);
+      setMessages([]);
+      void persistChat(fresh);
+    }
+  }
+
+  async function generateTitle(firstUserMsg: string, chatId: string) {
+    try {
+      const res = await fetch("/api/title", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: firstUserMsg }),
+      });
+      if (!res.ok) return;
+      const { title } = (await res.json()) as { title: string };
+      if (title) {
+        setChats((prev) => {
+          const next = prev.map((c) => (c.id === chatId ? { ...c, title } : c));
+          chatsRef.current = next;
+          const updated = next.find((c) => c.id === chatId);
+          if (updated) void persistChat(updated);
+          return next;
+        });
+      }
+    } catch { }
+  }
+
+  useEffect(() => {
+    loadAllChats().then((stored) => {
+      if (stored.length > 0) {
+        chatsRef.current = stored;
+        setChats(stored);
+        setActiveChatId(stored[0].id);
+        setMessages(stored[0].messages);
+      } else {
+        startNewChat();
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!activeChatId) return;
+    setChats((prev) => {
+      const next = prev.map((c) =>
+        c.id === activeChatId
+          ? { ...c, messages, updatedAt: Date.now() }
+          : c
+      );
+      chatsRef.current = next;
+      return next;
+    });
+  }, [messages, activeChatId]);
+
+  useEffect(() => {
+    if (!activeChatId) return;
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    const chatId = activeChatId;
+    saveTimeoutRef.current = setTimeout(() => {
+      const chat = chatsRef.current.find((c) => c.id === chatId);
+      if (chat) void persistChat(chat);
+    }, 800);
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, [messages, activeChatId]);
 
   const handleInstantSubmit = async (query: string) => {
     const assistantId = generateId();
@@ -225,6 +356,8 @@ export default function Home() {
         body: JSON.stringify({
           messages: conversationHistory,
           mode: "router",
+          topK,
+          ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
         }),
       });
       const tRouterFirstByteWall = Date.now();
@@ -380,6 +513,8 @@ export default function Home() {
             highlights: r.highlights,
           })),
           mode: "answer",
+          topK,
+          ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
         }),
       });
       const tAnswerFirstByteWall = Date.now();
@@ -470,7 +605,11 @@ export default function Home() {
       const res = await fetch("/api/deep-research", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: deepFilePrefix + query }),
+        body: JSON.stringify({
+          query: deepFilePrefix + query,
+          topK,
+          ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
+        }),
       });
 
       if (!res.ok || !res.body) throw new Error("Deep research failed");
@@ -631,6 +770,9 @@ export default function Home() {
     const query = input.trim();
     if (!query || isLoading) return;
 
+    const isFirstMessage = messages.length === 0;
+    const currentChatId = activeChatId;
+
     setInput("");
     setAttachedFile(null);
     setIsLoading(true);
@@ -640,172 +782,156 @@ export default function Home() {
     } else {
       await handleInstantSubmit(query);
     }
+
+    if (isFirstMessage && currentChatId) {
+      void generateTitle(query, currentChatId);
+    }
   };
 
   const hasMessages = messages.length > 0;
 
   return (
-    <div
-      className="square-grid-bg flex h-dvh flex-col"
-    >
-      <header className="flex shrink-0 items-center justify-between px-4 py-3 sm:px-6">
-        <div className="flex items-center gap-2" aria-label="News">
-          <svg
-            aria-hidden="true"
-            className="h-6 w-6"
-            viewBox="0 0 512 512"
-            xmlns="http://www.w3.org/2000/svg"
-            style={{ color: "var(--color-ink-primary)" }}
-          >
-            <path
-              fill="currentColor"
-              d="m256 0c-141.38 0-256 114.62-256 256s114.62 256 256 256 256-114.62 256-256-114.62-256-256-256zm0 375.36a119.36 119.36 0 1 1 119.36-119.36 119.36 119.36 0 0 1 -119.36 119.36z"
-            />
-          </svg>
-        </div>
-        <div className="flex items-center gap-1">
-          <motion.a
-            href="https://github.com/tanu360"
-            target="_blank"
-            rel="noopener noreferrer"
-            whileTap={{ scale: 0.94 }}
-            transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-            className="header-action-button"
-            aria-label="GitHub tanu360"
-            title="GitHub tanu360"
-          >
-            <HugeiconsIcon
-              icon={GithubIcon}
-              size={18}
-              strokeWidth={1.9}
-              primaryColor="currentColor"
-            />
-          </motion.a>
-          <ThemeToggler />
-        </div>
-      </header>
-
-      <div ref={chatContainerRef} className="flex-1 overflow-y-auto">
-        {!hasMessages && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
-            className="flex h-full flex-col items-center justify-center px-6"
-          >
-            <div
-              className="empty-shell text-center"
-              style={{ width: "min(100%, 30rem)" }}
+    <div className="flex h-dvh" style={{ backgroundColor: "var(--color-surface-primary)" }}>
+      <Sidebar
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen((s) => !s)}
+        chats={chats}
+        activeChatId={activeChatId}
+        onNewChat={startNewChat}
+        onSelectChat={loadChat}
+        onDeleteChat={deleteChat}
+        onSettingsClick={() => setShowSettings((s) => !s)}
+        showSettings={showSettings}
+        disabled={isLoading}
+      />
+      <div className="square-grid-bg flex min-w-0 flex-1 flex-col">
+        <div ref={chatContainerRef} className="flex-1 overflow-y-auto">
+          {!hasMessages && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+              className="flex h-full flex-col items-center justify-center px-6"
             >
-              <div className="mb-4 flex justify-center" style={{ background: "transparent" }}>
-                <SVG3D
-                  key={`logo-${isDark ? "dark" : "light"}-${logo3DTheme.color}`}
-                  svg={getLogoSvg(logo3DTheme.color)}
-                  smoothness={0.75}
-                  color={logo3DTheme.color}
-                  material="chrome"
-                  metalness={logo3DTheme.metalness}
-                  roughness={logo3DTheme.roughness}
-                  ambientIntensity={logo3DTheme.ambientIntensity}
-                  lightIntensity={logo3DTheme.lightIntensity}
-                  animate="spin"
-                  animateSpeed={2}
-                  zoom={6}
-                  shadow={false}
-                />
-              </div>
-              <h2
-                className="mb-3 text-[24px] font-semibold sm:text-[28px]"
-                style={{
-                  color: "var(--color-ink-primary)",
-                  letterSpacing: "-0.03em",
-                  lineHeight: 1.2,
-                }}
+              <div
+                className="empty-shell text-center"
+                style={{ width: "min(100%, 30rem)" }}
               >
-                What do you want to know?
-              </h2>
-              <div className="mb-8" />
+                <div className="mb-4 flex justify-center" style={{ background: "transparent" }}>
+                  <SVG3D
+                    key={`logo-${isDark ? "dark" : "light"}-${logo3DTheme.color}`}
+                    svg={getLogoSvg(logo3DTheme.color)}
+                    smoothness={0.75}
+                    color={logo3DTheme.color}
+                    material="chrome"
+                    metalness={logo3DTheme.metalness}
+                    roughness={logo3DTheme.roughness}
+                    ambientIntensity={logo3DTheme.ambientIntensity}
+                    lightIntensity={logo3DTheme.lightIntensity}
+                    animate="spin"
+                    animateSpeed={2}
+                    zoom={6}
+                    shadow={false}
+                  />
+                </div>
+                <h2
+                  className="mb-3 text-[24px] font-semibold sm:text-[28px]"
+                  style={{
+                    color: "var(--color-ink-primary)",
+                    letterSpacing: 0,
+                    lineHeight: 1.2,
+                  }}
+                >
+                  What do you want to know?
+                </h2>
+                <div className="mb-8" />
 
-              <div className="flex flex-wrap justify-center gap-2">
-                {EMPTY_STATE_SUGGESTIONS.map((suggestion) => (
-                  <button
-                    key={suggestion.label}
-                    onClick={() => setInput(suggestion.label)}
-                    className="suggestion-chip inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[13px]"
-                  >
-                    <HugeiconsIcon
-                      icon={suggestion.icon}
-                      size={15}
-                      strokeWidth={1.8}
-                      primaryColor="currentColor"
-                      className="shrink-0"
-                    />
-                    <span>{suggestion.label}</span>
-                  </button>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {EMPTY_STATE_SUGGESTIONS.map((suggestion) => (
+                    <button
+                      key={suggestion.label}
+                      onClick={() => setInput(suggestion.label)}
+                      className="suggestion-chip inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[13px]"
+                    >
+                      <HugeiconsIcon
+                        icon={suggestion.icon}
+                        size={15}
+                        strokeWidth={1.8}
+                        primaryColor="currentColor"
+                        className="shrink-0"
+                      />
+                      <span>{suggestion.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {hasMessages && (
+            <div
+              className="chat-shell mx-auto px-4 py-4 sm:py-6"
+              style={{ width: "min(100%, 46rem)" }}
+            >
+              <div className="flex flex-col gap-4 sm:gap-5">
+                {messages.map((message) => (
+                  <MessageBubble
+                    key={message.id}
+                    message={message}
+                    isStreaming={
+                      isLoading &&
+                      message.role === "assistant" &&
+                      message.id === messages[messages.length - 1]?.id
+                    }
+                  />
                 ))}
               </div>
             </div>
-          </motion.div>
-        )}
+          )}
+        </div>
 
-        {hasMessages && (
+        <div className="shrink-0 px-4 pb-4 pt-2 sm:pb-5">
           <div
-            className="chat-shell mx-auto px-4 py-4 sm:py-6"
+            className="chat-shell relative mx-auto"
             style={{ width: "min(100%, 46rem)" }}
           >
-            <div className="flex flex-col gap-4 sm:gap-5">
-              {messages.map((message) => (
-                <MessageBubble
-                  key={message.id}
-                  message={message}
-                  isStreaming={
-                    isLoading &&
-                    message.role === "assistant" &&
-                    message.id === messages[messages.length - 1]?.id
-                  }
-                />
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="shrink-0 px-4 pb-4 pt-2 sm:pb-5">
-        <div
-          className="chat-shell relative mx-auto"
-          style={{ width: "min(100%, 46rem)" }}
-        >
-          <motion.div
-            className="pointer-events-none absolute right-0 bottom-full mb-2"
-            animate={{ y: [0, -5, 0, -5, 0], rotate: [0, -2, 0, 2, 0] }}
-            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-          >
-            <Image
-              src={`data:image/svg+xml,${encodeURIComponent(MASCOT_SVG)}`}
-              alt=""
-              aria-hidden="true"
-              width={48}
-              height={48}
-              unoptimized
+            <motion.div
+              className="pointer-events-none absolute right-0 bottom-full mb-2"
+              animate={{ y: [0, -5, 0, -5, 0], rotate: [0, -2, 0, 2, 0] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <Image
+                src={`data:image/svg+xml,${encodeURIComponent(MASCOT_SVG)}`}
+                alt=""
+                aria-hidden="true"
+                width={48}
+                height={48}
+                unoptimized
+              />
+            </motion.div>
+            <ChatInput
+              value={input}
+              onChange={setInput}
+              onSubmit={handleSubmit}
+              disabled={isLoading}
+              agentMode={agentMode}
+              onAgentModeChange={setAgentMode}
+              attachedFile={attachedFile}
+              onFileAttach={setAttachedFile}
+              systemPrompt={systemPrompt}
+              onSystemPromptChange={setSystemPrompt}
+              topK={topK}
+              onTopKChange={setTopK}
+              showSettings={showSettings}
+              placeholder={
+                agentMode
+                  ? "Ask a complex question for deep research..."
+                  : hasMessages
+                    ? "Ask a follow-up..."
+                    : "Ask anything..."
+              }
             />
-          </motion.div>
-          <ChatInput
-            value={input}
-            onChange={setInput}
-            onSubmit={handleSubmit}
-            disabled={isLoading}
-            agentMode={agentMode}
-            onAgentModeChange={setAgentMode}
-            attachedFile={attachedFile}
-            onFileAttach={setAttachedFile}
-            placeholder={
-              agentMode
-                ? "Ask a complex question for deep research..."
-                : hasMessages
-                  ? "Ask a follow-up..."
-                  : "Ask anything..."
-            }
-          />
+          </div>
         </div>
       </div>
     </div>

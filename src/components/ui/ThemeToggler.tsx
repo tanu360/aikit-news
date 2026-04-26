@@ -36,7 +36,6 @@ export type TransitionVariant =
 interface AnimatedThemeTogglerProps extends ComponentPropsWithoutRef<"button"> {
   duration?: number;
   variant?: TransitionVariant;
-  /** When true, the transition expands from the viewport center instead of the button center. */
   fromCenter?: boolean;
   iconSize?: number;
 }
@@ -255,6 +254,7 @@ export function useIsDarkTheme() {
 }
 
 export const AnimatedThemeToggler = ({
+  children,
   className,
   duration = 400,
   variant,
@@ -395,6 +395,7 @@ export const AnimatedThemeToggler = ({
           primaryColor="currentColor"
         />
       </span>
+      {children}
       <span className="sr-only">Toggle theme</span>
     </button>
   );

@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { chatJimmy } from "@/lib/jimmy";
+import type { ChatJimmyOptions } from "@/lib/jimmy";
 
 const EXA_API_KEY = process.env.EXA_API_KEY || "";
 
@@ -109,7 +110,12 @@ function sseEvent(type: string, data: Record<string, unknown>): string {
 }
 
 export async function POST(req: NextRequest) {
-  const { query } = await req.json();
+  const body = await req.json();
+  const { query, topK, systemPrompt } = body as { query: string; topK?: number; systemPrompt?: string };
+  const jimmyOpts: ChatJimmyOptions = {
+    ...(topK != null ? { topK } : {}),
+    ...(systemPrompt?.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
+  };
 
   if (!query) {
     return new Response(JSON.stringify({ error: "Query required" }), {
@@ -269,7 +275,7 @@ export async function POST(req: NextRequest) {
         let fullAnswer = await chatJimmy([
           { role: "system", content: finalSystemPrompt },
           { role: "user", content: finalUserPrompt },
-        ]);
+        ], jimmyOpts);
 
         fullAnswer = fullAnswer
           .replace(

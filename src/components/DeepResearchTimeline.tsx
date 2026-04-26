@@ -92,7 +92,7 @@ function StepItem({ step }: { step: ResearchStep }) {
           className="text-[12.5px] font-medium"
           style={{
             color: "var(--color-ink-secondary)",
-            letterSpacing: "-0.01em",
+            letterSpacing: 0,
           }}
         >
           &ldquo;{step.query}&rdquo;
@@ -143,7 +143,7 @@ function StepItem({ step }: { step: ResearchStep }) {
           className="mt-1 text-[12.5px] leading-relaxed"
           style={{
             color: "var(--color-ink-ghost)",
-            letterSpacing: "-0.005em",
+            letterSpacing: 0,
           }}
         >
           {step.synthesis}
@@ -227,7 +227,7 @@ export default function DeepResearchTimeline({
 
         <div className="flex flex-1 items-center gap-2">
           <span
-            className="text-[13px] font-medium tracking-tight"
+            className="text-[13px] font-medium"
             style={{ color: "var(--color-ink-secondary)" }}
           >
             {status === "researching"

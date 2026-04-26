@@ -218,7 +218,7 @@ function CitationPill({
             style={{
               background: "var(--color-surface-primary)",
               color: "var(--color-ink-primary)",
-              letterSpacing: "-0.003em",
+              letterSpacing: 0,
               border: "1px solid var(--color-border-light)",
             }}
           >
@@ -226,7 +226,7 @@ function CitationPill({
               className="mb-1.5 block text-[11.5px] font-semibold leading-snug"
               style={{
                 color: "var(--color-ink-primary)",
-                letterSpacing: "-0.01em",
+                letterSpacing: 0,
               }}
             >
               {source.title}

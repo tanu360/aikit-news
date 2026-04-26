@@ -51,6 +51,10 @@
   --color-accent-dot: color-mix(in oklch, var(--color-accent) 55%, transparent);
   --color-icon-on-fill: oklch(99% 0 0);
   --color-header-action-hover: oklch(55.2% 0.016 285.938);
+  --color-sidebar-taskbar-bg: oklch(93.2% 0.012 255);
+  --color-sidebar-taskbar-border: oklch(84.8% 0.01 255);
+  --color-sidebar-taskbar-hover: oklch(89.8% 0.014 255);
+  --color-sidebar-taskbar-active: oklch(88.6% 0.022 260);
   --color-selection: color-mix(in oklch, var(--color-accent) 18%, transparent);
   --color-control-hover: var(--color-surface-hover);
   --color-result-row-hover: var(--color-surface-secondary);
@@ -113,6 +117,10 @@
     --color-accent-dot: oklch(0.72 0.16 255 / 0.88);
     --color-icon-on-fill: oklch(0.195 0 0);
     --color-header-action-hover: oklch(87.1% 0.006 286.286);
+    --color-sidebar-taskbar-bg: oklch(0.292 0.011 255);
+    --color-sidebar-taskbar-border: oklch(1 0 0 / 0.12);
+    --color-sidebar-taskbar-hover: oklch(0.345 0.014 255);
+    --color-sidebar-taskbar-active: oklch(0.382 0.026 255);
     --color-selection: oklch(0.68 0.18 255 / 0.22);
     --color-control-hover: var(--color-surface-tertiary);
     --color-result-row-hover: var(--color-surface-tertiary);
@@ -161,6 +169,10 @@
   --color-accent-dot: color-mix(in oklch, var(--color-accent) 55%, transparent);
   --color-icon-on-fill: oklch(99% 0 0);
   --color-header-action-hover: oklch(55.2% 0.016 285.938);
+  --color-sidebar-taskbar-bg: oklch(93.2% 0.012 255);
+  --color-sidebar-taskbar-border: oklch(84.8% 0.01 255);
+  --color-sidebar-taskbar-hover: oklch(89.8% 0.014 255);
+  --color-sidebar-taskbar-active: oklch(88.6% 0.022 260);
   --color-selection: color-mix(in oklch, var(--color-accent) 18%, transparent);
   --color-control-hover: var(--color-surface-hover);
   --color-result-row-hover: var(--color-surface-secondary);
@@ -200,6 +212,10 @@
   --color-accent-dot: oklch(0.72 0.16 255 / 0.88);
   --color-icon-on-fill: oklch(0.195 0 0);
   --color-header-action-hover: oklch(87.1% 0.006 286.286);
+  --color-sidebar-taskbar-bg: oklch(0.292 0.011 255);
+  --color-sidebar-taskbar-border: oklch(1 0 0 / 0.12);
+  --color-sidebar-taskbar-hover: oklch(0.345 0.014 255);
+  --color-sidebar-taskbar-active: oklch(0.382 0.026 255);
   --color-selection: oklch(0.68 0.18 255 / 0.22);
   --color-control-hover: var(--color-surface-tertiary);
   --color-result-row-hover: var(--color-surface-tertiary);
@@ -589,7 +605,7 @@ textarea::placeholder {
 .prose {
   font-size: 0.875rem;
   line-height: 1.7;
-  letter-spacing: -0.006em;
+  letter-spacing: 0;
   color: var(--color-ink-primary);
 }
 
@@ -606,7 +622,7 @@ textarea::placeholder {
 .prose h1 {
   font-size: 1.5rem;
   font-weight: 600;
-  letter-spacing: -0.025em;
+  letter-spacing: 0;
   margin-top: 1.5em;
   margin-bottom: 0.5em;
 }
@@ -614,7 +630,7 @@ textarea::placeholder {
 .prose h2 {
   font-size: 1.2rem;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   margin-top: 1.25em;
   margin-bottom: 0.4em;
 }
@@ -622,7 +638,7 @@ textarea::placeholder {
 .prose h3 {
   font-size: 1.05rem;
   font-weight: 600;
-  letter-spacing: -0.015em;
+  letter-spacing: 0;
   margin-top: 1em;
   margin-bottom: 0.35em;
 }
