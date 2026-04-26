@@ -775,15 +775,20 @@ export default function Home() {
           className="chat-shell relative mx-auto"
           style={{ width: "min(100%, 46rem)" }}
         >
-          <Image
-            src={`data:image/svg+xml,${encodeURIComponent(MASCOT_SVG)}`}
-            alt=""
-            aria-hidden="true"
-            width={48}
-            height={48}
-            unoptimized
+          <motion.div
             className="pointer-events-none absolute right-0 bottom-full mb-2"
-          />
+            animate={{ y: [0, -5, 0, -5, 0], rotate: [0, -2, 0, 2, 0] }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <Image
+              src={`data:image/svg+xml,${encodeURIComponent(MASCOT_SVG)}`}
+              alt=""
+              aria-hidden="true"
+              width={48}
+              height={48}
+              unoptimized
+            />
+          </motion.div>
           <ChatInput
             value={input}
             onChange={setInput}

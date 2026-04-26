@@ -15,8 +15,16 @@ import {
 import type { AttachedFile } from "@/lib/types";
 
 const MODEL_NAME = process.env.NEXT_PUBLIC_CHATJIMMY_MODEL || "";
-const FILE_CHAR_LIMIT = 16384;
-const ACCEPTED_TYPES = ".txt,.md,.csv,.json,.ts,.tsx,.js,.jsx,.py,.html,.css,.yaml,.yml,.xml,.log";
+const FILE_SIZE_LIMIT = 16 * 1024;
+const ACCEPTED_TYPES = ".txt,.md,.mdx,.csv,.json,.jsonc,.ts,.tsx,.js,.jsx,.mjs,.cjs,.py,.html,.htm,.css,.scss,.sass,.less,.yaml,.yml,.xml,.log,.toml,.ini,.cfg,.conf,.env,.sh,.bash,.zsh,.fish,.sql,.rs,.go,.java,.c,.cpp,.cc,.h,.hpp,.rb,.php,.swift,.kt,.dart,.r,.tex,.vue,.svelte,.graphql,.gql,.proto";
+
+function truncateFileName(name: string): string {
+  const dotIdx = name.lastIndexOf(".");
+  if (dotIdx <= 0) return name.length > 8 ? name.slice(0, 8) + "..." : name;
+  const stem = name.slice(0, dotIdx);
+  const ext = name.slice(dotIdx);
+  return stem.length > 8 ? stem.slice(0, 8) + "..." + ext : name;
+}
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -51,6 +59,7 @@ export default function ChatInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [focused, setFocused] = useState(false);
   const [agentControlHover, setAgentControlHover] = useState(false);
+  const [fileButtonHover, setFileButtonHover] = useState(false);
   const [modelName, setModelName] = useState(MODEL_NAME || "AI Model");
   const [ripple, setRipple] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -119,16 +128,15 @@ export default function ChatInput({
     if (!file) return;
     e.target.value = "";
 
+    if (file.size > FILE_SIZE_LIMIT) {
+      setFileError(`File too large — ${formatFileSize(file.size)} (limit: 16 KB)`);
+      onFileAttach(null);
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target?.result as string;
-      if (content.length > FILE_CHAR_LIMIT) {
-        setFileError(
-          `File too large — ${content.length.toLocaleString()} chars (limit: ${FILE_CHAR_LIMIT.toLocaleString()})`
-        );
-        onFileAttach(null);
-        return;
-      }
       setFileError(null);
       onFileAttach({ name: file.name, content, size: file.size, charCount: content.length });
     };
@@ -174,7 +182,9 @@ export default function ChatInput({
       <div
         className="rounded-[22px] p-1"
         style={{
-          border: "1px solid var(--color-border-light)",
+          border: focused
+            ? "1px solid var(--color-border-default)"
+            : "1px solid var(--color-border-light)",
           backgroundColor: "var(--color-surface-tertiary)",
           transition: themeColorTransition,
         }}
@@ -185,7 +195,9 @@ export default function ChatInput({
             backgroundColor: focused
               ? "var(--color-input-bg-focus)"
               : "var(--color-input-bg)",
-            border: "1px solid var(--color-border-light)",
+            border: focused
+              ? "1px solid var(--color-border-default)"
+              : "1px solid var(--color-border-light)",
             backdropFilter: "blur(20px) saturate(180%)",
             WebkitBackdropFilter: "blur(20px) saturate(180%)",
             transition: themeColorTransition,
@@ -223,7 +235,7 @@ export default function ChatInput({
                 width: isActive ? 28 : 0,
               }}
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              className="absolute bottom-3 right-4 flex h-7 items-center justify-center overflow-hidden rounded-lg transition-colors duration-200 disabled:pointer-events-none"
+              className="absolute bottom-3 right-4 flex h-7 items-center justify-center overflow-hidden rounded-full transition-colors duration-200 disabled:pointer-events-none"
               style={{
                 backgroundColor: isActive ? "var(--color-ink-primary)" : "transparent",
                 minWidth: 0,
@@ -274,41 +286,44 @@ export default function ChatInput({
                     </div>
                   ) : attachedFile ? (
                     <div
-                      className="inline-flex max-w-full items-center gap-2 rounded-xl px-3 py-2 text-[12px]"
+                      className="inline-flex max-w-full items-center gap-1.5 rounded-2xl px-2.5 py-1.5 text-[11.5px]"
                       style={{
-                        backgroundColor: "var(--color-surface-tertiary)",
-                        border: "1px solid var(--color-border-default)",
-                        color: "var(--color-ink-secondary)",
+                        backgroundColor: "var(--color-surface-secondary)",
+                        border: "1px solid var(--color-border-light)",
+                        color: "var(--color-ink-ghost)",
                       }}
                     >
                       <HugeiconsIcon
                         icon={File01Icon}
-                        size={13}
-                        strokeWidth={1.8}
+                        size={12}
+                        strokeWidth={1.7}
                         primaryColor="currentColor"
-                        style={{ color: "var(--color-ink-tertiary)", flexShrink: 0 }}
+                        style={{ color: "var(--color-ink-ghost)", flexShrink: 0 }}
                       />
                       <span
-                        className="truncate font-medium"
-                        style={{ color: "var(--color-ink-primary)", maxWidth: 180 }}
+                        className="shrink-0 font-medium tracking-tight"
+                        style={{ color: "var(--color-ink-primary)" }}
                       >
-                        {attachedFile.name}
+                        {truncateFileName(attachedFile.name)}
                       </span>
-                      <span style={{ color: "var(--color-ink-tertiary)" }}>·</span>
-                      <span className="shrink-0" style={{ color: "var(--color-ink-tertiary)" }}>
-                        {formatFileSize(attachedFile.size)} · {attachedFile.charCount.toLocaleString()} chars
+                      <span style={{ color: "var(--color-ink-ghost)", opacity: 0.5 }}>·</span>
+                      <span className="shrink-0">
+                        {formatFileSize(attachedFile.size)}
                       </span>
                       <button
                         type="button"
                         onClick={removeFile}
-                        className="ml-0.5 shrink-0 opacity-50 transition-opacity hover:opacity-100"
-                        style={{ color: "var(--color-ink-tertiary)" }}
+                        className="ml-0.5 shrink-0 flex h-4 w-4 items-center justify-center rounded-full transition-opacity duration-150 hover:opacity-75"
+                        style={{
+                          backgroundColor: "var(--color-ink-primary)",
+                          color: "var(--color-icon-on-fill)",
+                        }}
                         aria-label="Remove file"
                       >
                         <HugeiconsIcon
                           icon={Cancel01Icon}
-                          size={12}
-                          strokeWidth={2}
+                          size={9}
+                          strokeWidth={2.5}
                           primaryColor="currentColor"
                         />
                       </button>
@@ -325,25 +340,31 @@ export default function ChatInput({
               height: "1px",
               backgroundColor: focused
                 ? "var(--color-input-border)"
-                : "var(--color-border-light)",
+                : "color-mix(in oklch, var(--color-border-light) 45%, transparent)",
               transition: "background-color 220ms var(--theme-ease)",
             }}
           />
 
-          <div className="flex items-center justify-between px-3 py-2">
+          <div className="flex items-center justify-between px-3 py-1.5">
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
+                onMouseEnter={() => setFileButtonHover(true)}
+                onMouseLeave={() => setFileButtonHover(false)}
+                onFocus={() => setFileButtonHover(true)}
+                onBlur={() => setFileButtonHover(false)}
                 disabled={disabled}
                 title="Attach text file"
-                className="flex h-7 w-7 items-center justify-center rounded-full transition-[background-color,color] duration-200 disabled:opacity-30"
+                className="flex h-7 w-7 items-center justify-center rounded-full transition-[background-color,border-color,color] duration-200 disabled:opacity-30"
                 style={{
-                  backgroundColor: attachedFile
-                    ? "var(--color-accent-muted-strong)"
-                    : "var(--color-ink-primary)",
-                  color: "var(--color-icon-on-fill)",
-                  border: "none",
+                  backgroundColor: attachedFile ? "var(--color-ink-primary)" : "transparent",
+                  color: attachedFile
+                    ? "var(--color-icon-on-fill)"
+                    : fileButtonHover
+                      ? "var(--color-ink-secondary)"
+                      : "var(--color-ink-tertiary)",
+                  border: "1px solid transparent",
                 }}
               >
                 <HugeiconsIcon
@@ -410,16 +431,16 @@ export default function ChatInput({
               </button>
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1" style={{ opacity: 0.55 }}>
               <HugeiconsIcon
                 icon={CpuIcon}
-                size={13}
-                strokeWidth={1.8}
+                size={11}
+                strokeWidth={1.7}
                 primaryColor="currentColor"
                 style={{ color: "var(--color-ink-tertiary)" }}
               />
               <span
-                className="text-[12px] font-medium"
+                className="text-[11px] font-medium tracking-tight"
                 style={{ color: "var(--color-ink-secondary)" }}
               >
                 {modelName}
