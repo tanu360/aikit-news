@@ -51,6 +51,10 @@ const LOGO_3D_THEME = {
 const MASCOT_SVG = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1024" height="1024" viewBox="0 0 1024 1024"><path fill="#273842" d="M347.128 8.21877C349.591 8.05428 353.835 7.78809 356.19 8.3426C374.036 12.5452 375.84 37.5945 395.84 38.5485C404.928 38.9821 416.21 36.8834 425.316 35.407C435.297 33.7547 445.292 32.1896 455.301 30.7118C474.146 27.8741 493.141 26.146 512.189 25.5365C531.545 25.0946 565.839 25.5162 584.315 28.7749C654.348 41.5175 722.883 74.9781 771.027 128.162C787.393 146.242 799.72 166.282 816.895 183.339C823.654 190.278 834.121 191.871 841.883 196.255C911.056 235.327 940.572 318.528 924.973 394.467C921.475 411.5 912.187 433.169 913.559 449.96C920.429 459.871 934.628 469.855 940.614 480.187C974.435 538.561 958.061 621.505 904.116 662.306C896.881 667.778 886.188 671.46 878.662 677.036C876.19 685.807 875.505 705.048 874.325 715.222C871.348 739.95 865.425 765.609 856.164 788.84C830.157 854.077 777.169 907.503 721.165 948.116C699.294 963.976 672.161 976.701 647.447 987.015C583.124 1010.99 520.386 1018.02 452.113 1013.36C420.141 1011.19 377.864 1002.77 347.555 992.31C237.466 954.325 129.323 877.759 88.2263 764.668C82.4969 748.901 76.8002 733.462 73.336 716.919C68.1465 692.088 66.3215 666.671 67.9103 641.353C71.3321 585.135 97.2516 520.366 135.049 478.063C150.28 461.018 166.121 449.786 182.89 434.979C182.641 412.421 187.438 390.155 192.162 368.365C207.647 296.942 241.372 239.783 288.338 184.641C296.577 174.967 305.495 166.354 313.932 157.071C310.833 152.852 306.834 148.742 303.593 144.444C293.672 131.287 285.478 118.674 281.612 102.398C276.433 80.6024 285.779 61.6809 296.662 43.4362C306.506 26.9321 328.263 12.3639 347.128 8.21877Z"/><path fill="#FCBD90" d="M331.685 173.291C362.624 180.015 387.116 190.334 420.339 188.171C455.937 186.288 488.055 171.194 522.139 163.236C560.649 154.245 607.225 151.955 645.937 162.7C685.761 173.753 757.666 211.534 751.188 261.67C749.834 272.15 736.985 292.161 731.746 301.72C708.282 344.909 705.139 395.036 732.897 437.074C737.708 444.359 743.064 452.082 746.252 460.291C753.582 480.642 756.433 508.821 773.167 524.49L779.515 524.567C790.536 513.964 793.548 508.556 802.586 496.708C819.773 474.176 839.417 461.007 868.617 461.435C885.91 462.063 895.94 467.473 907.649 479.543C924.263 496.111 930.351 512.647 932.43 535.596C935.233 566.542 930.404 592.059 913.348 618.356C897.914 642.152 877.562 653.602 848.929 653.92C840.21 654.017 832.462 653.704 823.73 655.443C824.399 663.099 828.982 678.824 828.616 684.631C827.631 700.227 829.135 718.659 826.701 733.671C820.697 771.407 797.52 814.598 773.021 843.587C739.179 883.632 687.557 925.202 639.098 946.037C601.493 962.206 536.498 980.019 495.609 979.041C495.581 981.145 495.976 980.346 494.677 981.651C489.277 983.41 479.258 982.849 473.715 980.961C473.268 980.809 472.535 979.957 472.105 979.743C469.605 979.985 467.101 980.173 464.593 980.305C453.795 980.777 438.556 979.106 427.455 977.944C397.587 974.715 368.17 968.183 339.743 958.467C327.163 954.088 317.71 949.642 305.648 944.184C262.828 924.811 221.902 899.097 187.178 867.267C150.924 833.604 123.108 791.876 105.983 745.462C99.5905 728.138 96.0095 714.729 93.9233 696.423C92.7933 686.507 90.0861 675.778 90.0345 665.673C91.3015 657.965 88.4915 641.427 90.4156 634.469C94.2941 620.445 95.8637 605.618 99.1755 591.412C100.829 584.32 103.539 577.539 105.317 570.779C108.769 557.659 113.604 546.277 120.312 534.543C131.85 511.013 143.056 495.654 162.508 477.974C175.025 466.596 192.507 460.161 201.04 446.04C209.321 427.638 209.074 402.325 212.077 382.244C220.41 326.515 240.992 273.789 276.47 229.642C280.886 224.111 287.999 214.282 292.804 209.369C300.067 201.941 307.646 195.365 314.971 187.578C318.465 183.433 320.864 181.486 325.212 178.294C327.122 176.772 329.704 174.586 331.685 173.291Z"/><path fill="#735C57" d="M472.105 979.743C477.233 977.877 490.23 978.28 495.609 979.041C495.581 981.145 495.976 980.346 494.677 981.651C489.277 983.41 479.258 982.849 473.715 980.961C473.268 980.809 472.535 979.957 472.105 979.743Z"/><path fill="#C39A7E" d="M325.212 178.294C324.915 182.558 321.155 187.256 317.013 188.284C316.378 188.071 315.576 187.828 314.971 187.578C318.465 183.433 320.864 181.486 325.212 178.294Z"/><path fill="#273842" d="M583.787 529.65C596.658 529.039 619.615 539.27 629.688 547.53C637.868 554.237 649.631 574.972 643.594 585.496C640.243 591.336 627.641 595.907 624.697 602.774C623.381 606.641 622.509 614.864 621.816 618.992C620.648 626.082 619.163 633.116 617.367 640.073C609.842 669.016 595.21 702.267 577.286 726.565C564.309 744.155 541.369 761.3 522.899 772.57C481.471 797.848 426.208 808.532 381.845 784.379C348.642 766.815 327.946 747.396 308.997 715.039C303.097 704.194 294.606 685.868 293.698 673.57C293.131 665.885 293.5 651.885 293.493 643.717C283.338 634.829 273.748 635.265 263.382 627.297C249.874 616.839 235.373 603.286 232.717 585.515C232.033 580.942 233.3 575.809 238.852 575.497C246.948 575.042 251.266 584.557 256.322 589.378C276.615 608.729 301.287 620.973 328.55 627.09C352.516 633.336 369.174 636.031 394.432 635.337C409.412 634.925 423.535 634.519 438.432 632.487C474.699 627.541 506.841 612.401 539.106 596.058C549.442 590.822 572.432 577.916 580.245 569.745C580.95 565.487 581.015 563.736 581.02 559.385C579.391 557.016 577.671 554.667 576.103 552.261C569.598 542.282 571.373 532.536 583.787 529.65Z"/><path fill="#D76C34" d="M524.43 682.216C536.139 681.387 556.209 685.344 555.615 700.534C555.032 715.411 539.332 730.455 527.868 738.484C518.846 744.422 508.081 752.621 497.834 756.097C488.128 759.39 477.794 763.403 468.3 766.702C461.47 769.075 445.087 771.024 437.732 771.012C410.342 770.972 394.268 758.743 416.187 733.222C428.867 719.897 446.939 706.085 464.127 699.123C482.536 691.665 504.897 683.601 524.43 682.216Z"/><path fill="#273842" d="M272.416 511.746C279.005 466.384 339.038 453.084 377.248 458.457C390.053 460.258 403.73 464.013 415.054 470.31C421.534 473.913 429.053 484.688 422.666 491.291C417.723 493.667 401.939 484.867 396.599 483.489C376.611 478.33 356.885 476.249 336.601 481.3C330.577 482.744 326.353 482.899 320.422 485.695C308.738 491.123 299.808 501.128 295.739 513.352C290.969 527.298 305.786 548.824 316.748 556.106C355.084 581.357 406.624 573.535 441.174 545.469C444.258 542.964 450.397 537.796 453.595 536.365C464.174 531.632 466.477 541.016 466.318 548.671C462.869 554.946 448.733 568.229 442.605 572.236C404.558 597.116 358.848 601.664 317.956 580.85C298.092 570.74 278.868 555.291 272.645 532.87C269.233 528.026 265.07 514.463 272.416 511.746Z"/><path fill="#C39A7E" d="M272.645 532.87C269.233 528.026 265.07 514.463 272.416 511.746C272.095 518.803 272.428 525.811 272.645 532.87Z"/><path fill="#273842" d="M290.544 811.531C294.459 811.243 298.362 812.243 301.655 814.38C307.149 818.02 318.854 833.846 326.264 839.994C359.905 868.211 401.728 877.023 444.588 872.19C467.125 869.649 480.134 865.885 500.143 854.959C506.79 851.329 534.483 831.184 536.278 848.706C536.761 853.425 532.228 859.41 529.071 862.745C525.544 866.148 517.513 872.891 513.359 875.882C494.902 888.64 469.545 896.398 447.367 899.217C435.059 900.781 414.755 900.412 402.259 899.176C395.666 898.524 382.714 895.905 376.491 894.141C352.811 887.425 329.746 874.082 310.941 858.355C307.649 855.567 301.451 847.776 298.603 843.981C292.904 836.389 285.933 824.976 287.621 814.987C287.927 813.176 289.085 812.55 290.544 811.531Z"/><path fill="#273842" d="M523.788 371.655C544.552 370.903 549.68 381.93 557.168 399.073C565.859 418.971 555.118 456.547 533.801 464.467C527.261 465.546 521.283 465.324 515.863 461.32C492.125 443.782 491.744 403.739 508.934 381.621C512.929 376.482 517.172 372.613 523.788 371.655Z"/><path fill="#273842" d="M302.602 367.578C323.04 365.862 329.347 381.098 334.632 397.325C340.328 414.813 336.438 429.144 328.47 445.243C325.041 452.171 318.907 456.987 311.581 459.098C274.699 464.4 268.878 402.388 285.18 380.934C290.193 374.336 295.168 370.727 302.602 367.578Z"/><path fill="#273842" d="M533.339 256.209C563.739 252.412 609.448 277.257 612.246 311.942C612.656 317.024 607.633 321.396 604.029 324.525C592.625 320.086 588.68 317.919 581.22 308.457C579.981 307.101 578.689 305.796 577.346 304.545C561.081 289.162 542.803 284.962 521.286 290.059C508.357 293.121 502.435 298.654 491.547 287.855C491.403 282.151 492.212 277.386 496.438 273.162C506.653 262.949 519.35 257.245 533.339 256.209Z"/><path fill="#273842" d="M311.952 259.169C321.346 258.112 343.373 259.108 348.097 268.928C351.11 275.191 354.104 290.622 346.362 294.751C340.405 297.928 334.291 292.651 328.727 291.105C316.465 287.147 302.729 289.376 291.569 295.528C284.216 299.99 270.652 311.42 260.86 308.886C259.82 308.617 258.413 306.566 258.372 305.419C257.921 292.716 266.656 281.889 276.398 274.705C288.775 264.768 296.588 261.705 311.952 259.169Z"/><path fill="#273842" d="M876.322 506.6C882.938 505.843 883.53 507.21 886.904 512.598C883.102 518.145 876.548 523.406 872.28 530.128C855.31 556.856 871.273 559.735 875.698 579.604C872.234 590.21 866.827 593.022 857.626 586.584C851.887 581.991 846.822 571.222 841.392 565.264C838.75 562.365 834.011 559.145 832.693 556.668C831.76 546.229 839.854 538.182 845.445 530.423C853.578 519.135 862.482 510.318 876.322 506.6Z"/></svg>`;
 
 let lastRequestEndWall = 0;
+const DESKTOP_MEDIA_QUERY = "(min-width: 1024px)";
+const SIDEBAR_EDGE_SWIPE_WIDTH = 72;
+const SIDEBAR_SWIPE_TRIGGER_DISTANCE = 42;
+const SIDEBAR_SWIPE_DIRECTION_RATIO = 1.15;
 
 const EMPTY_STATE_SUGGESTIONS = [
   { label: "Top AI stories today", icon: ArtificialIntelligence04Icon },
@@ -154,6 +158,13 @@ function logTiming(
   lastRequestEndWall = meta.tEndWall;
 }
 
+function isHorizontalSidebarSwipe(deltaX: number, deltaY: number) {
+  return (
+    Math.abs(deltaX) >= SIDEBAR_SWIPE_TRIGGER_DISTANCE &&
+    Math.abs(deltaX) > Math.abs(deltaY) * SIDEBAR_SWIPE_DIRECTION_RATIO
+  );
+}
+
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -165,13 +176,31 @@ export default function Home() {
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChatId, setActiveChatId] = useState<string>("");
   const [showSettings, setShowSettings] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isCompactViewport, setIsCompactViewport] = useState(false);
   const isDark = useIsDarkTheme();
   const logo3DTheme = isDark ? LOGO_3D_THEME.dark : LOGO_3D_THEME.light;
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const scrollTargetRef = useRef<string | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chatsRef = useRef<Chat[]>([]);
+  const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+  const touchHandledRef = useRef(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(DESKTOP_MEDIA_QUERY);
+    const syncSidebarForViewport = () => {
+      setIsCompactViewport(!mediaQuery.matches);
+      setSidebarOpen(mediaQuery.matches);
+    };
+
+    syncSidebarForViewport();
+    mediaQuery.addEventListener("change", syncSidebarForViewport);
+    return () => {
+      mediaQuery.removeEventListener("change", syncSidebarForViewport);
+    };
+  }, []);
 
   useEffect(() => {
     if (!scrollTargetRef.current) return;
@@ -198,7 +227,7 @@ export default function Home() {
   }, [messages]);
 
   function startNewChat() {
-    const id = crypto.randomUUID();
+    const id = generateId();
     const chat: Chat = {
       id,
       title: "",
@@ -242,7 +271,7 @@ export default function Home() {
       setActiveChatId(nextChats[0].id);
       setMessages(nextChats[0].messages);
     } else {
-      const newId = crypto.randomUUID();
+      const newId = generateId();
       const fresh: Chat = {
         id: newId,
         title: "",
@@ -788,10 +817,119 @@ export default function Home() {
     }
   };
 
+  const trackSidebarTouchStart = (touch: React.Touch) => {
+    if (!isCompactViewport) return;
+
+    const canOpenFromEdge =
+      !sidebarOpen && touch.clientX <= SIDEBAR_EDGE_SWIPE_WIDTH;
+    const canCloseOpenSidebar = sidebarOpen;
+
+    if (!canOpenFromEdge && !canCloseOpenSidebar) {
+      touchStartXRef.current = null;
+      touchStartYRef.current = null;
+      touchHandledRef.current = false;
+      return;
+    }
+
+    touchStartXRef.current = touch.clientX;
+    touchStartYRef.current = touch.clientY;
+    touchHandledRef.current = false;
+  };
+
+  const handleTrackedSidebarSwipe = (
+    touch: React.Touch,
+    preventScroll?: () => void
+  ) => {
+    const startX = touchStartXRef.current;
+    const startY = touchStartYRef.current;
+    if (!isCompactViewport || startX == null || startY == null) return false;
+
+    const deltaX = touch.clientX - startX;
+    const deltaY = touch.clientY - startY;
+    if (!isHorizontalSidebarSwipe(deltaX, deltaY)) return false;
+
+    if (!sidebarOpen && startX <= SIDEBAR_EDGE_SWIPE_WIDTH && deltaX > 0) {
+      preventScroll?.();
+      setSidebarOpen(true);
+      return true;
+    }
+
+    if (sidebarOpen && deltaX < 0) {
+      preventScroll?.();
+      setSidebarOpen(false);
+      return true;
+    }
+
+    return false;
+  };
+
+  const resetSidebarTouchTracking = () => {
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+    touchHandledRef.current = false;
+  };
+
   const hasMessages = messages.length > 0;
 
   return (
-    <div className="flex h-dvh" style={{ backgroundColor: "var(--color-surface-primary)" }}>
+    <div
+      className="relative flex h-dvh"
+      style={{ backgroundColor: "var(--color-surface-primary)" }}
+      onTouchStart={(event) => {
+        const touch = event.touches[0];
+        if (!touch) return;
+        trackSidebarTouchStart(touch);
+      }}
+      onTouchMove={(event) => {
+        if (touchHandledRef.current) return;
+        const touch = event.touches[0];
+        if (!touch) return;
+        const didHandle = handleTrackedSidebarSwipe(touch, () => {
+          event.preventDefault();
+        });
+        if (didHandle) touchHandledRef.current = true;
+      }}
+      onTouchEnd={(event) => {
+        if (touchHandledRef.current) {
+          resetSidebarTouchTracking();
+          return;
+        }
+        const touch = event.changedTouches[0];
+        if (touch) {
+          handleTrackedSidebarSwipe(touch);
+        }
+        resetSidebarTouchTracking();
+      }}
+      onTouchCancel={() => {
+        resetSidebarTouchTracking();
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setSidebarOpen((open) => !open)}
+        className={`${sidebarOpen ? "hidden" : "flex"} absolute left-4 top-4 z-50 items-center gap-2 lg:hidden`}
+        style={{
+          color: "var(--color-ink-primary)",
+          backgroundColor: "transparent",
+        }}
+        aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+        title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+      >
+        <svg
+          viewBox="0 0 512 512"
+          xmlns="http://www.w3.org/2000/svg"
+          style={{ width: 18, height: 18 }}
+          aria-hidden="true"
+        >
+          <path fill="currentColor" d={LOGO_PATH} />
+        </svg>
+        <span
+          className="truncate select-none font-semibold"
+          style={{ fontSize: 13, letterSpacing: 0 }}
+        >
+          AiKit News
+        </span>
+      </button>
       <Sidebar
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen((s) => !s)}

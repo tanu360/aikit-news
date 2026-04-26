@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -14,6 +14,7 @@ import ThemeToggler, { useIsDarkTheme } from "@/components/ui/ThemeToggler";
 
 const SIDEBAR_W = 252;
 const COLLAPSED_W = 64;
+const COMPACT_MEDIA_QUERY = "(max-width: 1023px)";
 
 const LOGO_PATH =
   "m256 0c-141.38 0-256 114.62-256 256s114.62 256 256 256 256-114.62 256-256-114.62-256-256-256zm0 375.36a119.36 119.36 0 1 1 119.36-119.36 119.36 119.36 0 0 1 -119.36 119.36z";
@@ -41,6 +42,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const isDark = useIsDarkTheme();
+  const [isCompact, setIsCompact] = useState(false);
 
   const ease = [0.22, 1, 0.36, 1] as const;
   const inputSeparatorFocusedColor = isDark
@@ -62,296 +64,348 @@ export default function Sidebar({
     event.currentTarget.style.color = "var(--color-ink-secondary)";
   };
 
-  return (
-    <motion.div
-      animate={{ width: isOpen ? SIDEBAR_W : COLLAPSED_W }}
-      transition={{ duration: 0.26, ease }}
-      className="shrink-0"
-      style={{ height: "100dvh" }}
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(COMPACT_MEDIA_QUERY);
+    const sync = () => setIsCompact(mediaQuery.matches);
+    sync();
+    mediaQuery.addEventListener("change", sync);
+    return () => mediaQuery.removeEventListener("change", sync);
+  }, []);
+
+  const handleNewChat = () => {
+    onNewChat();
+    if (isCompact && isOpen) onToggle();
+  };
+
+  const handleSelectChat = (id: string) => {
+    if (disabled) return;
+    onSelectChat(id);
+    if (isCompact && isOpen) onToggle();
+  };
+
+  const sidebarPanel = (
+    <div
+      className="flex h-full flex-col"
+      style={{
+        borderRadius: isCompact ? 0 : 22,
+        backgroundColor: "var(--color-surface-secondary)",
+        border: "1px solid var(--color-border-light)",
+        overflow: "hidden",
+        transition:
+          "background-color 240ms var(--theme-ease), border-color 240ms var(--theme-ease)",
+      }}
     >
-      <motion.div
-        animate={{ paddingRight: isOpen ? 12 : 0 }}
-        transition={{ duration: 0.26, ease }}
-        className="flex h-full flex-col pt-4 pb-4 sm:pt-5 sm:pb-5"
-        style={{ paddingLeft: 16, width: "100%" }}
+      <div
+        className="flex shrink-0 items-center px-3 pb-2 pt-3"
+        style={{ gap: 8 }}
       >
         <div
-          className="flex h-full flex-col"
+          aria-hidden="true"
+          className="flex shrink-0 items-center justify-center rounded-lg"
           style={{
-            borderRadius: 22,
-            backgroundColor: "var(--color-surface-secondary)",
-            border: "1px solid var(--color-border-light)",
-            overflow: "hidden",
-            transition:
-              "background-color 240ms var(--theme-ease), border-color 240ms var(--theme-ease)",
+            width: 24,
+            height: 24,
+            color: "var(--color-ink-primary)",
+            opacity: 0.8,
           }}
         >
-          <div
-            className="flex shrink-0 items-center px-3 pb-2 pt-3"
-            style={{ gap: 8 }}
+          <svg
+            viewBox="0 0 512 512"
+            xmlns="http://www.w3.org/2000/svg"
+            style={{ width: 16, height: 16 }}
           >
-            <div
-              aria-hidden="true"
-              className="flex shrink-0 items-center justify-center rounded-lg"
-              style={{
-                width: 24,
-                height: 24,
-                color: "var(--color-ink-primary)",
-                opacity: 0.8,
-              }}
+            <path fill="currentColor" d={LOGO_PATH} />
+          </svg>
+        </div>
+
+        <AnimatePresence initial={false}>
+          {isOpen && (
+            <motion.div
+              key="header-expanded"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="flex flex-1 items-center justify-between overflow-hidden"
             >
-              <svg
-                viewBox="0 0 512 512"
-                xmlns="http://www.w3.org/2000/svg"
-                style={{ width: 16, height: 16 }}
+              <span
+                className="truncate select-none font-semibold"
+                style={{
+                  fontSize: 13,
+                  letterSpacing: 0,
+                  color: "var(--color-ink-primary)",
+                }}
               >
-                <path fill="currentColor" d={LOGO_PATH} />
-              </svg>
-            </div>
-
-            <AnimatePresence initial={false}>
-              {isOpen && (
-                <motion.div
-                  key="header-expanded"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.18 }}
-                  className="flex flex-1 items-center justify-between overflow-hidden"
+                AiKit News
+              </span>
+              <button
+                type="button"
+                onClick={handleNewChat}
+                disabled={disabled}
+                title="New chat"
+                className="ml-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 disabled:opacity-40"
+                style={{ color: "var(--color-ink-tertiary)" }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.color = "var(--color-ink-primary)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.color = "var(--color-ink-tertiary)")
+                }
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.9"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 >
-                  <span
-                    className="truncate select-none font-semibold"
-                    style={{
-                      fontSize: 13,
-                      letterSpacing: 0,
-                      color: "var(--color-ink-primary)",
-                    }}
-                  >
-                    AiKit News
-                  </span>
-                  <button
-                    type="button"
-                    onClick={onNewChat}
-                    disabled={disabled}
-                    title="New chat"
-                    className="ml-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 disabled:opacity-40"
-                    style={{ color: "var(--color-ink-tertiary)" }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.color = "var(--color-ink-primary)")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.color = "var(--color-ink-tertiary)")
-                    }
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.9"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
-          <AnimatePresence initial={false}>
-            {isOpen && (
-              <motion.div
-                key="div-top"
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            key="div-top"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="mx-3 shrink-0"
+            style={{
+              height: 1,
+              backgroundColor:
+                "color-mix(in oklch, var(--color-border-light) 60%, transparent)",
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      <div className="flex-1 overflow-hidden">
+        <AnimatePresence initial={false}>
+          {isOpen && (
+            <motion.div
+              key="chat-list"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="h-full overflow-y-auto px-1.5 py-1.5"
+            >
+              {chats.length === 0 ? (
+                <p
+                  className="px-2 py-6 text-center text-[12px] leading-relaxed"
+                  style={{ color: "var(--color-ink-ghost)" }}
+                >
+                  No chats yet
+                </p>
+              ) : (
+                chats.map((chat) => {
+                  const isActive = chat.id === activeChatId;
+                  const isHovered = hoveredId === chat.id;
+                  return (
+                    <div
+                      key={chat.id}
+                      className="group relative mb-1 flex cursor-pointer items-center rounded-xl px-2.5"
+                      style={{
+                        backgroundColor: isActive
+                          ? "var(--color-surface-tertiary)"
+                          : isHovered
+                            ? "var(--color-surface-hover)"
+                            : "transparent",
+                        color: isActive
+                          ? "var(--color-ink-primary)"
+                          : "var(--color-ink-secondary)",
+                        transition:
+                          "background-color 120ms ease, color 120ms ease",
+                        minHeight: 32,
+                      }}
+                      onClick={() => handleSelectChat(chat.id)}
+                      onMouseEnter={() => setHoveredId(chat.id)}
+                      onMouseLeave={() => setHoveredId(null)}
+                    >
+                      <span
+                        className="flex-1 select-none truncate py-1.5 leading-snug"
+                        style={{ fontSize: 12.5, letterSpacing: 0 }}
+                      >
+                        {chat.title || "New conversation"}
+                      </span>
+                      {isHovered && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteChat(chat.id);
+                          }}
+                          className="ml-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
+                          style={{
+                            color: "var(--color-ink-tertiary)",
+                            opacity: 0.55,
+                          }}
+                          onMouseEnter={(e) =>
+                            (e.currentTarget.style.opacity = "1")
+                          }
+                          onMouseLeave={(e) =>
+                            (e.currentTarget.style.opacity = "0.55")
+                          }
+                          title="Delete"
+                        >
+                          <HugeiconsIcon
+                            icon={Cancel01Icon}
+                            size={10}
+                            strokeWidth={2.2}
+                            primaryColor="currentColor"
+                          />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <div className="shrink-0">
+        <div
+          className={
+            isOpen
+              ? "flex h-9 overflow-hidden"
+              : "flex flex-col overflow-hidden"
+          }
+          style={{
+            backgroundColor: inputShellFillColor,
+            borderTop: `1px solid ${inputSeparatorFocusedColor}`,
+          }}
+        >
+          <motion.a
+            href="https://github.com/tanu360"
+            target="_blank"
+            rel="noopener noreferrer"
+            whileTap={{ scale: 0.98 }}
+            transition={{ duration: 0.14, ease }}
+            className={segmentActionClass}
+            style={segmentActionStyle}
+            aria-label="GitHub tanu360"
+            title="GitHub tanu360"
+            onMouseEnter={segmentHoverIn}
+            onMouseLeave={segmentHoverOut}
+          >
+            <HugeiconsIcon
+              icon={GithubIcon}
+              size={14}
+              strokeWidth={1.8}
+              primaryColor="currentColor"
+            />
+          </motion.a>
+
+          <div
+            className={isOpen ? "h-full w-px" : "h-px w-full"}
+            style={{
+              backgroundColor: inputSeparatorFocusedColor,
+            }}
+          />
+
+          <ThemeToggler
+            className={segmentActionClass}
+            iconSize={14}
+            style={{
+              ...segmentActionStyle,
+              width: "100%",
+              height: "100%",
+              borderRadius: 0,
+            }}
+            aria-label="Toggle theme"
+            title="Toggle theme"
+            onMouseEnter={segmentHoverIn}
+            onMouseLeave={segmentHoverOut}
+          />
+
+          <div
+            className={isOpen ? "h-full w-px" : "h-px w-full"}
+            style={{
+              backgroundColor: inputSeparatorFocusedColor,
+            }}
+          />
+
+          <motion.button
+            type="button"
+            onClick={onToggle}
+            whileTap={{ scale: 0.98 }}
+            transition={{ duration: 0.14, ease }}
+            className={segmentActionClass}
+            style={segmentActionStyle}
+            aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
+            title={isOpen ? "Collapse sidebar" : "Expand sidebar"}
+            onMouseEnter={segmentHoverIn}
+            onMouseLeave={segmentHoverOut}
+          >
+            <HugeiconsIcon
+              icon={isOpen ? PanelLeftCloseIcon : PanelLeftOpenIcon}
+              size={14}
+              strokeWidth={1.8}
+              primaryColor="currentColor"
+            />
+          </motion.button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      {isCompact && (
+        <AnimatePresence>
+          {isOpen && (
+            <>
+              <motion.button
+                type="button"
+                aria-label="Close sidebar drawer"
+                className="fixed inset-0 z-30 bg-black/28 lg:hidden"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                className="mx-3 shrink-0"
-                style={{
-                  height: 1,
-                  backgroundColor:
-                    "color-mix(in oklch, var(--color-border-light) 60%, transparent)",
-                }}
-              />
-            )}
-          </AnimatePresence>
-
-          <div className="flex-1 overflow-hidden">
-            <AnimatePresence initial={false}>
-              {isOpen && (
-                <motion.div
-                  key="chat-list"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.18 }}
-                  className="h-full overflow-y-auto px-1.5 py-1.5"
-                >
-                  {chats.length === 0 ? (
-                    <p
-                      className="px-2 py-6 text-center text-[12px] leading-relaxed"
-                      style={{ color: "var(--color-ink-ghost)" }}
-                    >
-                      No chats yet
-                    </p>
-                  ) : (
-                    chats.map((chat) => {
-                      const isActive = chat.id === activeChatId;
-                      const isHovered = hoveredId === chat.id;
-                      return (
-                        <div
-                          key={chat.id}
-                          className="group relative mb-1 flex cursor-pointer items-center rounded-xl px-2.5"
-                          style={{
-                            backgroundColor: isActive
-                              ? "var(--color-surface-tertiary)"
-                              : isHovered
-                                ? "var(--color-surface-hover)"
-                                : "transparent",
-                            color: isActive
-                              ? "var(--color-ink-primary)"
-                              : "var(--color-ink-secondary)",
-                            transition:
-                              "background-color 120ms ease, color 120ms ease",
-                            minHeight: 32,
-                          }}
-                          onClick={() => !disabled && onSelectChat(chat.id)}
-                          onMouseEnter={() => setHoveredId(chat.id)}
-                          onMouseLeave={() => setHoveredId(null)}
-                        >
-                          <span
-                            className="flex-1 select-none truncate py-1.5 leading-snug"
-                            style={{ fontSize: 12.5, letterSpacing: 0 }}
-                          >
-                            {chat.title || "New conversation"}
-                          </span>
-                          {isHovered && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onDeleteChat(chat.id);
-                              }}
-                              className="ml-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
-                              style={{
-                                color: "var(--color-ink-tertiary)",
-                                opacity: 0.55,
-                              }}
-                              onMouseEnter={(e) =>
-                                (e.currentTarget.style.opacity = "1")
-                              }
-                              onMouseLeave={(e) =>
-                                (e.currentTarget.style.opacity = "0.55")
-                              }
-                              title="Delete"
-                            >
-                              <HugeiconsIcon
-                                icon={Cancel01Icon}
-                                size={10}
-                                strokeWidth={2.2}
-                                primaryColor="currentColor"
-                              />
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          <div className="shrink-0">
-            <div
-              className={
-                isOpen
-                  ? "flex h-9 overflow-hidden"
-                  : "flex flex-col overflow-hidden"
-              }
-              style={{
-                backgroundColor: inputShellFillColor,
-                borderTop: `1px solid ${inputSeparatorFocusedColor}`,
-              }}
-            >
-              <motion.a
-                href="https://github.com/tanu360"
-                target="_blank"
-                rel="noopener noreferrer"
-                whileTap={{ scale: 0.98 }}
-                transition={{ duration: 0.14, ease }}
-                className={segmentActionClass}
-                style={segmentActionStyle}
-                aria-label="GitHub tanu360"
-                title="GitHub tanu360"
-                onMouseEnter={segmentHoverIn}
-                onMouseLeave={segmentHoverOut}
-              >
-                <HugeiconsIcon
-                  icon={GithubIcon}
-                  size={14}
-                  strokeWidth={1.8}
-                  primaryColor="currentColor"
-                />
-              </motion.a>
-
-              <div
-                className={isOpen ? "h-full w-px" : "h-px w-full"}
-                style={{
-                  backgroundColor: inputSeparatorFocusedColor,
-                }}
-              />
-
-              <ThemeToggler
-                className={segmentActionClass}
-                iconSize={14}
-                style={{
-                  ...segmentActionStyle,
-                  width: "100%",
-                  height: "100%",
-                  borderRadius: 0,
-                }}
-                aria-label="Toggle theme"
-                title="Toggle theme"
-                onMouseEnter={segmentHoverIn}
-                onMouseLeave={segmentHoverOut}
-              />
-
-              <div
-                className={isOpen ? "h-full w-px" : "h-px w-full"}
-                style={{
-                  backgroundColor: inputSeparatorFocusedColor,
-                }}
-              />
-
-              <motion.button
-                type="button"
+                transition={{ duration: 0.2 }}
                 onClick={onToggle}
-                whileTap={{ scale: 0.98 }}
-                transition={{ duration: 0.14, ease }}
-                className={segmentActionClass}
-                style={segmentActionStyle}
-                aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
-                title={isOpen ? "Collapse sidebar" : "Expand sidebar"}
-                onMouseEnter={segmentHoverIn}
-                onMouseLeave={segmentHoverOut}
+              />
+              <motion.div
+                className="fixed inset-y-0 left-0 z-40 w-[65vw] lg:hidden"
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ duration: 0.24, ease }}
               >
-                <HugeiconsIcon
-                  icon={isOpen ? PanelLeftCloseIcon : PanelLeftOpenIcon}
-                  size={14}
-                  strokeWidth={1.8}
-                  primaryColor="currentColor"
-                />
-              </motion.button>
-            </div>
-          </div>
-        </div>
+                {sidebarPanel}
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+      )}
+      <motion.div
+        animate={{ width: isOpen ? SIDEBAR_W : COLLAPSED_W }}
+        transition={{ duration: 0.26, ease }}
+        className="hidden shrink-0 lg:block"
+        style={{ height: "100dvh" }}
+      >
+        <motion.div
+          animate={{ paddingRight: isOpen ? 12 : 0 }}
+          transition={{ duration: 0.26, ease }}
+          className="flex h-full flex-col pt-4 pb-4 sm:pt-5 sm:pb-5"
+          style={{ paddingLeft: 16, width: "100%" }}
+        >
+          {sidebarPanel}
+        </motion.div>
       </motion.div>
-    </motion.div>
+    </>
   );
 }
