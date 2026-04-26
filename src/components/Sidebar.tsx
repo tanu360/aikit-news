@@ -66,7 +66,7 @@ export default function Sidebar({
       }}
     >
       <div
-        className="flex h-10 shrink-0 items-center p-1"
+        className="flex h-12 shrink-0 items-center p-1"
         style={{
           gap: 8,
           borderBottom: isOpen
@@ -236,7 +236,7 @@ export default function Sidebar({
       {isOpen && (
         <div className="shrink-0">
           <div
-            className="flex h-11 items-center justify-center overflow-hidden px-3"
+            className="flex h-12 items-center justify-center overflow-hidden px-3"
             style={{
               background: "var(--color-surface-tertiary)",
               color: "var(--color-ink-primary)",
