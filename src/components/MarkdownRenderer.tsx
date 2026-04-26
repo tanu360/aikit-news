@@ -11,7 +11,6 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import rehypeHighlight from "rehype-highlight";
 import "katex/dist/katex.min.css";
-import "highlight.js/styles/github.min.css";
 import { SearchResult } from "@/lib/types";
 import { getFaviconUrl, getDomain } from "@/lib/utils";
 
@@ -300,9 +299,8 @@ export default function MarkdownRenderer({
 
           return (
             <pre
-              className="overflow-x-auto rounded-lg border p-4 text-[13px] leading-relaxed"
+              className="overflow-x-auto rounded-lg border text-[13px] leading-relaxed"
               style={{
-                background: "var(--color-surface-secondary)",
                 borderColor: "var(--color-border-light)",
               }}
             >

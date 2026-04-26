@@ -1,4 +1,24 @@
 @import "tailwindcss";
+@import "highlight.js/styles/github-dark.css" layer(hljs-dark);
+@import "highlight.js/styles/github.css" layer(hljs-light);
+
+@layer hljs-light {
+  :root[data-theme="dark"] .hljs,
+  :root[data-theme="dark"] .hljs *,
+  :root.dark .hljs,
+  :root.dark .hljs * {
+    all: revert-layer;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  @layer hljs-light {
+    :root[data-theme="system"] .hljs,
+    :root[data-theme="system"] .hljs * {
+      all: revert-layer;
+    }
+  }
+}
 
 @theme inline {
   --font-sans:
@@ -718,45 +738,6 @@ textarea::placeholder {
 
 .prose .katex {
   color: var(--color-ink-primary);
-}
-
-.prose .hljs {
-  background: transparent;
-  color: var(--color-ink-primary);
-}
-
-@media (prefers-color-scheme: dark) {
-  .prose .hljs-comment,
-  .prose .hljs-quote {
-    color: var(--color-ink-ghost);
-  }
-
-  .prose .hljs-keyword,
-  .prose .hljs-selector-tag,
-  .prose .hljs-built_in,
-  .prose .hljs-name {
-    color: oklch(79% 0.11 285);
-  }
-
-  .prose .hljs-string,
-  .prose .hljs-title,
-  .prose .hljs-section,
-  .prose .hljs-attribute {
-    color: oklch(82% 0.12 150);
-  }
-
-  .prose .hljs-number,
-  .prose .hljs-literal,
-  .prose .hljs-variable,
-  .prose .hljs-template-variable {
-    color: oklch(78% 0.12 65);
-  }
-
-  .prose .hljs-meta,
-  .prose .hljs-symbol,
-  .prose .hljs-bullet {
-    color: var(--color-accent);
-  }
 }
 
 .prose a {
