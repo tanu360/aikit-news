@@ -130,10 +130,16 @@ export default function SearchTimeline({
             transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
             className="overflow-hidden"
           >
-            <div
-              className="relative ml-5.5 border-l pl-4 pt-1 pb-1"
-              style={{ borderColor: "var(--color-border-light)" }}
-            >
+            <div className="relative pt-1 pb-1">
+              <div
+                aria-hidden="true"
+                className="absolute top-2 bottom-2 w-px"
+                style={{
+                  left: 3,
+                  background:
+                    "color-mix(in oklch, var(--color-accent) 34%, var(--color-border-light))",
+                }}
+              />
               {visibleResults.map((result, i) => (
                 <motion.a
                   key={result.url}
@@ -146,19 +152,19 @@ export default function SearchTimeline({
                     duration: 0.25,
                     ease: "easeOut",
                   }}
-                  className="source-row group/item relative -ml-[calc(1rem+0.5px)] flex items-center gap-2.5 rounded-md py-1.5 pl-4 pr-2"
+                  className="source-row group/item relative flex items-center gap-2.5 rounded-md py-1.5 pl-8 pr-2"
                 >
                   <div
-                    className="absolute -left-1.25 top-1/2 h-1.75 w-1.75 -translate-y-1/2 rounded-full border-[1.5px] transition-colors"
+                    className="absolute left-0 top-1/2 h-1.75 w-1.75 -translate-y-1/2 rounded-full border-[1.5px] transition-colors"
                     style={{
                       borderColor:
                         i === visibleResults.length - 1 && status === "searching"
                           ? "var(--color-accent)"
-                          : "var(--color-border-default)",
+                          : "color-mix(in oklch, var(--color-accent) 62%, var(--color-border-default))",
                       background:
                         i === visibleResults.length - 1 && status === "searching"
                           ? "var(--color-accent-light)"
-                          : "var(--color-surface-primary)",
+                          : "color-mix(in oklch, var(--color-accent) 10%, var(--color-surface-primary))",
                     }}
                   />
 
@@ -207,10 +213,10 @@ export default function SearchTimeline({
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="relative -ml-[calc(1rem+0.5px)] flex items-center gap-2.5 py-1.5 pl-4"
+                  className="relative flex items-center gap-2.5 py-1.5 pl-8"
                 >
                   <div
-                    className="absolute -left-1 top-1/2 h-1.25 w-1.25 -translate-y-1/2 rounded-full animate-pulse-soft"
+                    className="absolute left-0.25 top-1/2 h-1.25 w-1.25 -translate-y-1/2 rounded-full animate-pulse-soft"
                     style={{ background: "var(--color-accent)" }}
                   />
                   <span

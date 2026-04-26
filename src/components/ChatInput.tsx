@@ -430,8 +430,8 @@ export default function ChatInput({
             }}
           />
 
-          <div className="flex min-h-9 items-center justify-between px-4 pt-2 pb-2">
-            <div className="flex items-center gap-1.5">
+          <div className="flex min-h-9 items-center gap-3 px-4 pt-2 pb-2">
+            <div className="flex min-w-0 flex-1 items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
@@ -477,7 +477,6 @@ export default function ChatInput({
                   borderColor: agentMode
                     ? `color-mix(in oklch, ${exaActiveColor} 28%, transparent)`
                     : "transparent",
-                  padding: agentMode ? "5px 10px" : undefined,
                   transitionTimingFunction: "var(--theme-ease)",
                 }}
               >
@@ -509,22 +508,21 @@ export default function ChatInput({
                 >
                   Deep Research
                 </span>
-                <AnimatePresence>
-                  {agentMode && (
-                    <motion.span
-                      initial={{ scale: 0, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0, opacity: 0 }}
-                      transition={{ type: "spring", stiffness: 500, damping: 25 }}
-                      className="h-1.5 w-1.5 rounded-full"
-                      style={{ background: `color-mix(in oklch, ${exaActiveColor} 65%, transparent)` }}
-                    />
-                  )}
-                </AnimatePresence>
+                <motion.span
+                  animate={{
+                    scale: agentMode ? 1 : 0.6,
+                    opacity: agentMode ? 1 : 0,
+                  }}
+                  transition={{ type: "spring", stiffness: 500, damping: 25 }}
+                  className="h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{
+                    background: `color-mix(in oklch, ${exaActiveColor} 65%, transparent)`,
+                  }}
+                />
               </button>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="ml-auto flex shrink-0 items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={onSettingsClick}
@@ -571,8 +569,12 @@ export default function ChatInput({
                 <path fill="url(#meta-b)" d="M73.312 27.802c-10.923 0-20.2 7.666-27.963 19.39-10.976 16.568-17.698 41.245-17.698 64.944 0 9.775 2.146 17.28 4.95 21.82L9.027 149.482C2.973 139.413 0 126.202 0 111.148 0 83.772 7.514 55.24 21.802 33.206 34.48 13.666 52.774 0 73.757 0l-.445 27.802Z" />
               </svg>
               <span
-                className="text-[12px] font-medium"
-                style={{ color: "var(--color-ink-secondary)", opacity: 0.55 }}
+                className="inline-block max-w-30 truncate text-right text-[12px] font-medium"
+                style={{
+                  color: "var(--color-ink-secondary)",
+                  opacity: 0.55,
+                }}
+                title={modelName}
               >
                 {modelName}
               </span>

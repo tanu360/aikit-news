@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @import "highlight.js/styles/github-dark.css" layer(hljs-dark);
 @import "highlight.js/styles/github.css" layer(hljs-light);
-
 @layer hljs-light {
   :root[data-theme="dark"] .hljs,
   :root[data-theme="dark"] .hljs *,
@@ -10,7 +9,6 @@
     all: revert-layer;
   }
 }
-
 @media (prefers-color-scheme: dark) {
   @layer hljs-light {
     :root[data-theme="system"] .hljs,
@@ -19,35 +17,28 @@
     }
   }
 }
-
 @theme inline {
   --font-sans:
     var(--font-geist-sans), Geist, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: var(--font-geist-mono), "Geist Mono", "SFMono-Regular", Consolas, monospace;
-
   --color-surface-primary: oklch(98.8% 0.004 255);
   --color-surface-secondary: oklch(97.1% 0.005 255);
   --color-surface-tertiary: oklch(94.4% 0.006 255);
   --color-surface-hover: oklch(92% 0.007 255);
-
   --color-ink-primary: oklch(21.5% 0 0);
   --color-ink-secondary: oklch(50% 0 0);
   --color-ink-tertiary: oklch(66% 0 0);
   --color-ink-ghost: oklch(80% 0 0);
-
   --color-accent: oklch(56% 0.19 260);
   --color-accent-light: oklch(95.5% 0.025 260);
   --color-accent-hover: oklch(50% 0.2 260);
-
   --color-border-light: oklch(91.8% 0.006 255);
   --color-border-default: oklch(87.4% 0.007 255);
-
   --animate-fade-in: fadeIn 0.4s ease-out;
   --animate-slide-up: slideUp 0.35s ease-out;
   --animate-pulse-soft: pulseSoft 2s ease-in-out infinite;
   --animate-shimmer: shimmer 2s linear infinite;
 }
-
 :root {
   color-scheme: light;
   --theme-ease: cubic-bezier(0.22, 1, 0.36, 1);
@@ -86,7 +77,6 @@
   --color-suggestion-border-hover: oklch(91.8% 0 0);
   --color-suggestion-text: oklch(45% 0 0);
   --color-suggestion-text-hover: oklch(36% 0 0);
-
   --weather-card-blue: oklch(47% 0.22 255);
   --weather-card-electric-blue: oklch(58% 0.27 247);
   --weather-card-bg: linear-gradient(
@@ -105,7 +95,6 @@
   --weather-card-shadow:
     0 18px 44px oklch(28% 0.18 255 / 0.24), inset 0 1px 0 oklch(98% 0.03 235 / 0.2);
 }
-
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
@@ -113,19 +102,15 @@
     --color-surface-secondary: oklch(0.235 0.007 255);
     --color-surface-tertiary: oklch(0.272 0.008 255);
     --color-surface-hover: oklch(0.314 0.009 255);
-
     --color-ink-primary: oklch(0.94 0 0);
     --color-ink-secondary: oklch(0.75 0 0);
     --color-ink-tertiary: oklch(0.6 0 0);
     --color-ink-ghost: oklch(0.45 0 0);
-
     --color-accent: oklch(0.68 0.18 255);
     --color-accent-light: oklch(0.28 0.052 255);
     --color-accent-hover: oklch(0.76 0.17 255);
-
     --color-border-light: oklch(0.292 0.008 255);
     --color-border-default: oklch(0.33 0.009 255);
-
     --color-input-bg: oklch(0.235 0.007 255);
     --color-input-bg-focus: oklch(0.252 0.008 255);
     --color-input-border: oklch(1 0 0 / 0.08);
@@ -154,7 +139,6 @@
     --color-suggestion-text-hover: oklch(0.78 0 0);
   }
 }
-
 :root[data-theme="light"] {
   color-scheme: light;
   --color-surface-primary: oklch(98.8% 0.004 255);
@@ -205,7 +189,6 @@
   --color-suggestion-text: oklch(45% 0 0);
   --color-suggestion-text-hover: oklch(36% 0 0);
 }
-
 :root[data-theme="dark"] {
   color-scheme: dark;
   --color-surface-primary: oklch(0.205 0.006 255);
@@ -248,7 +231,6 @@
   --color-suggestion-text: oklch(0.68 0 0);
   --color-suggestion-text-hover: oklch(0.78 0 0);
 }
-
 @keyframes wobble {
   0%, 100% { transform: translateX(0); }
   20% { transform: translateX(-3px); }
@@ -256,7 +238,6 @@
   60% { transform: translateX(-2px); }
   80% { transform: translateX(2px); }
 }
-
 @keyframes bounce-highlight {
   0%, 100% { color: #2563eb; transform: translateY(0); }
   25%       { color: #2563eb; transform: translateY(-2px); }
@@ -269,7 +250,6 @@
   50%       { color: #86efac; transform: translateY(0); }
   75%       { color: #86efac; transform: translateY(-2px); }
 }
-
 .search-match {
   background-color: transparent !important;
   font-weight: 600;
@@ -282,7 +262,6 @@
   display: inline-block;
   animation: bounce-highlight-dark 0.9s ease-in-out infinite !important;
 }
-
 @keyframes fadeIn {
   0% {
     opacity: 0;
@@ -291,7 +270,6 @@
     opacity: 1;
   }
 }
-
 @keyframes slideUp {
   0% {
     opacity: 0;
@@ -302,7 +280,6 @@
     transform: translateY(0);
   }
 }
-
 @keyframes pulseSoft {
   0%,
   100% {
@@ -312,7 +289,6 @@
     opacity: 1;
   }
 }
-
 @keyframes shimmer {
   0% {
     background-position: -200% 0;
@@ -321,7 +297,6 @@
     background-position: 200% 0;
   }
 }
-
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -329,7 +304,6 @@ html {
   background-color: var(--color-surface-primary);
   transition: background-color var(--theme-duration) var(--theme-ease);
 }
-
 body {
   font-family: var(--font-sans);
   color: var(--color-ink-primary);
@@ -338,17 +312,14 @@ body {
     background-color var(--theme-duration) var(--theme-ease),
     color var(--theme-duration) var(--theme-ease);
 }
-
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
   mix-blend-mode: normal;
 }
-
 html[data-magicui-theme-vt="active"]::view-transition-group(root) {
   animation-duration: var(--magicui-theme-toggle-vt-duration);
 }
-
 .header-action-button {
   display: inline-flex;
   width: 2.25rem;
@@ -366,34 +337,28 @@ html[data-magicui-theme-vt="active"]::view-transition-group(root) {
     color 120ms var(--theme-ease),
     transform 160ms var(--theme-ease);
 }
-
 .header-action-button:hover,
 .header-action-button:focus-visible {
   color: var(--color-ink-primary);
   background-color: transparent;
 }
-
 .header-action-button:focus-visible {
   outline: 1px solid var(--color-input-ring);
   outline-offset: 2px;
 }
-
 .header-action-button:active {
   transform: scale(0.94);
 }
-
 .theme-toggle-icon {
   transform-origin: center;
   will-change: transform;
 }
-
 html[data-magicui-theme-vt="active"] .theme-toggle-button {
   background-color: transparent;
   color: var(--color-ink-primary);
   opacity: 1;
   transition-duration: 0ms;
 }
-
 .square-grid-bg {
   position: relative;
   isolation: isolate;
@@ -401,7 +366,6 @@ html[data-magicui-theme-vt="active"] .theme-toggle-button {
   background-color: var(--color-surface-primary);
   transition: background-color var(--theme-duration) var(--theme-ease);
 }
-
 .square-grid-bg::before {
   content: "";
   position: absolute;
@@ -461,12 +425,10 @@ html[data-magicui-theme-vt="active"] .theme-toggle-button {
     100% 100%;
   -webkit-mask-composite: source-in, source-in;
 }
-
 .square-grid-bg > * {
   position: relative;
   z-index: 1;
 }
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -477,71 +439,57 @@ html[data-magicui-theme-vt="active"] .theme-toggle-button {
     transition-duration: 0.01ms !important;
   }
 }
-
 .chat-shell {
   width: min(100%, 44rem);
 }
-
 .empty-shell {
   width: min(100%, 38rem);
 }
-
 @media (min-width: 1024px) {
   .chat-shell {
     width: min(100%, 46rem);
   }
-
   .empty-shell {
     width: min(100%, 40rem);
   }
 }
-
 textarea::placeholder {
   color: var(--color-ink-tertiary);
   opacity: 1;
 }
-
 ::selection {
   background-color: var(--color-selection);
 }
-
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-border-default) transparent;
   box-shadow: none !important;
   text-shadow: none !important;
 }
-
 *::before,
 *::after {
   box-shadow: none !important;
   text-shadow: none !important;
 }
-
 *::-webkit-scrollbar {
   width: 5px;
 }
-
 *::-webkit-scrollbar-track {
   background: transparent;
 }
-
 *::-webkit-scrollbar-thumb {
   background: var(--color-border-default);
   border-radius: 10px;
 }
-
 .timeline-trigger {
   transition:
     background-color 150ms ease,
     color 150ms ease;
 }
-
 .timeline-trigger:hover,
 .timeline-trigger:focus-visible {
   background-color: var(--color-control-hover);
 }
-
 .source-row {
   background-color: transparent;
   color: var(--color-ink-primary);
@@ -549,31 +497,29 @@ textarea::placeholder {
     background-color 150ms ease,
     color 150ms ease;
 }
-
 .source-row:hover,
 .source-row:focus-visible {
   background-color: var(--color-result-row-hover);
 }
-
 .source-row:focus-visible {
   outline: 1px solid var(--color-input-ring);
   outline-offset: 2px;
 }
-
 .source-row-title {
   color: var(--color-ink-primary);
 }
-
 .source-row-domain {
   color: var(--color-ink-ghost);
-  transition: color 150ms ease;
+  opacity: 0.9;
+  transition:
+    color 150ms ease,
+    opacity 150ms ease;
 }
-
 .source-row:hover .source-row-domain,
 .source-row:focus-visible .source-row-domain {
   color: var(--color-ink-secondary);
+  opacity: 1;
 }
-
 .source-row-icon {
   color: var(--color-ink-ghost);
   opacity: 0;
@@ -581,13 +527,11 @@ textarea::placeholder {
     color 150ms ease,
     opacity 150ms ease;
 }
-
 .source-row:hover .source-row-icon,
 .source-row:focus-visible .source-row-icon {
   color: var(--color-ink-secondary);
   opacity: 1;
 }
-
 .source-chip {
   background-color: var(--color-source-chip-bg);
   color: var(--color-ink-tertiary);
@@ -595,13 +539,11 @@ textarea::placeholder {
     background-color 150ms ease,
     color 150ms ease;
 }
-
 .source-chip:hover,
 .source-chip:focus-visible {
   background-color: var(--color-source-chip-hover);
   color: var(--color-ink-secondary);
 }
-
 .suggestion-chip {
   background-color: var(--color-suggestion-bg);
   border-color: var(--color-suggestion-border);
@@ -611,68 +553,55 @@ textarea::placeholder {
     border-color 150ms ease,
     color 150ms ease;
 }
-
 .suggestion-chip:hover,
 .suggestion-chip:focus-visible {
   background-color: var(--color-suggestion-bg-hover);
   border-color: var(--color-suggestion-border);
   color: var(--color-suggestion-text-hover);
 }
-
 .weather-card {
   background: var(--weather-card-bg);
   border: 1px solid var(--weather-card-border);
   box-shadow: var(--weather-card-shadow);
   color: var(--weather-card-fg);
 }
-
 .weather-card-strong {
   color: var(--weather-card-fg);
 }
-
 .weather-card-title {
   color: var(--weather-card-strong);
 }
-
 .weather-card-muted {
   color: var(--weather-card-muted);
 }
-
 .weather-card-subtle {
   color: var(--weather-card-subtle);
 }
-
 .weather-card-icon {
   color: var(--weather-accent, var(--weather-card-fg));
 }
-
 .weather-card-panel {
   background: var(--weather-card-panel);
   border: 1px solid var(--weather-card-panel-border);
 }
-
 .weather-card-hour:hover,
 .weather-card-hour:focus-visible {
   background: var(--weather-card-panel-hover);
 }
-
 .prose {
   font-size: 0.875rem;
   line-height: 1.7;
   letter-spacing: 0;
   color: var(--color-ink-primary);
 }
-
 @media (min-width: 640px) {
   .prose {
     font-size: 0.9375rem;
   }
 }
-
 .prose > *:first-child {
   margin-top: 0;
 }
-
 .prose h1 {
   font-size: 1.5rem;
   font-weight: 600;
@@ -680,7 +609,6 @@ textarea::placeholder {
   margin-top: 1.5em;
   margin-bottom: 0.5em;
 }
-
 .prose h2 {
   font-size: 1.2rem;
   font-weight: 600;
@@ -688,7 +616,6 @@ textarea::placeholder {
   margin-top: 1.25em;
   margin-bottom: 0.4em;
 }
-
 .prose h3 {
   font-size: 1.05rem;
   font-weight: 600;
@@ -696,29 +623,23 @@ textarea::placeholder {
   margin-top: 1em;
   margin-bottom: 0.35em;
 }
-
 .prose p {
   margin-bottom: 0.75em;
 }
-
 .prose ul,
 .prose ol {
   margin-bottom: 0.75em;
   padding-left: 1.5em;
 }
-
 .prose li {
   margin-bottom: 0.3em;
 }
-
 .prose ul li {
   list-style-type: disc;
 }
-
 .prose ol li {
   list-style-type: decimal;
 }
-
 .prose code {
   font-family: var(--font-mono);
   font-size: 0.85em;
@@ -726,7 +647,6 @@ textarea::placeholder {
   padding: 0.15em 0.35em;
   border-radius: 4px;
 }
-
 .prose pre {
   background-color: var(--color-surface-secondary);
   color: var(--color-ink-primary);
@@ -737,26 +657,22 @@ textarea::placeholder {
   margin-bottom: 1em;
   font-size: 0.85em;
 }
-
 .prose pre code {
   background: none;
   padding: 0;
   color: inherit;
 }
-
 .prose .math-inline {
   display: inline-flex;
   max-width: 100%;
   overflow-x: auto;
   vertical-align: -0.08em;
 }
-
 .prose .math-display {
   display: block;
   max-width: 100%;
   overflow-x: auto;
 }
-
 .prose .math-block {
   margin: 0.75rem 0 1rem;
   padding: 0.875rem 1rem;
@@ -765,26 +681,21 @@ textarea::placeholder {
   border: 1px solid var(--color-border-light);
   border-radius: 8px;
 }
-
 .prose .math-display .katex-display {
   margin: 0;
 }
-
 .prose .katex {
   color: var(--color-ink-primary);
 }
-
 .prose a {
   color: var(--color-accent);
   text-decoration: none;
   border-bottom: 1px solid transparent;
   transition: border-color 0.15s ease;
 }
-
 .prose a:hover {
   border-bottom-color: var(--color-accent);
 }
-
 .prose blockquote {
   border-left: 1px solid var(--color-border-default);
   padding-left: 1em;
@@ -792,11 +703,9 @@ textarea::placeholder {
   margin-bottom: 0.75em;
   color: var(--color-ink-secondary);
 }
-
 .prose strong {
   font-weight: 600;
 }
-
 .prose hr {
   border: none;
   border-top: 1px solid var(--color-border-light);

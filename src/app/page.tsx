@@ -997,8 +997,8 @@ export default function Home() {
 
               {searchOpen ? (
                 <div
-                  className="hidden h-8 items-center gap-1.5 rounded-full px-3 sm:flex"
-                  style={{ backgroundColor: "var(--color-surface-tertiary)", minWidth: 160 }}
+                  className="flex h-8 w-28 shrink-0 items-center gap-1.5 rounded-full px-3 sm:w-40"
+                  style={{ backgroundColor: "var(--color-surface-tertiary)" }}
                 >
                   <HugeiconsIcon icon={Search01Icon} size={13} strokeWidth={1.8} primaryColor="var(--color-ink-tertiary)" />
                   <input
@@ -1008,8 +1008,8 @@ export default function Home() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Escape") { setSearchOpen(false); setSearchQuery(""); } }}
                     onBlur={() => { if (!searchQuery) setSearchOpen(false); }}
-                    placeholder="Search chats..."
-                    className="flex-1 bg-transparent text-[12px] outline-none"
+                    placeholder={isCompactViewport ? "Search.." : "Search chats..."}
+                    className="min-w-0 flex-1 bg-transparent text-[12px] outline-none"
                     style={{ color: "var(--color-ink-primary)", letterSpacing: 0 }}
                   />
                   {searchQuery && (
@@ -1022,7 +1022,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}
-                  className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors duration-150 sm:flex"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors duration-150"
                   style={{ color: "var(--color-ink-secondary)", backgroundColor: "var(--color-surface-tertiary)" }}
                   onMouseEnter={(e) => { e.currentTarget.style.color = "var(--color-ink-primary)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.color = "var(--color-ink-secondary)"; }}

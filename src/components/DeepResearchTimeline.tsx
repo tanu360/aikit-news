@@ -48,10 +48,10 @@ function StepItem({ step }: { step: ResearchStep }) {
         style={{
           borderColor: isActive
             ? "var(--color-accent)"
-            : "var(--color-border-default)",
+            : "color-mix(in oklch, var(--color-accent) 62%, var(--color-border-default))",
           background: isActive
             ? "var(--color-accent-light)"
-            : "var(--color-surface-primary)",
+            : "color-mix(in oklch, var(--color-accent) 10%, var(--color-surface-primary))",
         }}
       />
 
@@ -266,10 +266,16 @@ export default function DeepResearchTimeline({
             transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
             className="overflow-hidden"
           >
-            <div
-              className="relative ml-5.5 border-l pl-2 pt-1 pb-2"
-              style={{ borderColor: "var(--color-border-light)" }}
-            >
+            <div className="relative pt-1 pb-2">
+              <div
+                aria-hidden="true"
+                className="absolute top-2 bottom-2 w-px"
+                style={{
+                  left: 3,
+                  background:
+                    "color-mix(in oklch, var(--color-accent) 34%, var(--color-border-light))",
+                }}
+              />
               <div className="flex flex-col gap-3">
                 {steps.map((step) => (
                   <StepItem key={step.id} step={step} />
@@ -283,7 +289,7 @@ export default function DeepResearchTimeline({
                   className="relative mt-2 pl-5"
                 >
                   <div
-                    className="absolute left-0 top-1.25 h-1.25 w-1.25 rounded-full animate-pulse-soft"
+                    className="absolute left-0.25 top-1.25 h-1.25 w-1.25 rounded-full animate-pulse-soft"
                     style={{ background: "var(--color-accent)" }}
                   />
                   <span
