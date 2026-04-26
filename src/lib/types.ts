@@ -1,3 +1,10 @@
+export interface AttachedFile {
+  name: string;
+  content: string;
+  size: number;
+  charCount: number;
+}
+
 export interface SearchResult {
   title: string;
   url: string;

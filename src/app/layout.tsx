@@ -105,17 +105,28 @@ export const viewport: Viewport = {
   ],
 };
 
+const themeBootScript = `
+try {
+  var theme = localStorage.getItem("aikit-theme");
+  if (theme !== "light" && theme !== "dark" && theme !== "system") theme = "system";
+  document.documentElement.dataset.theme = theme;
+} catch (_) {
+  document.documentElement.dataset.theme = "system";
+}
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         style={fontStyle}
       >
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
         {children}
       </body>
     </html>
