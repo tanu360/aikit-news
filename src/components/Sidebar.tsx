@@ -44,60 +44,23 @@ export default function Sidebar({
 
   const ease = [0.22, 1, 0.36, 1] as const;
   const inputSeparatorFocusedColor = isDark
-    ? "var(--color-input-border)"
-    : "color-mix(in oklch, var(--color-border-light) 45%, transparent)";
+    ? "var(--color-border-light)"
+    : "var(--color-border-light)";
   const inputShellFillColor = "var(--color-surface-tertiary)";
-  const footerActionClass =
-    "flex w-full items-center px-2.5 transition-colors duration-150";
   const segmentActionClass =
     "flex min-w-0 flex-1 items-center justify-center transition-colors duration-150";
-  const footerActionStyle = {
-    gap: 8,
-    minHeight: 34,
-    justifyContent: isOpen ? "flex-start" : "center",
-    color: "var(--color-ink-secondary)",
-    backgroundColor: "transparent",
-  } satisfies React.CSSProperties;
   const segmentActionStyle = {
     minWidth: 0,
     minHeight: 34,
     color: "var(--color-ink-secondary)",
     backgroundColor: "transparent",
   } satisfies React.CSSProperties;
-  const footerHoverIn = (event: React.MouseEvent<HTMLElement>) => {
-    event.currentTarget.style.backgroundColor = "var(--color-surface-hover)";
-    event.currentTarget.style.color = "var(--color-ink-primary)";
-  };
-  const footerHoverOut = (event: React.MouseEvent<HTMLElement>) => {
-    event.currentTarget.style.backgroundColor = "transparent";
-    event.currentTarget.style.color = "var(--color-ink-secondary)";
-  };
   const segmentHoverIn = (event: React.MouseEvent<HTMLElement>) => {
-    event.currentTarget.style.backgroundColor =
-      "var(--color-sidebar-taskbar-hover)";
     event.currentTarget.style.color = "var(--color-ink-primary)";
   };
   const segmentHoverOut = (event: React.MouseEvent<HTMLElement>) => {
-    event.currentTarget.style.backgroundColor = "transparent";
     event.currentTarget.style.color = "var(--color-ink-secondary)";
   };
-  const footerLabel = (key: string, label: string) => (
-    <AnimatePresence initial={false}>
-      {isOpen && (
-        <motion.span
-          key={key}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.15 }}
-          className="truncate"
-          style={{ fontSize: 12.5, letterSpacing: 0 }}
-        >
-          {label}
-        </motion.span>
-      )}
-    </AnimatePresence>
-  );
 
   return (
     <motion.div
@@ -243,7 +206,7 @@ export default function Sidebar({
                       return (
                         <div
                           key={chat.id}
-                          className="group relative mb-0.5 flex cursor-pointer items-center rounded-xl px-2.5"
+                          className="group relative mb-1 flex cursor-pointer items-center rounded-xl px-2.5"
                           style={{
                             backgroundColor: isActive
                               ? "var(--color-surface-tertiary)"
@@ -304,34 +267,7 @@ export default function Sidebar({
             </AnimatePresence>
           </div>
 
-          <div
-            className="shrink-0"
-            style={{
-              borderTop:
-                "1px solid var(--color-sidebar-taskbar-border)",
-            }}
-          >
-            <div className={isOpen ? "px-1.5 py-1.5" : "py-1.5"}>
-              <button
-                type="button"
-                onClick={onToggle}
-                className={footerActionClass}
-                style={footerActionStyle}
-                aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
-                title={isOpen ? "Collapse sidebar" : "Expand sidebar"}
-                onMouseEnter={footerHoverIn}
-                onMouseLeave={footerHoverOut}
-              >
-                <HugeiconsIcon
-                  icon={isOpen ? PanelLeftCloseIcon : PanelLeftOpenIcon}
-                  size={14}
-                  strokeWidth={1.8}
-                  primaryColor="currentColor"
-                />
-                {footerLabel("collapse-label", isOpen ? "Collapse" : "Expand")}
-              </button>
-            </div>
-
+          <div className="shrink-0">
             <div
               className={
                 isOpen
@@ -340,9 +276,38 @@ export default function Sidebar({
               }
               style={{
                 backgroundColor: inputShellFillColor,
-                borderTop: `1px solid ${inputSeparatorFocusedColor}`,
+                borderTop: isOpen
+                  ? undefined
+                  : `1px solid ${inputSeparatorFocusedColor}`,
               }}
             >
+              <motion.button
+                type="button"
+                onClick={onToggle}
+                whileTap={{ scale: 0.98 }}
+                transition={{ duration: 0.14, ease }}
+                className={segmentActionClass}
+                style={segmentActionStyle}
+                aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
+                title={isOpen ? "Collapse sidebar" : "Expand sidebar"}
+                onMouseEnter={segmentHoverIn}
+                onMouseLeave={segmentHoverOut}
+              >
+                <HugeiconsIcon
+                  icon={isOpen ? PanelLeftCloseIcon : PanelLeftOpenIcon}
+                  size={14}
+                  strokeWidth={1.8}
+                  primaryColor="currentColor"
+                />
+              </motion.button>
+
+              <div
+                className={isOpen ? "h-full w-px" : "h-px w-full"}
+                style={{
+                  backgroundColor: inputSeparatorFocusedColor,
+                }}
+              />
+
               <motion.a
                 href="https://github.com/tanu360"
                 target="_blank"
