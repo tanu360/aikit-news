@@ -1,9 +1,14 @@
 "use client";
 
-import { isValidElement, useMemo } from "react";
-import type { ReactNode } from "react";
+import { isValidElement, useMemo, useState, cloneElement, Fragment } from "react";
+import type { JSX, ReactElement, ReactNode } from "react";
 import Image from "next/image";
-import ReactMarkdown from "react-markdown";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Copy01Icon } from "@hugeicons/core-free-icons";
+import ReactMarkdown, {
+  type Components,
+  type ExtraProps,
+} from "react-markdown";
 import katex from "katex";
 import type { PluggableList } from "unified";
 import remarkGfm from "remark-gfm";
@@ -22,6 +27,36 @@ const remarkPlugins = [
 interface MarkdownRendererProps {
   content: string;
   sources?: SearchResult[];
+  searchQuery?: string;
+}
+
+type MarkdownCodeProps = JSX.IntrinsicElements["code"] & ExtraProps;
+
+function highlightText(text: string, query: string): ReactNode {
+  if (!query.trim()) return text;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const parts = text.split(new RegExp(`(${escaped})`, "gi"));
+  return parts.map((part, i) =>
+    part.toLowerCase() === query.toLowerCase() ? (
+      <mark key={i} className="search-match">{part}</mark>
+    ) : part
+  );
+}
+
+function highlightNodes(nodes: ReactNode, query: string): ReactNode {
+  if (!query.trim()) return nodes;
+  if (typeof nodes === "string") return highlightText(nodes, query);
+  if (Array.isArray(nodes)) {
+    return nodes.map((n, i) => <Fragment key={i}>{highlightNodes(n, query)}</Fragment>);
+  }
+  if (isValidElement(nodes)) {
+    const t = nodes.type;
+    if (t === "code" || t === "pre") return nodes;
+    const ch = (nodes.props as { children?: ReactNode }).children;
+    if (ch == null) return nodes;
+    return cloneElement(nodes, {}, highlightNodes(ch, query));
+  }
+  return nodes;
 }
 
 function normalizeMarkdown(content: string): string {
@@ -145,7 +180,7 @@ function asciiMathToLatex(text: string): string {
   return value;
 }
 
-function renderMathFallback(text: string, displayMode: boolean): ReactNode | null {
+function renderMathFallback(text: string, displayMode: boolean): ReactElement | null {
   if (!looksLikeMath(text)) return null;
 
   const html = katex.renderToString(asciiMathToLatex(text), {
@@ -260,123 +295,208 @@ function CitationPill({
   );
 }
 
+function CodeBlock({ children }: { children?: ReactNode }): ReactElement {
+  const [copied, setCopied] = useState(false);
+
+  const hasLanguage = /\blanguage-/.test(getNodeClassName(children));
+  const text = getNodeText(children);
+
+  if (!hasLanguage) {
+    const math = renderMathFallback(text, true);
+    if (math) return <div className="math-block">{math}</div>;
+  }
+
+  const handleCopy = () => {
+    void navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <div
+      className="group relative my-3 overflow-hidden rounded-xl"
+      style={{
+        background: "var(--color-surface-secondary)",
+        border:
+          "1px solid color-mix(in oklch, var(--color-border-light) 58%, transparent)",
+      }}
+    >
+      <button
+        type="button"
+        onClick={handleCopy}
+        aria-label={copied ? "Copied" : "Copy code"}
+        title={copied ? "Copied" : "Copy code"}
+        className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full transition-colors duration-150"
+        style={{
+          color: copied ? "var(--color-accent)" : "var(--color-ink-tertiary)",
+          background: copied
+            ? "color-mix(in oklch, var(--color-accent) 12%, var(--color-surface-tertiary))"
+            : "var(--color-surface-tertiary)",
+          border: 0,
+        }}
+        onMouseEnter={(e) => {
+          if (!copied) e.currentTarget.style.color = "var(--color-ink-primary)";
+        }}
+        onMouseLeave={(e) => {
+          if (!copied) e.currentTarget.style.color = "var(--color-ink-tertiary)";
+        }}
+      >
+        <HugeiconsIcon
+          icon={Copy01Icon}
+          size={14}
+          strokeWidth={1.75}
+          primaryColor="currentColor"
+        />
+      </button>
+      <pre
+        className="overflow-x-auto text-[13px] leading-relaxed"
+        style={{
+          margin: 0,
+          border: 0,
+          borderRadius: 0,
+          background: "var(--color-surface-secondary)",
+          padding: "14px 16px",
+        }}
+      >
+        {children}
+      </pre>
+    </div>
+  );
+}
+
+function MarkdownCode({
+  className,
+  children,
+  node: _node,
+  ...props
+}: MarkdownCodeProps): ReactElement {
+  void _node;
+
+  const isBlock =
+    className?.includes("language-") || className?.includes("hljs");
+  const text = getNodeText(children as ReactNode);
+
+  if (!isBlock && !text.includes("\n")) {
+    const math = renderMathFallback(text, false);
+    if (math) return math;
+  }
+
+  if (isBlock) {
+    return (
+      <code className={className} {...props}>
+        {children}
+      </code>
+    );
+  }
+
+  return (
+    <code
+      className="rounded px-1.5 py-0.5 text-[0.85em]"
+      style={{
+        background: "var(--color-surface-tertiary)",
+        color: "var(--color-ink-secondary)",
+        fontFamily: "var(--font-mono)",
+      }}
+      {...props}
+    >
+      {children}
+    </code>
+  );
+}
+
 export default function MarkdownRenderer({
   content,
   sources = [],
+  searchQuery = "",
 }: MarkdownRendererProps) {
   const processedContent = useMemo(
     () => preprocessCitations(content),
     [content]
   );
 
+  const rehypePlugins = useMemo(
+    () => [rehypeKatex, rehypeHighlight] as PluggableList,
+    []
+  );
+
+  const components = useMemo<Components>(() => ({
+    a: ({ href, children }) => {
+      const citeMatch = href?.match(/^#cite-(\d+)$/);
+      if (citeMatch) {
+        const num = parseInt(citeMatch[1]);
+        const source = sources[num - 1];
+        return <CitationPill num={num} source={source} />;
+      }
+      return (
+        <a href={href} target="_blank" rel="noopener noreferrer">
+          {children}
+        </a>
+      );
+    },
+    pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
+    table: ({ children }) => (
+      <div
+        className="my-4 overflow-x-auto rounded-xl"
+        style={{ border: "1px solid var(--color-border-light)" }}
+      >
+        <table className="w-full border-collapse text-[13px]">
+          {children}
+        </table>
+      </div>
+    ),
+    thead: ({ children }) => (
+      <thead style={{ background: "var(--color-surface-secondary)" }}>
+        {children}
+      </thead>
+    ),
+    th: ({ children }) => (
+      <th
+        className="px-4 py-2.5 text-left text-[11.5px] font-semibold uppercase tracking-wide"
+        style={{
+          color: "var(--color-ink-secondary)",
+          borderBottom: "1px solid var(--color-border-light)",
+          borderRight: "1px solid var(--color-border-light)",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {children}
+      </th>
+    ),
+    tr: ({ children }) => (
+      <tr
+        style={{ borderBottom: "1px solid var(--color-border-light)" }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "var(--color-surface-hover)"; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = ""; }}
+      >
+        {children}
+      </tr>
+    ),
+    td: ({ children }) => (
+      <td
+        className="px-4 py-2.5 text-[13px]"
+        style={{
+          color: "var(--color-ink-primary)",
+          borderRight: "1px solid var(--color-border-light)",
+        }}
+      >
+        {children}
+      </td>
+    ),
+    p: ({ children }) => (
+      <p>{highlightNodes(children, searchQuery)}</p>
+    ),
+    li: ({ children }) => (
+      <li>{highlightNodes(children, searchQuery)}</li>
+    ),
+    code: MarkdownCode,
+  }), [searchQuery, sources]);
+
   return (
     <ReactMarkdown
       remarkPlugins={remarkPlugins}
-      rehypePlugins={[rehypeKatex, rehypeHighlight]}
-      components={{
-        a: ({ href, children }) => {
-          const citeMatch = href?.match(/^#cite-(\d+)$/);
-          if (citeMatch) {
-            const num = parseInt(citeMatch[1]);
-            const source = sources[num - 1];
-            return <CitationPill num={num} source={source} />;
-          }
-          return (
-            <a href={href} target="_blank" rel="noopener noreferrer">
-              {children}
-            </a>
-          );
-        },
-        pre: ({ children }) => {
-          const hasLanguage = /\blanguage-/.test(getNodeClassName(children));
-          const math = hasLanguage
-            ? null
-            : renderMathFallback(getNodeText(children), true);
-
-          if (math) {
-            return <div className="math-block">{math}</div>;
-          }
-
-          return (
-            <pre
-              className="overflow-x-auto rounded-lg border text-[13px] leading-relaxed"
-              style={{
-                borderColor: "var(--color-border-light)",
-              }}
-            >
-              {children}
-            </pre>
-          );
-        },
-        table: ({ children }) => (
-          <div
-            className="my-3 overflow-x-auto rounded-lg"
-            style={{ border: "1px solid var(--color-border-light)" }}
-          >
-            <table className="w-full border-collapse text-[13.5px]">
-              {children}
-            </table>
-          </div>
-        ),
-        thead: ({ children }) => (
-          <thead style={{ background: "var(--color-surface-secondary)" }}>
-            {children}
-          </thead>
-        ),
-        th: ({ children }) => (
-          <th
-            className="px-3 py-2 text-left text-[12.5px] font-semibold"
-            style={{
-              color: "var(--color-ink-secondary)",
-              borderBottom: "1px solid var(--color-border-light)",
-            }}
-          >
-            {children}
-          </th>
-        ),
-        td: ({ children }) => (
-          <td
-            className="px-3 py-2 text-[13px]"
-            style={{
-              color: "var(--color-ink-primary)",
-              borderBottom: "1px solid var(--color-border-light)",
-            }}
-          >
-            {children}
-          </td>
-        ),
-        code: ({ className, children, ...props }) => {
-          const isBlock =
-            className?.includes("language-") || className?.includes("hljs");
-          const text = getNodeText(children);
-
-          if (!isBlock && !text.includes("\n")) {
-            const math = renderMathFallback(text, false);
-            if (math) return math;
-          }
-
-          if (isBlock) {
-            return (
-              <code className={className} {...props}>
-                {children}
-              </code>
-            );
-          }
-          return (
-            <code
-              className="rounded px-1.5 py-0.5 text-[0.85em]"
-              style={{
-                background: "var(--color-surface-tertiary)",
-                color: "var(--color-ink-secondary)",
-                fontFamily: "var(--font-mono)",
-              }}
-              {...props}
-            >
-              {children}
-            </code>
-          );
-        },
-      }}
+      rehypePlugins={rehypePlugins}
+      components={components}
     >
       {processedContent}
     </ReactMarkdown>

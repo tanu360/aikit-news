@@ -919,7 +919,7 @@ export default function Home() {
         disabled={isLoading}
       />
       <div className="square-grid-bg flex min-w-0 flex-1 flex-col">
-        <header className="relative z-10 shrink-0 px-3 pt-3 sm:px-4 sm:pt-4">
+        <header className="relative z-10 shrink-0 px-3 pt-3 pb-2 sm:px-4 sm:pt-4">
           <nav
             className="mx-auto flex h-12 items-center justify-between border px-2.5 sm:h-13 sm:px-3"
             style={{
