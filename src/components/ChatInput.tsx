@@ -9,8 +9,10 @@ import {
   Attachment01Icon,
   Cancel01Icon,
   File01Icon,
+  Setting07Icon,
 } from "@hugeicons/core-free-icons";
 import type { AttachedFile } from "@/lib/types";
+import { Slider } from "@/components/ui/Slider";
 import { useIsDarkTheme } from "@/components/ui/ThemeToggler";
 
 const MODEL_NAME = process.env.NEXT_PUBLIC_CHATJIMMY_MODEL || "";
@@ -46,6 +48,7 @@ interface ChatInputProps {
   topK: number;
   onTopKChange: (v: number) => void;
   showSettings: boolean;
+  onSettingsClick: () => void;
 }
 
 export default function ChatInput({
@@ -63,6 +66,7 @@ export default function ChatInput({
   topK,
   onTopKChange,
   showSettings,
+  onSettingsClick,
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -226,42 +230,56 @@ export default function ChatInput({
                     <span className="text-[11px] font-medium" style={{ color: "var(--color-ink-tertiary)" }}>
                       System prompt
                     </span>
-                    <textarea
-                      value={systemPrompt}
-                      onChange={(e) => onSystemPromptChange(e.target.value)}
-                      placeholder="You are a helpful assistant."
-                      rows={3}
-                      className="w-full resize-none rounded-xl px-3 py-2 text-[13px] leading-relaxed outline-none"
+                    <div
+                      className="overflow-hidden rounded-2xl"
                       style={{
-                        color: "var(--color-ink-primary)",
                         backgroundColor: "var(--color-surface-secondary)",
                         border: "1px solid var(--color-border-light)",
-                        caretColor: "var(--color-accent)",
                         transition: themeColorTransition,
                       }}
-                    />
+                    >
+                      <textarea
+                        value={systemPrompt}
+                        onChange={(e) => onSystemPromptChange(e.target.value)}
+                        placeholder="You are a helpful assistant."
+                        rows={3}
+                        className="block w-full resize-none border-0 bg-transparent px-3 py-2 text-[13px] leading-relaxed outline-none"
+                        style={{
+                          color: "var(--color-ink-primary)",
+                          caretColor: "var(--color-accent)",
+                        }}
+                      />
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-medium" style={{ color: "var(--color-ink-tertiary)" }}>
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="shrink-0 text-[11px] font-medium"
+                      style={{ color: "var(--color-ink-tertiary)" }}
+                    >
                       Top K
                     </span>
-                    <input
-                      type="number"
+                    <Slider
+                      value={[topK]}
                       min={1}
-                      max={100}
-                      value={topK}
-                      onChange={(e) => {
-                        const v = Math.max(1, Math.min(100, Number(e.target.value) || 1));
-                        onTopKChange(v);
+                      max={8}
+                      step={1}
+                      className="flex-1"
+                      onValueChange={(values) => {
+                        const nextValue = values[0];
+                        if (typeof nextValue === "number") onTopKChange(nextValue);
                       }}
-                      className="w-16 text-center rounded-lg px-2 py-1 text-[12px] font-medium outline-none"
+                      aria-label="Top K"
+                    />
+                    <span
+                      className="min-w-9 shrink-0 rounded-2xl px-2.5 py-1 text-center text-[11px] font-medium"
                       style={{
                         color: "var(--color-ink-primary)",
                         backgroundColor: "var(--color-surface-secondary)",
                         border: "1px solid var(--color-border-light)",
-                        transition: themeColorTransition,
                       }}
-                    />
+                    >
+                      {topK}
+                    </span>
                   </div>
                 </div>
                 <div style={{ height: "1px", backgroundColor: "color-mix(in oklch, var(--color-border-light) 45%, transparent)" }} />
@@ -505,6 +523,34 @@ export default function ChatInput({
             </div>
 
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onSettingsClick}
+                className="flex h-7 w-7 items-center justify-center rounded-full transition-colors duration-200"
+                style={{
+                  color: showSettings
+                    ? "var(--color-ink-primary)"
+                    : "var(--color-ink-tertiary)",
+                  backgroundColor: "transparent",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "var(--color-ink-primary)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = showSettings
+                    ? "var(--color-ink-primary)"
+                    : "var(--color-ink-tertiary)";
+                }}
+                aria-label="Settings"
+                title="Settings"
+              >
+                <HugeiconsIcon
+                  icon={Setting07Icon}
+                  size={13}
+                  strokeWidth={1.8}
+                  primaryColor="currentColor"
+                />
+              </button>
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="9" viewBox="0 0 256 171" style={{ flexShrink: 0 }}>
                 <defs>
                   <linearGradient id="meta-a" x1="13.878%" x2="89.144%" y1="55.934%" y2="58.694%">

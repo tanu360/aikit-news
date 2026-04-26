@@ -8,7 +8,6 @@ import {
   GithubIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
-  Setting07Icon,
 } from "@hugeicons/core-free-icons";
 import type { Chat } from "@/lib/types";
 import ThemeToggler, { useIsDarkTheme } from "@/components/ui/ThemeToggler";
@@ -27,8 +26,6 @@ interface SidebarProps {
   onNewChat: () => void;
   onSelectChat: (id: string) => void;
   onDeleteChat: (id: string) => void;
-  onSettingsClick: () => void;
-  showSettings: boolean;
   disabled?: boolean;
 }
 
@@ -40,8 +37,6 @@ export default function Sidebar({
   onNewChat,
   onSelectChat,
   onDeleteChat,
-  onSettingsClick,
-  showSettings,
   disabled,
 }: SidebarProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -348,50 +343,6 @@ export default function Sidebar({
                 borderTop: `1px solid ${inputSeparatorFocusedColor}`,
               }}
             >
-              <button
-                type="button"
-                onClick={onSettingsClick}
-                className={segmentActionClass}
-                aria-label="Settings"
-                title="Settings"
-                style={{
-                  ...segmentActionStyle,
-                  backgroundColor: showSettings
-                    ? "var(--color-sidebar-taskbar-active)"
-                    : "transparent",
-                  color: showSettings
-                    ? "var(--color-ink-primary)"
-                    : "var(--color-ink-secondary)",
-                }}
-                onMouseEnter={(e) => {
-                  if (!showSettings)
-                    e.currentTarget.style.backgroundColor =
-                      "var(--color-sidebar-taskbar-hover)";
-                  e.currentTarget.style.color = "var(--color-ink-primary)";
-                }}
-                onMouseLeave={(e) => {
-                  if (!showSettings)
-                    e.currentTarget.style.backgroundColor = "transparent";
-                  e.currentTarget.style.color = showSettings
-                    ? "var(--color-ink-primary)"
-                    : "var(--color-ink-secondary)";
-                }}
-              >
-                <HugeiconsIcon
-                  icon={Setting07Icon}
-                  size={14}
-                  strokeWidth={1.8}
-                  primaryColor="currentColor"
-                />
-              </button>
-
-              <div
-                className={isOpen ? "h-full w-px" : "h-px w-full"}
-                style={{
-                  backgroundColor: inputSeparatorFocusedColor,
-                }}
-              />
-
               <motion.a
                 href="https://github.com/tanu360"
                 target="_blank"

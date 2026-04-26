@@ -800,8 +800,6 @@ export default function Home() {
         onNewChat={startNewChat}
         onSelectChat={loadChat}
         onDeleteChat={deleteChat}
-        onSettingsClick={() => setShowSettings((s) => !s)}
-        showSettings={showSettings}
         disabled={isLoading}
       />
       <div className="square-grid-bg flex min-w-0 flex-1 flex-col">
@@ -923,6 +921,7 @@ export default function Home() {
               topK={topK}
               onTopKChange={setTopK}
               showSettings={showSettings}
+              onSettingsClick={() => setShowSettings((s) => !s)}
               placeholder={
                 agentMode
                   ? "Ask a complex question for deep research..."
