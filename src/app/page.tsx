@@ -836,10 +836,7 @@ export default function Home() {
     touchHandledRef.current = false;
   };
 
-  const handleTrackedSidebarSwipe = (
-    touch: React.Touch,
-    preventScroll?: () => void
-  ) => {
+  const handleTrackedSidebarSwipe = (touch: React.Touch) => {
     const startX = touchStartXRef.current;
     const startY = touchStartYRef.current;
     if (!isCompactViewport || startX == null || startY == null) return false;
@@ -849,13 +846,11 @@ export default function Home() {
     if (!isHorizontalSidebarSwipe(deltaX, deltaY)) return false;
 
     if (!sidebarOpen && startX <= SIDEBAR_EDGE_SWIPE_WIDTH && deltaX > 0) {
-      preventScroll?.();
       setSidebarOpen(true);
       return true;
     }
 
     if (sidebarOpen && deltaX < 0) {
-      preventScroll?.();
       setSidebarOpen(false);
       return true;
     }
@@ -874,7 +869,10 @@ export default function Home() {
   return (
     <div
       className="relative flex h-dvh"
-      style={{ backgroundColor: "var(--color-surface-primary)" }}
+      style={{
+        backgroundColor: "var(--color-surface-primary)",
+        touchAction: "pan-y",
+      }}
       onTouchStart={(event) => {
         const touch = event.touches[0];
         if (!touch) return;
@@ -884,9 +882,7 @@ export default function Home() {
         if (touchHandledRef.current) return;
         const touch = event.touches[0];
         if (!touch) return;
-        const didHandle = handleTrackedSidebarSwipe(touch, () => {
-          event.preventDefault();
-        });
+        const didHandle = handleTrackedSidebarSwipe(touch);
         if (didHandle) touchHandledRef.current = true;
       }}
       onTouchEnd={(event) => {

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  Cancel01Icon,
+  Delete02Icon,
   GithubIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
@@ -211,12 +211,16 @@ export default function Sidebar({
               ) : (
                 chats.map((chat) => {
                   const isActive = chat.id === activeChatId;
-                  const isHovered = hoveredId === chat.id;
+                  const isHovered =
+                    !isCompact && isOpen && hoveredId === chat.id;
+                  const showDelete = isCompact || isActive || isHovered;
                   return (
                     <div
                       key={chat.id}
-                      className="group relative mb-1 flex cursor-pointer items-center rounded-xl px-2.5"
+                      className="group relative mb-1 flex cursor-pointer items-center rounded-xl"
                       style={{
+                        paddingLeft: 10,
+                        paddingRight: isCompact ? 6 : 8,
                         backgroundColor: isActive
                           ? "var(--color-surface-tertiary)"
                           : isHovered
@@ -227,11 +231,16 @@ export default function Sidebar({
                           : "var(--color-ink-secondary)",
                         transition:
                           "background-color 120ms ease, color 120ms ease",
-                        minHeight: 32,
+                        minHeight: isCompact ? 44 : 32,
                       }}
                       onClick={() => handleSelectChat(chat.id)}
-                      onMouseEnter={() => setHoveredId(chat.id)}
-                      onMouseLeave={() => setHoveredId(null)}
+                      onMouseEnter={() => {
+                        if (!isCompact) setHoveredId(chat.id);
+                      }}
+                      onMouseLeave={() => {
+                        if (!isCompact) setHoveredId(null);
+                      }}
+                      aria-current={isActive ? "page" : undefined}
                     >
                       <span
                         className="flex-1 select-none truncate py-1.5 leading-snug"
@@ -239,34 +248,41 @@ export default function Sidebar({
                       >
                         {chat.title || "New conversation"}
                       </span>
-                      {isHovered && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteChat(chat.id);
-                          }}
-                          className="ml-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
-                          style={{
-                            color: "var(--color-ink-tertiary)",
-                            opacity: 0.55,
-                          }}
-                          onMouseEnter={(e) =>
-                            (e.currentTarget.style.opacity = "1")
-                          }
-                          onMouseLeave={(e) =>
-                            (e.currentTarget.style.opacity = "0.55")
-                          }
-                          title="Delete"
-                        >
-                          <HugeiconsIcon
-                            icon={Cancel01Icon}
-                            size={10}
-                            strokeWidth={2.2}
-                            primaryColor="currentColor"
-                          />
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setHoveredId(null);
+                          onDeleteChat(chat.id);
+                        }}
+                        className="ml-1 flex shrink-0 items-center justify-center rounded-lg transition-opacity duration-150"
+                        style={{
+                          width: isCompact ? 44 : 22,
+                          height: isCompact ? 44 : 22,
+                          color: "var(--color-ink-tertiary)",
+                          opacity: showDelete ? 0.7 : 0,
+                          pointerEvents: showDelete ? "auto" : "none",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.opacity = "1";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.opacity = showDelete
+                            ? "0.7"
+                            : "0";
+                        }}
+                        tabIndex={showDelete ? 0 : -1}
+                        aria-hidden={showDelete ? undefined : true}
+                        aria-label={`Delete ${chat.title || "conversation"}`}
+                        title="Delete"
+                      >
+                        <HugeiconsIcon
+                          icon={Delete02Icon}
+                          size={isCompact ? 12 : 10}
+                          strokeWidth={2.2}
+                          primaryColor="currentColor"
+                        />
+                      </button>
                     </div>
                   );
                 })
@@ -364,6 +380,50 @@ export default function Sidebar({
 
   return (
     <>
+      <AnimatePresence initial={false}>
+        {isCompact && !isOpen && (
+          <motion.button
+            key="mobile-sidebar-handle"
+            type="button"
+            onClick={onToggle}
+            aria-label="Open sidebar"
+            title="Open sidebar"
+            initial={{ x: -12, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: -12, opacity: 0 }}
+            whileTap={{ scale: 0.97 }}
+            transition={{ duration: 0.18, ease }}
+            className="fixed left-0 z-30 flex h-28 w-11 items-center justify-start lg:hidden"
+            style={{
+              top: "calc(50% - 56px)",
+              color: "var(--color-ink-secondary)",
+              backgroundColor: "transparent",
+              WebkitTapHighlightColor: "transparent",
+            }}
+          >
+            <span
+              aria-hidden="true"
+              className="flex h-24 w-6 items-center justify-center rounded-r-2xl"
+              style={{
+                backgroundColor: "var(--color-surface-secondary)",
+                border: "1px solid var(--color-border-light)",
+                borderLeft: 0,
+                boxShadow:
+                  "0 12px 28px color-mix(in oklch, var(--color-ink-primary) 10%, transparent)",
+              }}
+            >
+              <span
+                className="rounded-full"
+                style={{
+                  width: 3,
+                  height: 28,
+                  backgroundColor: "var(--color-ink-ghost)",
+                }}
+              />
+            </span>
+          </motion.button>
+        )}
+      </AnimatePresence>
       {isCompact && (
         <AnimatePresence>
           {isOpen && (
