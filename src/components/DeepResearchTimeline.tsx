@@ -289,7 +289,7 @@ export default function DeepResearchTimeline({
                   className="relative mt-2 pl-5"
                 >
                   <div
-                    className="absolute left-0.25 top-1.25 h-1.25 w-1.25 rounded-full animate-pulse-soft"
+                    className="absolute left-px top-1.25 h-1.25 w-1.25 rounded-full animate-pulse-soft"
                     style={{ background: "var(--color-accent)" }}
                   />
                   <span

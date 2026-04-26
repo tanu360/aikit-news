@@ -216,7 +216,7 @@ export default function SearchTimeline({
                   className="relative flex items-center gap-2.5 py-1.5 pl-8"
                 >
                   <div
-                    className="absolute left-0.25 top-1/2 h-1.25 w-1.25 -translate-y-1/2 rounded-full animate-pulse-soft"
+                    className="absolute left-px top-1/2 h-1.25 w-1.25 -translate-y-1/2 rounded-full animate-pulse-soft"
                     style={{ background: "var(--color-accent)" }}
                   />
                   <span
