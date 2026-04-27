@@ -460,16 +460,25 @@ export default function Sidebar({
         </AnimatePresence>
       )}
       <motion.div
+        initial={false}
         animate={{ width: isOpen ? SIDEBAR_W : 0 }}
         transition={{ duration: 0.26, ease }}
         className="hidden shrink-0 overflow-hidden lg:block"
-        style={{ height: "100dvh" }}
+        style={{ width: isOpen ? SIDEBAR_W : 0, height: "100dvh" }}
       >
         <motion.div
-          animate={{ paddingRight: isOpen ? 12 : 0 }}
+          initial={false}
+          animate={{
+            paddingLeft: isOpen ? 16 : 0,
+            paddingRight: isOpen ? 12 : 0,
+          }}
           transition={{ duration: 0.26, ease }}
           className="flex h-full flex-col pt-4 pb-4 sm:pt-5 sm:pb-5"
-          style={{ paddingLeft: 16, width: "100%" }}
+          style={{
+            paddingLeft: isOpen ? 16 : 0,
+            paddingRight: isOpen ? 12 : 0,
+            width: "100%",
+          }}
         >
           {sidebarPanel}
         </motion.div>

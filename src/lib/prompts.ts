@@ -25,7 +25,7 @@ function formatToolPermissions(settings: ChatToolSettings): string {
 function strictToolRules(settings: ChatToolSettings): string {
   const availableTools = [
     settings.search
-      ? "- Search: enabled. You can request one Exa web search by replying with `SEARCH: <query>`. Search can return current web results, titles, URLs, text snippets, highlights, and citations."
+      ? "- Search: enabled. You can request one Exa web search by replying with plain text `SEARCH: <query>`. Search can return current web results, titles, URLs, text snippets, highlights, and citations."
       : "",
     settings.weather
       ? "- Weather: enabled. You may call `get_weather` only for live weather questions about an explicit city, region, or place. It returns current conditions and near-term forecast details."
@@ -77,9 +77,11 @@ export function buildRouterSystemPrompt(
   const searchRules = toolSettings.search
     ? `Way three — trigger a web search: Use this only when Search is enabled and the latest user message explicitly needs live/current/recent information, news, prices, scores, schedules, product availability, current company/person facts, or asks you to search/look up/check online. Apply this semantically in whatever language the user uses; do not rely on keywords. Do not search for definitions, explanations, coding help, summaries, math, writing, stable facts, or file/document questions unless the user explicitly asks for a web lookup.${weatherSearchBoundary} If you can answer from general knowledge or the conversation/file context, respond directly.
 
-If a web search is truly needed, output EXACTLY this format as your very first line and nothing else on that line:
+If a web search is truly needed, output EXACTLY this plain-text format as your very first line and nothing else on that line:
 
 SEARCH: <concise, self-contained search query>
+
+Do not wrap the SEARCH line in markdown, bold, quotes, code ticks, bullets, or any other formatting. The first character of the response must be S.
 
 When producing a SEARCH query, use the conversation history to resolve pronouns ("it", "that", "this") and expand abbreviated follow-ups so the query stands alone without prior context.`
     : `Way three — web search is disabled: Never output "SEARCH:" and do not request or invent search results. If the latest user message needs current or external information, say Search is off and ask the user to enable Search in Tools, or offer a normal answer based on general knowledge if that would still be useful.`;
@@ -107,6 +109,7 @@ Rules:
 - Your very first output token is either a normal conversation word (way one), a tool call (way two), or the literal string "SEARCH:" (way three)
 - Never mix the three ways
 - Never explain which way you chose
+- Never format the SEARCH control line as markdown, bold text, code, a list item, or a quote
 - Never prefix a direct response with a label
 
 Examples:

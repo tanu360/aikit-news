@@ -25,6 +25,10 @@ export function generateId(): string {
   return Math.random().toString(36).slice(2, 11);
 }
 
+export function generateChatId(): string {
+  return `aikit-${crypto.randomUUID()}`;
+}
+
 export function stripCitations(text: string): string {
   return text
     .replace(/\s*\[\d+(?:\s*,\s*\d+)*\]/g, "")

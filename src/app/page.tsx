@@ -30,7 +30,12 @@ import {
   DEFAULT_CHAT_TOOL_SETTINGS,
   normalizeChatToolSettings,
 } from "@/lib/toolSettings";
-import { generateId, parseSSEStream, stripCitations } from "@/lib/utils";
+import {
+  generateChatId,
+  generateId,
+  parseSSEStream,
+  stripCitations,
+} from "@/lib/utils";
 import { loadAllChats, persistChat, removeChat } from "@/lib/chatStore";
 import { SVG3D } from "3dsvg";
 import ChatInput from "@/components/ChatInput";
@@ -67,6 +72,8 @@ const SIDEBAR_EDGE_SWIPE_WIDTH = 72;
 const SIDEBAR_SWIPE_TRIGGER_DISTANCE = 42;
 const SIDEBAR_SWIPE_DIRECTION_RATIO = 1.15;
 const TOOL_SETTINGS_STORAGE_KEY = "aikit-tool-settings";
+const CHAT_ID_PATTERN =
+  /^aikit-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const EMPTY_STATE_SUGGESTIONS = [
   {
@@ -178,6 +185,57 @@ function logTiming(
   console.groupEnd();
 
   lastRequestEndWall = meta.tEndWall;
+}
+
+function createEmptyChat(id = generateChatId()): Chat {
+  return {
+    id,
+    title: "",
+    messages: [],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+}
+
+function getChatIdFromUrl(): string {
+  if (typeof window === "undefined") return "";
+  const [segment] = window.location.pathname.split("/").filter(Boolean);
+  if (!segment) return "";
+
+  const chatId = decodeURIComponent(segment);
+  return CHAT_ID_PATTERN.test(chatId) ? chatId : "";
+}
+
+function hasRouteSegment(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.location.pathname.split("/").filter(Boolean).length > 0;
+}
+
+function writeChatUrl(chatId: string, mode: "push" | "replace" = "push") {
+  if (typeof window === "undefined" || !CHAT_ID_PATTERN.test(chatId)) return;
+  const nextPath = `/${chatId}`;
+  if (window.location.pathname === nextPath) return;
+
+  const method = mode === "replace" ? "replaceState" : "pushState";
+  window.history[method]({}, "", nextPath);
+}
+
+function writeHomeUrl(mode: "push" | "replace" = "push") {
+  if (typeof window === "undefined" || window.location.pathname === "/") return;
+
+  const method = mode === "replace" ? "replaceState" : "pushState";
+  window.history[method]({}, "", "/");
+}
+
+function extractSearchControlQuery(content: string): string | null {
+  const [firstLine = ""] = content.trimStart().split(/\r?\n/);
+  const unwrappedFirstLine = firstLine
+    .trim()
+    .replace(/^[-*>*`\s]+/, "")
+    .replace(/[`*\s]+$/, "")
+    .trim();
+  const match = unwrappedFirstLine.match(/^search\s*:\s*(.+)$/i);
+  return match?.[1]?.trim() || null;
 }
 
 function isHorizontalSidebarSwipe(deltaX: number, deltaY: number) {
@@ -302,6 +360,7 @@ export default function Home() {
   );
   const [toolSettingsLoaded, setToolSettingsLoaded] = useState(false);
   const [chats, setChats] = useState<Chat[]>([]);
+  const [chatStoreReady, setChatStoreReady] = useState(false);
   const [activeChatId, setActiveChatId] = useState<string>("");
   const [showSettings, setShowSettings] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -439,39 +498,53 @@ export default function Home() {
     });
   }, [activeSearchMatchIndex, messages, searchMatchCount, searchQuery]);
 
-  function startNewChat() {
-    const id = generateId();
-    const chat: Chat = {
-      id,
-      title: "",
-      messages: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-    setChats((prev) => {
-      const next = [chat, ...prev];
-      chatsRef.current = next;
-      return next;
-    });
-    setActiveChatId(id);
+  function resetDraftConversation(historyMode: "push" | "replace" = "push") {
+    setActiveChatId("");
     setMessages([]);
     setInput("");
     setAttachedFile(null);
-    void persistChat(chat);
+    writeHomeUrl(historyMode);
+  }
+
+  function startNewChat(historyMode: "push" | "replace" = "push") {
+    setShowSettings(false);
+    resetDraftConversation(historyMode);
+  }
+
+  function materializeDraftChat(
+    historyMode: "push" | "replace" = "replace"
+  ): string {
+    const existingChat = chatsRef.current.find(
+      (chat) => chat.id === activeChatId
+    );
+
+    if (existingChat && CHAT_ID_PATTERN.test(existingChat.id)) {
+      writeChatUrl(existingChat.id, historyMode);
+      return existingChat.id;
+    }
+
+    const chat = createEmptyChat();
+    const nextChats = [chat, ...chatsRef.current];
+    chatsRef.current = nextChats;
+    setChats(nextChats);
+    setActiveChatId(chat.id);
+    writeChatUrl(chat.id, historyMode);
+    return chat.id;
   }
 
   function loadChat(id: string) {
-    const chat = chats.find((c) => c.id === id);
+    const chat = chatsRef.current.find((c) => c.id === id);
     if (!chat) return;
     setActiveChatId(id);
     setMessages(chat.messages);
     setInput("");
     setAttachedFile(null);
+    writeChatUrl(id);
   }
 
   function deleteChat(id: string) {
     void removeChat(id);
-    const nextChats = chats.filter((c) => c.id !== id);
+    const nextChats = chatsRef.current.filter((c) => c.id !== id);
     chatsRef.current = nextChats;
     setChats(nextChats);
 
@@ -483,20 +556,9 @@ export default function Home() {
     if (nextChats.length > 0) {
       setActiveChatId(nextChats[0].id);
       setMessages(nextChats[0].messages);
+      writeChatUrl(nextChats[0].id, "replace");
     } else {
-      const newId = generateId();
-      const fresh: Chat = {
-        id: newId,
-        title: "",
-        messages: [],
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-      chatsRef.current = [fresh];
-      setChats([fresh]);
-      setActiveChatId(newId);
-      setMessages([]);
-      void persistChat(fresh);
+      resetDraftConversation("replace");
     }
   }
 
@@ -522,16 +584,67 @@ export default function Home() {
   }
 
   useEffect(() => {
-    loadAllChats().then((stored) => {
-      if (stored.length > 0) {
+    loadAllChats()
+      .then((stored) => {
+        const urlChatId = getChatIdFromUrl();
+        const urlChat = stored.find((chat) => chat.id === urlChatId);
+
         chatsRef.current = stored;
         setChats(stored);
-        setActiveChatId(stored[0].id);
-        setMessages(stored[0].messages);
-      } else {
-        startNewChat();
+
+        if (urlChat) {
+          setActiveChatId(urlChat.id);
+          setMessages(urlChat.messages);
+          return;
+        }
+
+        if (urlChatId) {
+          resetDraftConversation("replace");
+          return;
+        }
+
+        if (hasRouteSegment()) {
+          writeHomeUrl("replace");
+        }
+
+        setActiveChatId("");
+        setMessages([]);
+      })
+      .catch(() => {
+        chatsRef.current = [];
+        setChats([]);
+        resetDraftConversation("replace");
+      })
+      .finally(() => {
+        setChatStoreReady(true);
+      });
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const urlChatId = getChatIdFromUrl();
+      if (!urlChatId) {
+        setActiveChatId("");
+        setMessages([]);
+        setInput("");
+        setAttachedFile(null);
+        return;
       }
-    });
+
+      const chat = chatsRef.current.find((item) => item.id === urlChatId);
+      if (!chat) {
+        resetDraftConversation("replace");
+        return;
+      }
+
+      setActiveChatId(chat.id);
+      setMessages(chat.messages);
+      setInput("");
+      setAttachedFile(null);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
   useEffect(() => {
@@ -641,10 +754,10 @@ export default function Home() {
             routerDecision === null &&
             routerContent.trimStart().length >= 10
           ) {
-            const trimmedUpper = routerContent.trimStart().toUpperCase();
-            routerDecision = trimmedUpper.startsWith("SEARCH:")
-              ? "search"
-              : "direct";
+            routerDecision =
+              extractSearchControlQuery(routerContent) !== null
+                ? "search"
+                : "direct";
           }
 
           if (routerDecision === "direct") {
@@ -734,12 +847,7 @@ export default function Home() {
         return;
       }
 
-      const trimmed = routerContent.trimStart();
-      const afterMarker = trimmed.slice("SEARCH:".length);
-      const newlineIdx = afterMarker.indexOf("\n");
-      const rawQuery =
-        newlineIdx >= 0 ? afterMarker.slice(0, newlineIdx) : afterMarker;
-      const refinedQuery = rawQuery.trim() || query;
+      const refinedQuery = extractSearchControlQuery(routerContent) || query;
 
       setMessages((prev) =>
         prev.map((m) =>
@@ -1325,8 +1433,10 @@ export default function Home() {
         (text) => {
           routerContent += text;
           if (routerDecision === null && routerContent.trimStart().length >= 10) {
-            const trimmedUpper = routerContent.trimStart().toUpperCase();
-            routerDecision = trimmedUpper.startsWith("SEARCH:") ? "search" : "direct";
+            routerDecision =
+              extractSearchControlQuery(routerContent) !== null
+                ? "search"
+                : "direct";
           }
           if (routerDecision === "direct") {
             answerContent = routerContent;
@@ -1413,11 +1523,8 @@ export default function Home() {
         return;
       }
 
-      const trimmed = routerContent.trimStart();
-      const afterMarker = trimmed.slice("SEARCH:".length);
-      const newlineIdx = afterMarker.indexOf("\n");
-      const rawQuery = newlineIdx >= 0 ? afterMarker.slice(0, newlineIdx) : afterMarker;
-      const refinedQuery = rawQuery.trim() || userMsg.content;
+      const refinedQuery =
+        extractSearchControlQuery(routerContent) || userMsg.content;
 
       setMessages((prev) =>
         prev.map((m) =>
@@ -1770,10 +1877,10 @@ export default function Home() {
   const handleSubmit = async () => {
     const query = input.trim();
     const fileForSubmit = attachedFile;
-    if ((!query && !fileForSubmit) || isLoading) return;
+    if ((!query && !fileForSubmit) || isLoading || !chatStoreReady) return;
 
     const isFirstMessage = messages.length === 0;
-    const currentChatId = activeChatId;
+    const currentChatId = materializeDraftChat("replace");
 
     setInput("");
     setAttachedFile(null);
@@ -1926,7 +2033,7 @@ export default function Home() {
         activeChatId={activeChatId}
         onSelectChat={loadChat}
         onDeleteChat={deleteChat}
-        disabled={isLoading}
+        disabled={isLoading || !chatStoreReady}
       />
       <div className="square-grid-bg flex min-w-0 flex-1 flex-col">
         <header className="relative z-10 shrink-0 px-3 pt-3 pb-2 sm:px-4 sm:pt-4">
@@ -2103,8 +2210,8 @@ export default function Home() {
 
               <button
                 type="button"
-                onClick={startNewChat}
-                disabled={isLoading}
+                onClick={() => startNewChat()}
+                disabled={isLoading || !chatStoreReady}
                 className="flex h-8 items-center gap-1 rounded-full px-2 text-[12px] font-medium disabled:opacity-45 sm:px-2.5"
                 style={{
                   color: "#fff",
@@ -2258,7 +2365,7 @@ export default function Home() {
               value={input}
               onChange={setInput}
               onSubmit={handleSubmit}
-              disabled={isLoading}
+              disabled={isLoading || !chatStoreReady}
               agentMode={agentMode}
               onAgentModeChange={setAgentMode}
               attachedFile={attachedFile}
