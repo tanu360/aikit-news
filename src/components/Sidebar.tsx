@@ -249,14 +249,15 @@ export default function Sidebar({
                     !isCompact && isOpen && hoveredId === chat.id;
                   const showActions = isCompact || isActive || isHovered;
                   const canExport = chat.messages.length > 0;
+                  const actionButtonSize = isCompact ? 36 : 32;
+                  const actionAreaWidth = actionButtonSize * 2 + 4;
                   return (
                     <div
                       key={chat.id}
                       className="group relative mb-1 flex cursor-pointer items-center rounded-xl"
                       style={{
-                        gap: 8,
-                        paddingLeft: 8,
-                        paddingRight: isCompact ? 6 : 7,
+                        paddingLeft: 12,
+                        paddingRight: 12,
                         backgroundColor: isActive
                           ? "var(--color-surface-tertiary)"
                           : isHovered
@@ -266,7 +267,6 @@ export default function Sidebar({
                           ? "var(--color-ink-primary)"
                           : "var(--color-ink-secondary)",
                         transition: "background-color 120ms ease, color 120ms ease",
-                        minHeight: isCompact ? 50 : 40,
                       }}
                       onClick={() => handleSelectChat(chat.id)}
                       onMouseEnter={() => {
@@ -278,12 +278,12 @@ export default function Sidebar({
                       aria-current={isActive ? "page" : undefined}
                     >
                       <span
-                        className="flex shrink-0 select-none items-center justify-center font-semibold"
+                        className="shrink-0 select-none font-semibold leading-none"
                         style={{
-                          width: isCompact ? 30 : 26,
-                          height: isCompact ? 30 : 26,
+                          marginRight: isCompact ? 14 : 16,
                           fontSize: isCompact ? 12 : 11,
                           letterSpacing: 0,
+                          fontVariantNumeric: "tabular-nums",
                           color: isActive
                             ? "var(--color-ink-primary)"
                             : isHovered
@@ -295,7 +295,7 @@ export default function Sidebar({
                         {index + 1}
                       </span>
                       <span
-                        className="flex-1 select-none truncate py-1.5 leading-snug"
+                        className="min-w-0 flex-1 select-none truncate py-1.5 leading-snug"
                         style={{
                           fontSize: 12.5,
                           letterSpacing: 0,
@@ -304,12 +304,15 @@ export default function Sidebar({
                         {chat.title || "New conversation"}
                       </span>
                       <div
-                        className="flex shrink-0 items-center"
+                        className="flex shrink-0 items-center overflow-hidden"
                         style={{
-                          gap: 4,
+                          width: showActions ? actionAreaWidth : 0,
+                          marginLeft: showActions ? 4 : 0,
+                          gap: showActions ? 4 : 0,
                           opacity: showActions ? 1 : 0,
                           pointerEvents: showActions ? "auto" : "none",
-                          transition: "opacity 140ms ease",
+                          transition:
+                            "width 160ms ease, margin-left 160ms ease, opacity 120ms ease",
                         }}
                         aria-hidden={showActions ? undefined : true}
                       >
@@ -323,8 +326,8 @@ export default function Sidebar({
                           }}
                           className="flex shrink-0 items-center justify-center rounded-xl transition-colors duration-150 disabled:cursor-not-allowed"
                           style={{
-                            width: isCompact ? 36 : 32,
-                            height: isCompact ? 36 : 32,
+                            width: actionButtonSize,
+                            height: actionButtonSize,
                             color: canExport
                               ? "var(--color-ink-secondary)"
                               : "var(--color-ink-tertiary)",
@@ -367,8 +370,8 @@ export default function Sidebar({
                           }}
                           className="flex shrink-0 items-center justify-center rounded-xl transition-colors duration-150"
                           style={{
-                            width: isCompact ? 36 : 32,
-                            height: isCompact ? 36 : 32,
+                            width: actionButtonSize,
+                            height: actionButtonSize,
                             color: "var(--color-ink-secondary)",
                             backgroundColor: "transparent",
                             WebkitTapHighlightColor: "transparent",
