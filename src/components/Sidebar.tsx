@@ -204,9 +204,8 @@ export default function Sidebar({
                     WebkitTapHighlightColor: "transparent",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.color = "var(--color-ink-primary)";
-                    e.currentTarget.style.backgroundColor =
-                      "var(--color-surface-tertiary)";
+                    e.currentTarget.style.color = "#dc2626";
+                    e.currentTarget.style.backgroundColor = "transparent";
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.color = "var(--color-ink-tertiary)";
