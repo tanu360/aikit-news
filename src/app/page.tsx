@@ -2179,6 +2179,10 @@ export default function Home() {
                   {EMPTY_STATE_SUGGESTIONS.map((suggestion) => (
                     <button
                       key={suggestion.label}
+                      onPointerDown={(event) => {
+                        event.preventDefault();
+                        applyEmptyStateSuggestion(suggestion);
+                      }}
                       onClick={() => applyEmptyStateSuggestion(suggestion)}
                       className="suggestion-chip inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[13px]"
                     >

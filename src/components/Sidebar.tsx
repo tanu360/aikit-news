@@ -68,8 +68,7 @@ function buildChatExport(chat: Chat) {
       lines.push("Sources:");
       sources.forEach((source, sourceIndex) => {
         lines.push(
-          `${sourceIndex + 1}. ${source.title || source.url}${
-            source.url ? ` - ${source.url}` : ""
+          `${sourceIndex + 1}. ${source.title || source.url}${source.url ? ` - ${source.url}` : ""
           }`
         );
       });
@@ -354,8 +353,8 @@ export default function Sidebar({
                         >
                           <HugeiconsIcon
                             icon={ChatDownloadIcon}
-                            size={isCompact ? 17 : 15}
-                            strokeWidth={2}
+                            size={15}
+                            strokeWidth={1.5}
                             primaryColor="currentColor"
                           />
                         </button>
@@ -387,8 +386,8 @@ export default function Sidebar({
                         >
                           <HugeiconsIcon
                             icon={Delete02Icon}
-                            size={isCompact ? 17 : 15}
-                            strokeWidth={2.2}
+                            size={15}
+                            strokeWidth={1.5}
                             primaryColor="currentColor"
                           />
                         </button>
