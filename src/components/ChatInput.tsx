@@ -211,6 +211,16 @@ export default function ChatInput({
     submitMessage();
   };
 
+  const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (showSettings) onSettingsClose();
+    onChange(e.target.value);
+  };
+
+  const handlePromptFocus = () => {
+    setFocused(true);
+    if (showSettings) onSettingsClose();
+  };
+
   const triggerRipple = () => {
     setRipple(true);
     setTimeout(() => setRipple(false), 600);
@@ -480,9 +490,9 @@ export default function ChatInput({
             <textarea
               ref={textareaRef}
               value={value}
-              onChange={(e) => onChange(e.target.value)}
+              onChange={handlePromptChange}
               onKeyDown={handleKeyDown}
-              onFocus={() => setFocused(true)}
+              onFocus={handlePromptFocus}
               onBlur={() => setFocused(false)}
               disabled={disabled}
               placeholder={placeholder}
