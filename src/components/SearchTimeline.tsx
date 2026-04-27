@@ -182,7 +182,7 @@ export default function SearchTimeline({
 
                   <div className="flex flex-1 items-center gap-2 overflow-hidden">
                     <span
-                      className="source-row-title truncate text-[12.5px] font-medium"
+                      className="source-row-title truncate text-[12.5px]"
                     >
                       {result.title}
                     </span>
