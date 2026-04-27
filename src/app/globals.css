@@ -506,7 +506,7 @@ textarea::placeholder {
   outline-offset: 2px;
 }
 .source-row-title {
-  color: var(--color-ink-primary);
+  color: var(--color-ink-secondary);
 }
 .source-row-domain {
   color: var(--color-ink-ghost);
