@@ -152,7 +152,7 @@ export default function SearchTimeline({
                     duration: 0.25,
                     ease: "easeOut",
                   }}
-                  className="source-row group/item relative flex items-center gap-2.5 rounded-md py-1.5 pl-8 pr-2"
+                  className="source-row group/item relative flex min-h-11 items-center gap-2.5 rounded-md py-2 pl-8 pr-2 sm:min-h-0 sm:py-1.5"
                 >
                   <div
                     className="absolute left-0 top-1/2 h-1.75 w-1.75 -translate-y-1/2 rounded-full border-[1.5px] transition-colors"

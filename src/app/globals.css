@@ -326,6 +326,24 @@
 .search-nav-button:focus-visible {
   color: var(--color-ink-primary);
 }
+
+.message-actions {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+}
+
+.message-actions[data-visible="true"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (max-width: 639px), (pointer: coarse) {
+  .message-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
 @keyframes fadeIn {
   0% {
     opacity: 0;

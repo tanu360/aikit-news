@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import type { ReactNode } from "react";
+import type { FocusEvent, ReactNode } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   File01Icon,
@@ -107,6 +107,7 @@ export default function MessageBubble({
   onNavigateVersion,
 }: MessageBubbleProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [isFocusedWithin, setIsFocusedWithin] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -122,6 +123,14 @@ export default function MessageBubble({
   const hasVersions = (message.versions?.length ?? 0) > 1;
   const versionIndex = message.versionIndex ?? 0;
   const totalVersions = message.versions?.length ?? 1;
+  const actionsVisible = isHovered || isFocusedWithin;
+
+  const handleActionBlur = (event: FocusEvent<HTMLDivElement>) => {
+    const nextTarget = event.relatedTarget;
+    if (!(nextTarget instanceof Node) || !event.currentTarget.contains(nextTarget)) {
+      setIsFocusedWithin(false);
+    }
+  };
 
   if (message.role === "user") {
     const attachments = message.attachments || [];
@@ -135,6 +144,8 @@ export default function MessageBubble({
         className="flex justify-end"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
+        onFocusCapture={() => setIsFocusedWithin(true)}
+        onBlurCapture={handleActionBlur}
       >
         <div className="flex flex-col items-end gap-0.5">
           <div
@@ -187,11 +198,8 @@ export default function MessageBubble({
           </div>
 
           <div
-            className="flex items-center gap-0.5 pr-0.5"
-            style={{
-              opacity: isHovered ? 1 : 0,
-              transition: "opacity 150ms ease",
-            }}
+            className="message-actions flex items-center gap-0.5 pr-0.5"
+            data-visible={actionsVisible ? "true" : "false"}
           >
             <ActionButton onClick={handleCopy} title={copied ? "Copied!" : "Copy"}>
               <HugeiconsIcon
@@ -227,6 +235,8 @@ export default function MessageBubble({
       className="flex justify-start"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onFocusCapture={() => setIsFocusedWithin(true)}
+      onBlurCapture={handleActionBlur}
     >
       <div className="max-w-[92%]">
         {message.isDeepResearch && message.researchSteps && (
@@ -278,11 +288,8 @@ export default function MessageBubble({
         )}
 
         <div
-          className="flex items-center gap-0.5 mt-0.5"
-          style={{
-            opacity: isHovered ? 1 : 0,
-            transition: "opacity 150ms ease",
-          }}
+          className="message-actions flex items-center gap-0.5 mt-0.5"
+          data-visible={actionsVisible ? "true" : "false"}
         >
           <ActionButton onClick={handleCopy} title={copied ? "Copied!" : "Copy"}>
             <HugeiconsIcon
