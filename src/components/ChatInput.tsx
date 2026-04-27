@@ -45,19 +45,19 @@ const TOOL_OPTIONS: Array<{
   shortLabel: string;
   icon: typeof Search01Icon;
 }> = [
-  {
-    key: "search",
-    label: "Search",
-    shortLabel: "Search",
-    icon: Search01Icon,
-  },
-  {
-    key: "weather",
-    label: "Weather",
-    shortLabel: "Weather",
-    icon: SunCloud01Icon,
-  },
-];
+    {
+      key: "search",
+      label: "Search",
+      shortLabel: "Search",
+      icon: Search01Icon,
+    },
+    {
+      key: "weather",
+      label: "Weather",
+      shortLabel: "Weather",
+      icon: SunCloud01Icon,
+    },
+  ];
 
 function isSupportedAttachment(file: File): boolean {
   const lowerName = file.name.toLowerCase();
@@ -137,6 +137,8 @@ export default function ChatInput({
 
   const isDark = useIsDarkTheme();
   const exaActiveColor = isDark ? "#829FFF" : "#1F40ED";
+  const fileErrorForeground = "oklch(0.985 0.008 27)";
+  const fileErrorMutedForeground = "#ebebeb";
   const isAgentActive = agentMode || agentControlHover;
   const agentControlColor = isAgentActive ? exaActiveColor : "var(--color-ink-tertiary)";
   const exaIconColor = isAgentActive ? exaActiveColor : "var(--color-ink-tertiary)";
@@ -193,6 +195,7 @@ export default function ChatInput({
   const hasValue = value.trim().length > 0;
   const canSubmit = (hasValue || !!attachedFile) && !disabled;
   const isActive = canSubmit;
+  const fileErrorLimitIndex = fileError?.indexOf(" (limit:");
 
   const submitMessage = () => {
     if (!canSubmit) return;
@@ -545,24 +548,50 @@ export default function ChatInput({
                 >
                   {fileError ? (
                     <div
-                      className="flex items-center gap-2 rounded-xl px-3 py-2 text-[12px]"
+                      className="inline-flex max-w-full items-center gap-1.5 rounded-2xl px-2.5 py-1.5 text-[11.5px] font-medium"
                       style={{
-                        backgroundColor: "color-mix(in oklch, #ef4444 10%, transparent)",
-                        border: "1px solid color-mix(in oklch, #ef4444 25%, transparent)",
-                        color: "#ef4444",
+                        backgroundColor: "oklch(0.58 0.23 27)",
+                        color: fileErrorForeground,
                       }}
                     >
-                      <span className="flex-1">{fileError}</span>
+                      <HugeiconsIcon
+                        icon={File01Icon}
+                        size={12}
+                        strokeWidth={1.7}
+                        primaryColor="currentColor"
+                        style={{
+                          color: fileErrorMutedForeground,
+                          flexShrink: 0,
+                        }}
+                      />
+                      <span className="min-w-0 truncate">
+                        {typeof fileErrorLimitIndex === "number" &&
+                          fileErrorLimitIndex >= 0 ? (
+                          <>
+                            {fileError.slice(0, fileErrorLimitIndex)}
+                            <span style={{ color: fileErrorMutedForeground }}>
+                              {fileError.slice(fileErrorLimitIndex)}
+                            </span>
+                          </>
+                        ) : (
+                          fileError
+                        )}
+                      </span>
                       <button
                         type="button"
                         onClick={removeFile}
-                        className="shrink-0 opacity-60 transition-opacity hover:opacity-100"
-                        aria-label="Dismiss error"
+                        className="ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full transition-opacity duration-150 hover:opacity-80"
+                        style={{
+                          backgroundColor:
+                            `color-mix(in oklch, ${fileErrorForeground} 18%, transparent)`,
+                          color: fileErrorForeground,
+                        }}
+                        aria-label="Dismiss file error"
                       >
                         <HugeiconsIcon
                           icon={Cancel01Icon}
-                          size={12}
-                          strokeWidth={2}
+                          size={9}
+                          strokeWidth={2.5}
                           primaryColor="currentColor"
                         />
                       </button>

@@ -233,7 +233,7 @@ export default function Sidebar({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.18 }}
-              className="h-full overflow-y-auto px-1.5 py-1.5"
+              className="flex h-full flex-col gap-2 overflow-y-auto px-2 py-2"
             >
               {chats.length === 0 ? (
                 <p
@@ -254,7 +254,7 @@ export default function Sidebar({
                   return (
                     <div
                       key={chat.id}
-                      className="group relative mb-1 flex cursor-pointer items-center rounded-xl"
+                      className="group relative flex cursor-pointer items-center rounded-xl"
                       style={{
                         paddingLeft: 12,
                         paddingRight: 12,
