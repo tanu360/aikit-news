@@ -19,6 +19,7 @@ import type {
   AttachedFile,
   Chat,
   Message,
+  MessageVersion,
   SearchResult,
   ResearchStep,
   WeatherCardData,
@@ -214,6 +215,61 @@ function buildApiContent(message: Message) {
   return buildContentWithAttachments(message.content, message.attachments);
 }
 
+type LegacyMessageVersion = MessageVersion | string;
+
+function captureAssistantVersion(message: Message): MessageVersion {
+  return {
+    content: message.content,
+    weather: message.weather,
+    searchQuery: message.searchQuery,
+    searchResults: message.searchResults,
+    searchStatus: message.searchStatus,
+    isDeepResearch: message.isDeepResearch,
+    researchSteps: message.researchSteps,
+    researchStatus: message.researchStatus,
+    allSources: message.allSources,
+  };
+}
+
+function normalizeMessageVersions(message: Message): MessageVersion[] {
+  const versions = message.versions as LegacyMessageVersion[] | undefined;
+  if (!versions?.length) return [captureAssistantVersion(message)];
+  return versions.map((version) =>
+    typeof version === "string" ? { content: version } : version
+  );
+}
+
+function applyAssistantVersion(
+  message: Message,
+  version: MessageVersion,
+  versions: MessageVersion[],
+  versionIndex: number
+): Message {
+  return {
+    ...message,
+    content: version.content,
+    weather: version.weather,
+    searchQuery: version.searchQuery,
+    searchResults: version.searchResults,
+    searchStatus: version.searchStatus,
+    isDeepResearch: version.isDeepResearch,
+    researchSteps: version.researchSteps,
+    researchStatus: version.researchStatus,
+    allSources: version.allSources,
+    versions,
+    versionIndex,
+  };
+}
+
+function appendAssistantVersion(
+  message: Message,
+  existingVersions: MessageVersion[],
+  version: MessageVersion
+): Message {
+  const versions = [...existingVersions, version];
+  return applyAssistantVersion(message, version, versions, versions.length - 1);
+}
+
 function getClientDate() {
   const now = new Date();
   const year = now.getFullYear();
@@ -226,6 +282,9 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
+    null
+  );
   const [agentMode, setAgentMode] = useState(false);
   const [attachedFile, setAttachedFile] = useState<AttachedFile | null>(null);
   const [systemPrompt, setSystemPrompt] = useState("");
@@ -252,6 +311,11 @@ export default function Home() {
   const touchStartYRef = useRef<number | null>(null);
   const touchHandledRef = useRef(false);
   const logoSvgRef = useRef<SVGSVGElement>(null);
+
+  const finishResponse = () => {
+    setIsLoading(false);
+    setStreamingMessageId(null);
+  };
 
   useEffect(() => {
     const mediaQuery = window.matchMedia(DESKTOP_MEDIA_QUERY);
@@ -454,6 +518,7 @@ export default function Home() {
 
     const userMsgId = generateId();
     scrollTargetRef.current = userMsgId;
+    setStreamingMessageId(assistantId);
 
     setMessages((prev) => [
       ...prev,
@@ -572,7 +637,7 @@ export default function Home() {
       });
 
       if (routerDecision === "direct") {
-        setIsLoading(false);
+        finishResponse();
         return;
       }
 
@@ -588,7 +653,7 @@ export default function Home() {
               : m
           )
         );
-        setIsLoading(false);
+        finishResponse();
         return;
       }
 
@@ -720,7 +785,7 @@ export default function Home() {
         vercelId: answerVercelId,
       });
 
-      setIsLoading(false);
+      finishResponse();
     } catch (e) {
       console.error("Chat failed:", e);
       setMessages((prev) =>
@@ -735,7 +800,7 @@ export default function Home() {
             : m
         )
       );
-      setIsLoading(false);
+      finishResponse();
     }
   };
 
@@ -743,11 +808,12 @@ export default function Home() {
     setMessages((prev) =>
       prev.map((m) => {
         if (m.id !== messageId || !m.versions) return m;
+        const versions = normalizeMessageVersions(m);
         const newIdx = Math.max(
           0,
-          Math.min((m.versionIndex ?? 0) + dir, m.versions.length - 1)
+          Math.min((m.versionIndex ?? 0) + dir, versions.length - 1)
         );
-        return { ...m, versionIndex: newIdx, content: m.versions[newIdx] };
+        return applyAssistantVersion(m, versions[newIdx], versions, newIdx);
       })
     );
   };
@@ -765,7 +831,7 @@ export default function Home() {
     if (!userMsg || userMsg.role !== "user") return;
 
     const assistantMsg = currentMessages[assistantIdx];
-    const existingVersions = assistantMsg.versions ?? [assistantMsg.content];
+    const existingVersions = normalizeMessageVersions(assistantMsg);
 
     const historyBefore = currentMessages.slice(0, assistantIdx - 1);
     const conversationHistory = historyBefore
@@ -780,17 +846,214 @@ export default function Home() {
     const clientDate = getClientDate();
 
     setIsLoading(true);
+    setStreamingMessageId(assistantMessageId);
+
+    if (assistantMsg.isDeepResearch) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMessageId
+            ? {
+              ...m,
+              content: "",
+              weather: undefined,
+              searchQuery: undefined,
+              searchResults: undefined,
+              searchStatus: undefined,
+              isDeepResearch: true,
+              researchSteps: [],
+              researchStatus: "researching" as const,
+              allSources: [],
+              versions: existingVersions,
+              versionIndex: existingVersions.length - 1,
+            }
+            : m
+        )
+      );
+
+      let fullContent = "";
+      let allSources: SearchResult[] = [];
+      let researchSteps: ResearchStep[] = [];
+      let completed = false;
+
+      const update = (patch: Partial<Message>) => {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessageId ? { ...m, ...patch } : m
+          )
+        );
+      };
+
+      const updateStep = (
+        stepId: string,
+        stepPatch: Partial<ResearchStep>
+      ) => {
+        researchSteps = researchSteps.map((s) =>
+          s.id === stepId ? { ...s, ...stepPatch } : s
+        );
+        update({ researchSteps });
+      };
+
+      const commitDeepResearchVersion = (content: string) => {
+        const version: MessageVersion = {
+          content,
+          isDeepResearch: true,
+          researchSteps,
+          researchStatus: "done",
+          allSources,
+        };
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessageId
+              ? appendAssistantVersion(m, existingVersions, version)
+              : m
+          )
+        );
+      };
+
+      try {
+        const res = await fetch("/api/deep-research", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: userMsg.content,
+            topK,
+            clientDate,
+            ...(apiAttachment ? { attachment: apiAttachment } : {}),
+            ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
+          }),
+        });
+
+        if (!res.ok || !res.body) throw new Error("Deep research failed");
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith("data: ")) continue;
+            const raw = trimmed.slice(6);
+
+            let event: { type: string;[key: string]: unknown };
+            try {
+              event = JSON.parse(raw);
+            } catch {
+              continue;
+            }
+
+            switch (event.type) {
+              case "step_start": {
+                const newStep: ResearchStep = {
+                  id: event.stepId as string,
+                  query: event.query as string,
+                  status: "searching",
+                  results: [],
+                  synthesis: "",
+                  depth: event.depth as number,
+                };
+                researchSteps = [...researchSteps, newStep];
+                update({ researchSteps });
+                break;
+              }
+
+              case "search_complete": {
+                updateStep(event.stepId as string, {
+                  results: (event.results || []) as SearchResult[],
+                });
+                break;
+              }
+
+              case "synthesizing": {
+                updateStep(event.stepId as string, { status: "synthesizing" });
+                break;
+              }
+
+              case "step_done": {
+                updateStep(event.stepId as string, {
+                  status: "done",
+                  synthesis: event.synthesis as string,
+                });
+                break;
+              }
+
+              case "research_complete":
+              case "answer_start": {
+                update({ researchStatus: "answering" });
+                break;
+              }
+
+              case "answer_chunk": {
+                fullContent += event.content as string;
+                update({ content: fullContent });
+                break;
+              }
+
+              case "all_sources": {
+                allSources = (event.sources || []) as SearchResult[];
+                update({ allSources });
+                break;
+              }
+
+              case "done": {
+                completed = true;
+                commitDeepResearchVersion(fullContent);
+                finishResponse();
+                break;
+              }
+
+              case "error": {
+                completed = true;
+                const errorMessage = `Research failed: ${event.message}`;
+                fullContent = errorMessage;
+                update({ content: errorMessage });
+                commitDeepResearchVersion(errorMessage);
+                finishResponse();
+                break;
+              }
+            }
+          }
+        }
+
+        if (!completed) {
+          commitDeepResearchVersion(fullContent || "Deep research finished without an answer.");
+          finishResponse();
+        }
+      } catch (e) {
+        console.error("Deep research regenerate failed:", e);
+        const errorMessage =
+          "Failed to run deep research. ChatJimmy may be temporarily unavailable.";
+        fullContent = errorMessage;
+        update({ content: errorMessage, researchStatus: "done" });
+        commitDeepResearchVersion(errorMessage);
+        finishResponse();
+      }
+      return;
+    }
+
     setMessages((prev) =>
       prev.map((m) =>
         m.id === assistantMessageId
           ? {
             ...m,
             content: "",
-            versions: existingVersions,
+            weather: undefined,
             searchQuery: undefined,
             searchResults: undefined,
             searchStatus: undefined,
-            weather: undefined,
+            isDeepResearch: undefined,
+            researchSteps: undefined,
+            researchStatus: undefined,
+            allSources: undefined,
+            versions: existingVersions,
+            versionIndex: existingVersions.length - 1,
           }
           : m
       )
@@ -819,6 +1082,7 @@ export default function Home() {
       const routerDecoder = new TextDecoder();
       let routerContent = "";
       let routerDecision: "direct" | "search" | null = null;
+      let weather: WeatherCardData | undefined;
 
       const routerParser = parseSSEStream(
         (text) => {
@@ -840,10 +1104,11 @@ export default function Home() {
         (event) => {
           if (event.type !== "weather") return;
           routerDecision = "direct";
+          weather = event.weather as WeatherCardData;
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantMessageId
-                ? { ...m, weather: event.weather as WeatherCardData }
+                ? { ...m, weather }
                 : m
             )
           );
@@ -869,30 +1134,30 @@ export default function Home() {
       }
 
       if (routerDecision === "direct") {
-        const newVersions = [...existingVersions, answerContent];
+        const version: MessageVersion = { content: answerContent, weather };
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantMessageId
-              ? { ...m, versions: newVersions, versionIndex: newVersions.length - 1 }
+              ? appendAssistantVersion(m, existingVersions, version)
               : m
           )
         );
-        setIsLoading(false);
+        finishResponse();
         return;
       }
 
       if (!toolSettings.search) {
         const msg =
           "Search is disabled. Enable Search in Tools settings to use live web results, or I can continue with a normal answer from existing context.";
-        const newVersions = [...existingVersions, msg];
+        const version: MessageVersion = { content: msg };
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantMessageId
-              ? { ...m, content: msg, versions: newVersions, versionIndex: newVersions.length - 1 }
+              ? appendAssistantVersion(m, existingVersions, version)
               : m
           )
         );
-        setIsLoading(false);
+        finishResponse();
         return;
       }
 
@@ -983,30 +1248,35 @@ export default function Home() {
         answerParser.processChunk(answerDecoder.decode(value, { stream: true }));
       }
 
-      const newVersions = [...existingVersions, answerContent];
+      const version: MessageVersion = {
+        content: answerContent,
+        searchQuery: refinedQuery,
+        searchResults,
+        searchStatus: "done",
+      };
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantMessageId
-            ? { ...m, versions: newVersions, versionIndex: newVersions.length - 1 }
+            ? appendAssistantVersion(m, existingVersions, version)
             : m
         )
       );
-      setIsLoading(false);
+      finishResponse();
     } catch (e) {
       console.error("Regenerate failed:", e);
+      const version: MessageVersion = {
+        content:
+          "Failed to connect to chat service. ChatJimmy may be temporarily unavailable.",
+        searchStatus: "done",
+      };
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantMessageId
-            ? {
-              ...m,
-              content:
-                "Failed to connect to chat service. ChatJimmy may be temporarily unavailable.",
-              searchStatus: "done" as const,
-            }
+            ? appendAssistantVersion(m, existingVersions, version)
             : m
         )
       );
-      setIsLoading(false);
+      finishResponse();
     }
   };
 
@@ -1021,6 +1291,7 @@ export default function Home() {
 
     const userMsgId = generateId();
     scrollTargetRef.current = userMsgId;
+    setStreamingMessageId(assistantId);
 
     if (!query && fileForSubmit) {
       setMessages((prev) => [
@@ -1040,7 +1311,7 @@ export default function Home() {
           timestamp: Date.now(),
         },
       ]);
-      setIsLoading(false);
+      finishResponse();
       return;
     }
 
@@ -1198,7 +1469,7 @@ export default function Home() {
 
             case "done": {
               update({ researchStatus: "done", allSources });
-              setIsLoading(false);
+              finishResponse();
               break;
             }
 
@@ -1207,14 +1478,14 @@ export default function Home() {
                 content: `Research failed: ${event.message}`,
                 researchStatus: "done",
               });
-              setIsLoading(false);
+              finishResponse();
               break;
             }
           }
         }
       }
 
-      setIsLoading(false);
+      finishResponse();
     } catch (e) {
       console.error("Deep research failed:", e);
       setMessages((prev) =>
@@ -1228,7 +1499,7 @@ export default function Home() {
             : m
         )
       );
-      setIsLoading(false);
+      finishResponse();
     }
   };
 
@@ -1581,34 +1852,28 @@ export default function Home() {
               style={{ width: "min(100%, 58rem)" }}
             >
               <div className="flex flex-col gap-4 sm:gap-5">
-                {(() => {
-                  const lastAssistantIdx = messages.reduce(
-                    (last, m, i) => (m.role === "assistant" ? i : last),
-                    -1
-                  );
-                  return messages.map((message, idx) => (
-                    <MessageBubble
-                      key={message.id}
-                      message={message}
-                      isStreaming={
-                        isLoading &&
-                        message.role === "assistant" &&
-                        message.id === messages[messages.length - 1]?.id
-                      }
-                      searchQuery={searchQuery}
-                      onRegenerate={
-                        message.role === "assistant" && idx === lastAssistantIdx
-                          ? () => handleRegenerate(message.id)
-                          : undefined
-                      }
-                      onNavigateVersion={
-                        message.role === "assistant"
-                          ? (dir) => handleNavigateVersion(message.id, dir)
-                          : undefined
-                      }
-                    />
-                  ));
-                })()}
+                {messages.map((message) => (
+                  <MessageBubble
+                    key={message.id}
+                    message={message}
+                    isStreaming={
+                      isLoading &&
+                      message.role === "assistant" &&
+                      message.id === streamingMessageId
+                    }
+                    searchQuery={searchQuery}
+                    onRegenerate={
+                      message.role === "assistant"
+                        ? () => handleRegenerate(message.id)
+                        : undefined
+                    }
+                    onNavigateVersion={
+                      message.role === "assistant"
+                        ? (dir) => handleNavigateVersion(message.id, dir)
+                        : undefined
+                    }
+                  />
+                ))}
               </div>
             </div>
           )}

@@ -1,5 +1,6 @@
 export interface AttachedFile {
   name: string;
+  path?: string;
   content: string;
   size: number;
   tokenCount: number;
@@ -58,6 +59,18 @@ export interface WeatherCardData {
   updatedAt: string;
 }
 
+export interface MessageVersion {
+  content: string;
+  weather?: WeatherCardData;
+  searchQuery?: string;
+  searchResults?: SearchResult[];
+  searchStatus?: "searching" | "done";
+  isDeepResearch?: boolean;
+  researchSteps?: ResearchStep[];
+  researchStatus?: "researching" | "answering" | "done";
+  allSources?: SearchResult[];
+}
+
 export interface Message {
   id: string;
   role: "user" | "assistant";
@@ -71,7 +84,7 @@ export interface Message {
   researchSteps?: ResearchStep[];
   researchStatus?: "researching" | "answering" | "done";
   allSources?: SearchResult[];
-  versions?: string[];
+  versions?: MessageVersion[];
   versionIndex?: number;
   timestamp: number;
 }

@@ -227,7 +227,19 @@ export default function ChatInput({
       }
 
       setFileError(null);
-      onFileAttach({ name: file.name, content, size: file.size, tokenCount });
+      const fileWithPath = file as File & {
+        path?: string;
+        webkitRelativePath?: string;
+      };
+      const path =
+        fileWithPath.path || fileWithPath.webkitRelativePath || undefined;
+      onFileAttach({
+        name: file.name,
+        path,
+        content,
+        size: file.size,
+        tokenCount,
+      });
     };
     reader.onerror = () => {
       setFileError("Could not read file. Make sure it's a plain text file.");

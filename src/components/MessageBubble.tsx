@@ -46,6 +46,25 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function getMessageCopyText(message: Message): string {
+  const lines: string[] = [];
+  const trimmedContent = message.content.trim();
+
+  if (trimmedContent) {
+    lines.push(trimmedContent);
+  }
+
+  if (message.role === "user" && message.attachments?.length) {
+    lines.push(
+      ...message.attachments.map((file) =>
+        file.path ? `${file.name} - ${file.path}` : file.name
+      )
+    );
+  }
+
+  return lines.join("\n");
+}
+
 function ActionButton({
   onClick,
   title,
@@ -90,10 +109,14 @@ export default function MessageBubble({
   const [isHovered, setIsHovered] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(message.content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(getMessageCopyText(message));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
   };
 
   const hasVersions = (message.versions?.length ?? 0) > 1;
