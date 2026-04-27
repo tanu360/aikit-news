@@ -22,13 +22,20 @@ function formatToolPermissions(settings: ChatToolSettings): string {
   ].join("\n");
 }
 
-function strictToolRules(settings: ChatToolSettings): string {
+function strictToolRules(
+  settings: ChatToolSettings,
+  mode: "router" | "answer" = "router"
+): string {
   const availableTools = [
     settings.search
-      ? "- Search: enabled. You can request one Exa web search by replying with plain text `SEARCH: <query>`. Search can return current web results, titles, URLs, text snippets, highlights, and citations."
+      ? mode === "router"
+        ? "- Search: enabled. You can request one Exa web search by replying with plain text `SEARCH: <query>`. Search can return current web results, titles, URLs, text snippets, highlights, and citations."
+        : "- Search: already handled before this final answer step. Use provided Sources when they exist. Do not emit a leading `SEARCH:` control line or request another search."
       : "",
     settings.weather
-      ? "- Weather: enabled. You may call `get_weather` only for live weather questions about an explicit city, region, or place. It returns current conditions and near-term forecast details."
+      ? mode === "router"
+        ? "- Weather: enabled. You may call `get_weather` only for live weather questions about an explicit city, region, or place. It returns current conditions and near-term forecast details."
+        : "- Weather: already handled before this final answer step when weather data exists. Do not call weather tools or invent live weather."
       : "",
   ]
     .filter(Boolean)
@@ -92,7 +99,7 @@ When producing a SEARCH query, use the conversation history to resolve pronouns 
 
   return `You are AiKit, a helpful AI assistant. Today is ${date}.
 
-${strictToolRules(toolSettings)}
+${strictToolRules(toolSettings, "router")}
 
 For the user's latest message, you have three ways to respond.
 
@@ -166,7 +173,9 @@ export function buildAnswerSystemPrompt(
 
 Answer the user's question directly and concisely. No preamble.
 
-${strictToolRules(toolSettings)}
+${strictToolRules(toolSettings, "answer")}
+
+This is the final answer step. Do not start with a "SEARCH:" control line; answer the user using the provided sources and conversation.
 
 File attachments may arrive as ChatJimmy file attachments, file content parts, or legacy attachment tags. Treat those files as user-provided context and answer from them when relevant. Match the user's language.
 
