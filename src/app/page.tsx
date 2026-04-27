@@ -11,10 +11,7 @@ import {
   PencilEdit01Icon,
   ArtificialIntelligence04Icon,
   GithubIcon,
-  MarketAnalysisIcon,
-  News01Icon,
   Search01Icon,
-  StartUp01Icon,
   SunCloud01Icon,
 } from "@hugeicons/core-free-icons";
 import type {
@@ -71,11 +68,21 @@ const SIDEBAR_SWIPE_DIRECTION_RATIO = 1.15;
 const TOOL_SETTINGS_STORAGE_KEY = "aikit-tool-settings";
 
 const EMPTY_STATE_SUGGESTIONS = [
-  { label: "Top AI stories today", icon: ArtificialIntelligence04Icon },
-  { label: "Latest tech headlines", icon: News01Icon },
-  { label: "Startup news in India", icon: StartUp01Icon },
-  { label: "Delhi weather today", icon: SunCloud01Icon },
-  { label: "Market-moving stories", icon: MarketAnalysisIcon },
+  {
+    label: "Deep research on latest AI news",
+    icon: ArtificialIntelligence04Icon,
+    mode: "deepResearch",
+  },
+  {
+    label: "Search latest tech headlines",
+    icon: Search01Icon,
+    mode: "search",
+  },
+  {
+    label: "Delhi weather today",
+    icon: SunCloud01Icon,
+    mode: "weather",
+  },
 ] as const;
 
 function parseServerTiming(header: string | null): Record<string, number> {
@@ -1786,6 +1793,29 @@ export default function Home() {
     }
   };
 
+  function applyEmptyStateSuggestion(
+    suggestion: (typeof EMPTY_STATE_SUGGESTIONS)[number]
+  ) {
+    setInput(suggestion.label);
+    setShowSettings(false);
+
+    if (suggestion.mode === "deepResearch") {
+      setAgentMode(true);
+      setToolSettings({ search: false, weather: false });
+      return;
+    }
+
+    setAgentMode(false);
+    setToolSettings({
+      search: suggestion.mode === "search",
+      weather: suggestion.mode === "weather",
+    });
+
+    if (suggestion.mode === "weather") {
+      setAttachedFile(null);
+    }
+  }
+
   const trackSidebarTouchStart = (touch: React.Touch) => {
     if (!isCompactViewport) return;
 
@@ -2149,7 +2179,7 @@ export default function Home() {
                   {EMPTY_STATE_SUGGESTIONS.map((suggestion) => (
                     <button
                       key={suggestion.label}
-                      onClick={() => setInput(suggestion.label)}
+                      onClick={() => applyEmptyStateSuggestion(suggestion)}
                       className="suggestion-chip inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[13px]"
                     >
                       <HugeiconsIcon
