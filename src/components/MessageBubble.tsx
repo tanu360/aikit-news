@@ -65,6 +65,14 @@ function getMessageCopyText(message: Message): string {
   return lines.join("\n");
 }
 
+function formatGenerationStats(
+  stats: NonNullable<Message["generationStats"]>
+): string {
+  const seconds = Math.max(0, stats.decodeTimeSeconds).toFixed(3);
+  const rate = Math.round(stats.decodeRate).toLocaleString();
+  return `Generated in ${seconds}s • ${rate} tok/s`;
+}
+
 const MESSAGE_ACTION_ICON_SIZE = 14;
 
 function ActionButton({
@@ -290,6 +298,18 @@ export default function MessageBubble({
                 }}
               />
             ))}
+          </div>
+        )}
+
+        {message.generationStats && !isStreaming && (
+          <div
+            className="mt-2 text-[11px] font-medium tabular-nums"
+            style={{ color: "var(--color-ink-tertiary)" }}
+            title={`${message.generationStats.decodeTokens.toLocaleString()} decode tokens / ${Math.round(
+              message.generationStats.decodeRate
+            ).toLocaleString()} tok/s`}
+          >
+            {formatGenerationStats(message.generationStats)}
           </div>
         )}
 

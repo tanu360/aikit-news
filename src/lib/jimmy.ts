@@ -1,3 +1,5 @@
+import type { GenerationStats } from "./types";
+
 const CHATJIMMY_API_URL = process.env.CHATJIMMY_API_URL;
 const CHATJIMMY_API_KEY = process.env.CHATJIMMY_API_KEY;
 const CHATJIMMY_MODEL = process.env.CHATJIMMY_MODEL;
@@ -37,12 +39,26 @@ export interface ChatJimmyCompletion {
   content: string;
   toolCalls: ChatJimmyToolCall[];
   finishReason?: string;
+  usage?: ChatJimmyUsage;
+  generationStats?: GenerationStats;
 }
 
 export interface ChatJimmyOptions {
   topK?: number;
   systemPrompt?: string;
   attachment?: ChatJimmyAttachment;
+}
+
+export interface ChatJimmyUsage {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+  prompt_processing_speed?: number;
+  generation_speed?: number;
+  time_to_first_token_ms?: number;
+  total_generation_time_ms?: number;
+  total_request_time_ms?: number;
+  roundtrip_time_ms?: number;
 }
 
 export class ChatJimmyError extends Error {
@@ -167,6 +183,60 @@ function parseToolArguments(value: unknown): Record<string, unknown> {
   return {};
 }
 
+function readFiniteNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : undefined;
+}
+
+function normalizeChatJimmyUsage(value: unknown): ChatJimmyUsage | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const usage = value as Record<string, unknown>;
+  const normalized: ChatJimmyUsage = {
+    prompt_tokens: readFiniteNumber(usage.prompt_tokens),
+    completion_tokens: readFiniteNumber(usage.completion_tokens),
+    total_tokens: readFiniteNumber(usage.total_tokens),
+    prompt_processing_speed: readFiniteNumber(usage.prompt_processing_speed),
+    generation_speed: readFiniteNumber(usage.generation_speed),
+    time_to_first_token_ms: readFiniteNumber(usage.time_to_first_token_ms),
+    total_generation_time_ms: readFiniteNumber(usage.total_generation_time_ms),
+    total_request_time_ms: readFiniteNumber(usage.total_request_time_ms),
+    roundtrip_time_ms: readFiniteNumber(usage.roundtrip_time_ms),
+  };
+
+  return Object.values(normalized).some((field) => field !== undefined)
+    ? normalized
+    : undefined;
+}
+
+export function buildChatJimmyGenerationStats(
+  usage?: ChatJimmyUsage
+): GenerationStats | undefined {
+  const decodeTokens = usage?.completion_tokens;
+  const decodeRate = usage?.generation_speed;
+
+  if (
+    typeof decodeTokens !== "number" ||
+    typeof decodeRate !== "number" ||
+    decodeTokens <= 0 ||
+    decodeRate <= 0
+  ) {
+    return undefined;
+  }
+
+  return {
+    provider: "chatjimmy",
+    decodeTokens,
+    decodeRate,
+    decodeTimeSeconds: decodeTokens / decodeRate,
+    promptTokens: usage?.prompt_tokens,
+    totalTokens: usage?.total_tokens,
+  };
+}
+
 async function requestChatJimmy(
   messages: ChatJimmyMessage[],
   tools?: ChatJimmyTool[],
@@ -220,6 +290,7 @@ async function requestChatJimmy(
   }
 
   const data = await response.json();
+  const usage = normalizeChatJimmyUsage(data?.usage);
   const choice = data?.choices?.[0];
   const message = choice?.message || {};
   const content = typeof message.content === "string" ? message.content : "";
@@ -263,7 +334,16 @@ async function requestChatJimmy(
       typeof choice?.finish_reason === "string"
         ? choice.finish_reason
         : undefined,
+    usage,
+    generationStats: buildChatJimmyGenerationStats(usage),
   };
+}
+
+export async function chatJimmyCompletion(
+  messages: ChatJimmyMessage[],
+  options?: ChatJimmyOptions
+): Promise<ChatJimmyCompletion> {
+  return requestChatJimmy(messages, undefined, options);
 }
 
 export async function chatJimmyWithTools(

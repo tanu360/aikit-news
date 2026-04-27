@@ -18,6 +18,7 @@ import {
 import type {
   AttachedFile,
   Chat,
+  GenerationStats,
   Message,
   MessageResponseMode,
   MessageVersion,
@@ -284,10 +285,56 @@ function buildApiContent(message: Message) {
   return buildContentWithAttachments(message.content, message.attachments);
 }
 
+function parseGenerationStats(
+  value: unknown
+): GenerationStats | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const stats = value as Record<string, unknown>;
+  if (
+    stats.provider !== "chatjimmy" ||
+    typeof stats.decodeTokens !== "number" ||
+    typeof stats.decodeRate !== "number" ||
+    typeof stats.decodeTimeSeconds !== "number" ||
+    !Number.isFinite(stats.decodeTokens) ||
+    !Number.isFinite(stats.decodeRate) ||
+    !Number.isFinite(stats.decodeTimeSeconds)
+  ) {
+    return undefined;
+  }
+
+  return {
+    provider: "chatjimmy",
+    decodeTokens: stats.decodeTokens,
+    decodeRate: stats.decodeRate,
+    decodeTimeSeconds: stats.decodeTimeSeconds,
+    promptTokens:
+      typeof stats.promptTokens === "number" &&
+        Number.isFinite(stats.promptTokens)
+        ? stats.promptTokens
+        : undefined,
+    totalTokens:
+      typeof stats.totalTokens === "number" &&
+        Number.isFinite(stats.totalTokens)
+        ? stats.totalTokens
+        : undefined,
+  };
+}
+
+function getGenerationStatsEvent(
+  event: Record<string, unknown>
+): GenerationStats | undefined {
+  if (event.type !== "generation_stats") return undefined;
+  return parseGenerationStats(event.stats);
+}
+
 function captureAssistantVersion(message: Message): MessageVersion {
   return {
     content: message.content,
     responseMode: message.responseMode ?? "chat",
+    generationStats: message.generationStats,
     weather: message.weather,
     searchQuery: message.searchQuery,
     searchResults: message.searchResults,
@@ -314,6 +361,7 @@ function applyAssistantVersion(
     ...message,
     content: version.content,
     responseMode: version.responseMode ?? "chat",
+    generationStats: version.generationStats,
     weather: version.weather,
     searchQuery: version.searchQuery,
     searchResults: version.searchResults,
@@ -388,6 +436,17 @@ export default function Home() {
     setIsLoading(false);
     setStreamingMessageId(null);
   };
+
+  const applyGenerationStats = useCallback(
+    (messageId: string, generationStats: GenerationStats) => {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId ? { ...m, generationStats } : m
+        )
+      );
+    },
+    []
+  );
 
   const scrollChatToBottom = useCallback(
     (behavior: ScrollBehavior = "smooth") => {
@@ -829,6 +888,7 @@ export default function Home() {
       let routerContent = "";
       let routerDecision: "direct" | "search" | null = null;
       let directResponseMode: MessageResponseMode = "chat";
+      let routerGenerationStats: GenerationStats | undefined;
 
       const routerParser = parseSSEStream(
         (text) => {
@@ -860,6 +920,15 @@ export default function Home() {
         },
         () => { },
         (event) => {
+          const stats = getGenerationStatsEvent(event);
+          if (stats) {
+            routerGenerationStats = stats;
+            if (routerDecision === "direct") {
+              applyGenerationStats(assistantId, stats);
+            }
+            return;
+          }
+
           if (event.type !== "weather") return;
           routerDecision = "direct";
           directResponseMode = "weather";
@@ -898,6 +967,10 @@ export default function Home() {
               : m
           )
         );
+      }
+
+      if (routerDecision === "direct" && routerGenerationStats) {
+        applyGenerationStats(assistantId, routerGenerationStats);
       }
 
       logTiming(`Chat:router`, {
@@ -1031,6 +1104,7 @@ export default function Home() {
       const answerReader = answerRes.body.getReader();
       const answerDecoder = new TextDecoder();
       let answerContent = "";
+      let answerGenerationStats: GenerationStats | undefined;
 
       const answerParser = parseSSEStream(
         (text) => {
@@ -1043,7 +1117,13 @@ export default function Home() {
             )
           );
         },
-        () => { }
+        () => { },
+        (event) => {
+          const stats = getGenerationStatsEvent(event);
+          if (!stats) return;
+          answerGenerationStats = stats;
+          applyGenerationStats(assistantId, stats);
+        }
       );
 
       while (true) {
@@ -1053,6 +1133,9 @@ export default function Home() {
       }
 
       const tAnswerEndWall = Date.now();
+      if (answerGenerationStats) {
+        applyGenerationStats(assistantId, answerGenerationStats);
+      }
       logTiming("Chat:answer", {
         query: refinedQuery,
         tStartWall: tAnswerStartWall,
@@ -1134,6 +1217,7 @@ export default function Home() {
               ...m,
               content: "",
               responseMode: "deepResearch",
+              generationStats: undefined,
               weather: undefined,
               searchQuery: undefined,
               searchResults: undefined,
@@ -1152,6 +1236,7 @@ export default function Home() {
       let fullContent = "";
       let allSources: SearchResult[] = [];
       let researchSteps: ResearchStep[] = [];
+      let generationStats: GenerationStats | undefined;
       let completed = false;
 
       const update = (patch: Partial<Message>) => {
@@ -1176,6 +1261,7 @@ export default function Home() {
         const version: MessageVersion = {
           content,
           responseMode: "deepResearch",
+          generationStats,
           isDeepResearch: true,
           researchSteps,
           researchStatus: "done",
@@ -1282,6 +1368,15 @@ export default function Home() {
                 break;
               }
 
+              case "generation_stats": {
+                const stats = parseGenerationStats(event.stats);
+                if (stats) {
+                  generationStats = stats;
+                  update({ generationStats: stats });
+                }
+                break;
+              }
+
               case "done": {
                 completed = true;
                 commitDeepResearchVersion(fullContent);
@@ -1329,6 +1424,7 @@ export default function Home() {
               ...m,
               content: "",
               responseMode: "search",
+              generationStats: undefined,
               weather: undefined,
               searchQuery: refinedQuery,
               searchResults: [],
@@ -1345,6 +1441,7 @@ export default function Home() {
       );
 
       let answerContent = "";
+      let answerGenerationStats: GenerationStats | undefined;
       let searchResults: SearchResult[] = [];
       let searchError: string | undefined;
 
@@ -1405,16 +1502,25 @@ export default function Home() {
 
         const answerReader = answerRes.body.getReader();
         const answerDecoder = new TextDecoder();
-        const answerParser = parseSSEStream((text) => {
-          answerContent += text;
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantMessageId
-                ? { ...m, content: answerContent, responseMode: "search" }
-                : m
-            )
-          );
-        }, () => { });
+        const answerParser = parseSSEStream(
+          (text) => {
+            answerContent += text;
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMessageId
+                  ? { ...m, content: answerContent, responseMode: "search" }
+                  : m
+              )
+            );
+          },
+          () => { },
+          (event) => {
+            const stats = getGenerationStatsEvent(event);
+            if (!stats) return;
+            answerGenerationStats = stats;
+            applyGenerationStats(assistantMessageId, stats);
+          }
+        );
 
         while (true) {
           const { done, value } = await answerReader.read();
@@ -1425,6 +1531,7 @@ export default function Home() {
         const version: MessageVersion = {
           content: answerContent,
           responseMode: "search",
+          generationStats: answerGenerationStats,
           searchQuery: refinedQuery,
           searchResults,
           searchStatus: "done",
@@ -1471,6 +1578,7 @@ export default function Home() {
             ...m,
             content: "",
             responseMode: responseMode === "weather" ? "weather" : "chat",
+            generationStats: undefined,
             weather: undefined,
             searchQuery: undefined,
             searchResults: undefined,
@@ -1487,6 +1595,8 @@ export default function Home() {
     );
 
     let answerContent = "";
+    let answerGenerationStats: GenerationStats | undefined;
+    let routerGenerationStats: GenerationStats | undefined;
 
     try {
       const routerRes = await fetch("/api/chat", {
@@ -1539,6 +1649,15 @@ export default function Home() {
         },
         () => { },
         (event) => {
+          const stats = getGenerationStatsEvent(event);
+          if (stats) {
+            routerGenerationStats = stats;
+            if (routerDecision === "direct") {
+              applyGenerationStats(assistantMessageId, stats);
+            }
+            return;
+          }
+
           if (event.type !== "weather") return;
           routerDecision = "direct";
           weather = event.weather as WeatherCardData;
@@ -1575,10 +1694,15 @@ export default function Home() {
         );
       }
 
+      if (routerDecision === "direct" && routerGenerationStats) {
+        applyGenerationStats(assistantMessageId, routerGenerationStats);
+      }
+
       if (routerDecision === "direct") {
         const version: MessageVersion = {
           content: answerContent,
           responseMode: directResponseMode,
+          generationStats: routerGenerationStats,
           weather,
         };
         setMessages((prev) =>
@@ -1617,6 +1741,7 @@ export default function Home() {
               ...m,
               content: "",
               responseMode: "search",
+              generationStats: undefined,
               searchQuery: refinedQuery,
               searchResults: [],
               searchStatus: "searching" as const,
@@ -1685,14 +1810,23 @@ export default function Home() {
       const answerReader = answerRes.body.getReader();
       const answerDecoder = new TextDecoder();
 
-      const answerParser = parseSSEStream((text) => {
-        answerContent += text;
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMessageId ? { ...m, content: answerContent } : m
-          )
-        );
-      }, () => { });
+      const answerParser = parseSSEStream(
+        (text) => {
+          answerContent += text;
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMessageId ? { ...m, content: answerContent } : m
+            )
+          );
+        },
+        () => { },
+        (event) => {
+          const stats = getGenerationStatsEvent(event);
+          if (!stats) return;
+          answerGenerationStats = stats;
+          applyGenerationStats(assistantMessageId, stats);
+        }
+      );
 
       while (true) {
         const { done, value } = await answerReader.read();
@@ -1703,6 +1837,7 @@ export default function Home() {
       const version: MessageVersion = {
         content: answerContent,
         responseMode: "search",
+        generationStats: answerGenerationStats,
         searchQuery: refinedQuery,
         searchResults,
         searchStatus: "done",
@@ -1811,6 +1946,7 @@ export default function Home() {
       let buffer = "";
       let fullContent = "";
       let allSources: SearchResult[] = [];
+      let generationStats: GenerationStats | undefined;
 
       const update = (patch: Partial<Message>) => {
         setMessages((prev) =>
@@ -1922,8 +2058,17 @@ export default function Home() {
               break;
             }
 
+            case "generation_stats": {
+              const stats = parseGenerationStats(event.stats);
+              if (stats) {
+                generationStats = stats;
+                update({ generationStats: stats });
+              }
+              break;
+            }
+
             case "done": {
-              update({ researchStatus: "done", allSources });
+              update({ researchStatus: "done", allSources, generationStats });
               finishResponse();
               break;
             }

@@ -1,10 +1,15 @@
 import { NextRequest } from "next/server";
-import { ChatJimmyError, chatJimmy, chatJimmyWithTools } from "@/lib/jimmy";
+import {
+  ChatJimmyError,
+  chatJimmyCompletion,
+  chatJimmyWithTools,
+} from "@/lib/jimmy";
 import type {
   ChatJimmyAttachment,
   ChatJimmyMessageContent,
   ChatJimmyTool,
 } from "@/lib/jimmy";
+import type { GenerationStats } from "@/lib/types";
 import {
   appendUserSystemPrompt,
   buildAnswerSystemPrompt,
@@ -79,11 +84,13 @@ function sseData(data: Record<string, unknown>): string {
 
 function streamChatResponse({
   content,
+  generationStats,
   weatherCard,
   serverTiming,
   status = 200,
 }: {
   content: string;
+  generationStats?: GenerationStats;
   weatherCard?: WeatherCardData | null;
   serverTiming: string;
   status?: number;
@@ -109,6 +116,16 @@ function streamChatResponse({
           encoder.encode(
             sseData({
               choices: [{ delta: { content: chunk } }],
+            })
+          )
+        );
+      }
+      if (generationStats) {
+        controller.enqueue(
+          encoder.encode(
+            sseData({
+              type: "generation_stats",
+              stats: generationStats,
             })
           )
         );
@@ -266,6 +283,7 @@ export async function POST(req: NextRequest) {
     let weatherCard: WeatherCardData | null = null;
     let weatherDuration = 0;
     let content = "";
+    let generationStats: GenerationStats | undefined;
     let tChatjimmyDone = 0;
 
     if (effectiveMode === "router") {
@@ -296,15 +314,23 @@ export async function POST(req: NextRequest) {
             weatherDuration = Date.now() - tWeatherStart;
             content = formatWeatherAnswer(weatherCard);
           } catch {
-            content = await chatJimmy(jimmyMessages, jimmyOpts);
+            const fallbackCompletion = await chatJimmyCompletion(
+              jimmyMessages,
+              jimmyOpts
+            );
+            content = fallbackCompletion.content;
+            generationStats = fallbackCompletion.generationStats;
             tChatjimmyDone = Date.now();
           }
         }
       } else {
         content = completion.content;
+        generationStats = completion.generationStats;
       }
     } else {
-      content = await chatJimmy(jimmyMessages, jimmyOpts);
+      const completion = await chatJimmyCompletion(jimmyMessages, jimmyOpts);
+      content = completion.content;
+      generationStats = completion.generationStats;
       tChatjimmyDone = Date.now();
     }
 
@@ -325,6 +351,7 @@ export async function POST(req: NextRequest) {
 
     return streamChatResponse({
       content,
+      generationStats,
       weatherCard,
       serverTiming,
     });

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { chatJimmy } from "@/lib/jimmy";
+import { chatJimmy, chatJimmyCompletion } from "@/lib/jimmy";
 import type { ChatJimmyAttachment, ChatJimmyOptions } from "@/lib/jimmy";
 import { appendUserSystemPrompt, normalizePromptDate } from "@/lib/prompts";
 
@@ -375,10 +375,11 @@ export async function POST(req: NextRequest) {
           encoder.encode(sseEvent("answer_start", {}))
         );
 
-        let fullAnswer = await chatJimmy([
+        const finalCompletion = await chatJimmyCompletion([
           { role: "system", content: finalSystemPrompt },
           { role: "user", content: finalUserPrompt },
         ], jimmyOpts);
+        let fullAnswer = finalCompletion.content;
 
         fullAnswer = fullAnswer
           .replace(
@@ -396,6 +397,16 @@ export async function POST(req: NextRequest) {
         );
 
         streamAnswerText(controller, encoder, fullAnswer);
+
+        if (finalCompletion.generationStats) {
+          controller.enqueue(
+            encoder.encode(
+              sseEvent("generation_stats", {
+                stats: finalCompletion.generationStats,
+              })
+            )
+          );
+        }
 
         controller.enqueue(
           encoder.encode(

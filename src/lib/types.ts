@@ -61,9 +61,19 @@ export interface WeatherCardData {
 
 export type MessageResponseMode = "chat" | "search" | "weather" | "deepResearch";
 
+export interface GenerationStats {
+  provider: "chatjimmy";
+  decodeTokens: number;
+  decodeRate: number;
+  decodeTimeSeconds: number;
+  promptTokens?: number;
+  totalTokens?: number;
+}
+
 export interface MessageVersion {
   content: string;
   responseMode?: MessageResponseMode;
+  generationStats?: GenerationStats;
   weather?: WeatherCardData;
   searchQuery?: string;
   searchResults?: SearchResult[];
@@ -79,6 +89,7 @@ export interface Message {
   role: "user" | "assistant";
   content: string;
   responseMode?: MessageResponseMode;
+  generationStats?: GenerationStats;
   attachments?: AttachedFile[];
   weather?: WeatherCardData;
   searchQuery?: string;
