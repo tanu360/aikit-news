@@ -39,7 +39,6 @@ async function searchExa(query: string) {
         summary: {
           query: "Main findings relevant to the research question",
         },
-        maxAgeHours: 24,
       },
     }),
   });
