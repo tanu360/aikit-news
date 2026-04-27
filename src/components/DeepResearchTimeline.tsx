@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { ResearchStep } from "@/lib/types";
@@ -13,24 +13,6 @@ interface DeepResearchTimelineProps {
 }
 
 function StepItem({ step }: { step: ResearchStep }) {
-  const [showResults, setShowResults] = useState(false);
-
-  useEffect(() => {
-    let showTimer: ReturnType<typeof setTimeout> | undefined;
-
-    if (step.status === "done" && step.results.length > 0) {
-      showTimer = setTimeout(() => setShowResults(true), 0);
-    } else if (step.status === "searching") {
-      showTimer = setTimeout(() => setShowResults(true), 0);
-    } else {
-      showTimer = setTimeout(() => setShowResults(false), 0);
-    }
-
-    return () => {
-      if (showTimer) clearTimeout(showTimer);
-    };
-  }, [step.status, step.results.length]);
-
   const isActive = step.status !== "done";
 
   return (
@@ -97,7 +79,7 @@ function StepItem({ step }: { step: ResearchStep }) {
       </div>
 
       <AnimatePresence>
-        {showResults && step.results.length > 0 && (
+        {step.results.length > 0 && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
