@@ -139,6 +139,7 @@ export default function ChatInput({
   const exaIconColor = isAgentActive ? exaActiveColor : "var(--color-ink-tertiary)";
   const minTextareaHeight = 52;
   const enabledToolCount = TOOL_OPTIONS.filter((tool) => toolSettings[tool.key]).length;
+  const fileUploadDisabled = toolSettings.weather;
 
   useLayoutEffect(() => {
     const el = textareaRef.current;
@@ -256,6 +257,7 @@ export default function ChatInput({
         type="file"
         accept={ACCEPTED_TYPES}
         className="hidden"
+        disabled={fileUploadDisabled || disabled}
         onChange={handleFileChange}
       />
 
@@ -591,13 +593,25 @@ export default function ChatInput({
             <div className="flex min-w-0 flex-1 items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => {
+                  if (fileUploadDisabled) return;
+                  fileInputRef.current?.click();
+                }}
                 onMouseEnter={() => setFileButtonHover(true)}
                 onMouseLeave={() => setFileButtonHover(false)}
                 onFocus={() => setFileButtonHover(true)}
                 onBlur={() => setFileButtonHover(false)}
-                disabled={disabled}
-                title="Attach text file"
+                disabled={disabled || fileUploadDisabled}
+                title={
+                  fileUploadDisabled
+                    ? "Disable Weather to attach files"
+                    : "Attach text file"
+                }
+                aria-label={
+                  fileUploadDisabled
+                    ? "Disable Weather to attach files"
+                    : "Attach text file"
+                }
                 className="flex h-8 w-8 items-center justify-center rounded-full transition-[background-color,border-color,color] duration-200 disabled:opacity-30"
                 style={{
                   backgroundColor: attachedFile ? "var(--color-ink-primary)" : "transparent",
