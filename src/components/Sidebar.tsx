@@ -308,7 +308,7 @@ export default function Sidebar({
                       <div
                         className="flex shrink-0 items-center"
                         style={{
-                          gap: isCompact ? 6 : 4,
+                          gap: 4,
                           opacity: showActions ? 1 : 0,
                           pointerEvents: showActions ? "auto" : "none",
                           transition: "opacity 140ms ease",
@@ -325,8 +325,8 @@ export default function Sidebar({
                           }}
                           className="flex shrink-0 items-center justify-center rounded-xl transition-colors duration-150 disabled:cursor-not-allowed"
                           style={{
-                            width: isCompact ? 42 : 32,
-                            height: isCompact ? 42 : 32,
+                            width: isCompact ? 36 : 32,
+                            height: isCompact ? 36 : 32,
                             color: canExport
                               ? "var(--color-ink-secondary)"
                               : "var(--color-ink-tertiary)",
@@ -369,8 +369,8 @@ export default function Sidebar({
                           }}
                           className="flex shrink-0 items-center justify-center rounded-xl transition-colors duration-150"
                           style={{
-                            width: isCompact ? 42 : 32,
-                            height: isCompact ? 42 : 32,
+                            width: isCompact ? 36 : 32,
+                            height: isCompact ? 36 : 32,
                             color: "var(--color-ink-secondary)",
                             backgroundColor: "transparent",
                             WebkitTapHighlightColor: "transparent",
