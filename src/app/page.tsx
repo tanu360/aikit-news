@@ -2118,6 +2118,7 @@ export default function Home() {
               onToolSettingsChange={setToolSettings}
               showSettings={showSettings}
               onSettingsClick={() => setShowSettings((s) => !s)}
+              onSettingsClose={() => setShowSettings(false)}
               placeholder={
                 agentMode
                   ? "Ask a complex question for deep research..."

@@ -102,6 +102,7 @@ interface ChatInputProps {
   onToolSettingsChange: (settings: ChatToolSettings) => void;
   showSettings: boolean;
   onSettingsClick: () => void;
+  onSettingsClose: () => void;
 }
 
 export default function ChatInput({
@@ -122,7 +123,9 @@ export default function ChatInput({
   onToolSettingsChange,
   showSettings,
   onSettingsClick,
+  onSettingsClose,
 }: ChatInputProps) {
+  const rootRef = useRef<HTMLFormElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [focused, setFocused] = useState(false);
@@ -152,6 +155,22 @@ export default function ChatInput({
   useEffect(() => {
     textareaRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    if (!showSettings) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (rootRef.current?.contains(target)) return;
+      onSettingsClose();
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [onSettingsClose, showSettings]);
 
   useEffect(() => {
     let cancelled = false;
@@ -263,7 +282,7 @@ export default function ChatInput({
     "background-color 240ms var(--theme-ease), border-color 240ms var(--theme-ease), color 240ms var(--theme-ease)";
 
   return (
-    <form className="relative" onSubmit={handleFormSubmit}>
+    <form ref={rootRef} className="relative" onSubmit={handleFormSubmit}>
       <input
         ref={fileInputRef}
         type="file"
