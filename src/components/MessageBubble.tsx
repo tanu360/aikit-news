@@ -27,13 +27,13 @@ interface MessageBubbleProps {
   onNavigateVersion?: (dir: -1 | 1) => void;
 }
 
-function highlightText(text: string, query: string, darkBg = false): ReactNode {
+function highlightText(text: string, query: string, userMessage = false): ReactNode {
   if (!query.trim()) return text;
   const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const parts = text.split(new RegExp(`(${escaped})`, "gi"));
   return parts.map((part, i) =>
     part.toLowerCase() === query.toLowerCase() ? (
-      <mark key={i} className={darkBg ? "search-match-dark" : "search-match"}>
+      <mark key={i} className={userMessage ? "search-match-user" : "search-match"}>
         {part}
       </mark>
     ) : part
