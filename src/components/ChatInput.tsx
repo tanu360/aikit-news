@@ -514,6 +514,8 @@ export default function ChatInput({
 
             <motion.button
               type="submit"
+              aria-label="Send message"
+              title="Send message"
               disabled={!canSubmit}
               animate={{
                 scale: isActive ? 1 : 0.8,

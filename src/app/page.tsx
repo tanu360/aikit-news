@@ -377,6 +377,8 @@ export default function Home() {
   const shouldAutoScrollRef = useRef(true);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chatsRef = useRef<Chat[]>([]);
+  const activeChatIdRef = useRef("");
+  const messagesRef = useRef<Message[]>([]);
   const touchStartXRef = useRef<number | null>(null);
   const touchStartYRef = useRef<number | null>(null);
   const touchHandledRef = useRef(false);
@@ -439,6 +441,14 @@ export default function Home() {
   }, [toolSettings, toolSettingsLoaded]);
 
   useEffect(() => {
+    activeChatIdRef.current = activeChatId;
+  }, [activeChatId]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
     if (!scrollTargetRef.current) return;
     scrollTargetRef.current = null;
     shouldAutoScrollRef.current = true;
@@ -498,13 +508,50 @@ export default function Home() {
     });
   }, [activeSearchMatchIndex, messages, searchMatchCount, searchQuery]);
 
-  function resetDraftConversation(historyMode: "push" | "replace" = "push") {
-    setActiveChatId("");
-    setMessages([]);
-    setInput("");
-    setAttachedFile(null);
-    writeHomeUrl(historyMode);
-  }
+  const cancelPendingSave = useCallback(() => {
+    if (!saveTimeoutRef.current) return;
+    clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = null;
+  }, []);
+
+  const flushActiveChat = useCallback(() => {
+    cancelPendingSave();
+
+    const chatId = activeChatIdRef.current;
+    if (!chatId) return;
+
+    const currentChat = chatsRef.current.find((chat) => chat.id === chatId);
+    if (!currentChat) return;
+
+    const flushedChat: Chat = {
+      ...currentChat,
+      messages: messagesRef.current,
+      updatedAt: Date.now(),
+    };
+    const nextChats = chatsRef.current.map((chat) =>
+      chat.id === chatId ? flushedChat : chat
+    );
+    chatsRef.current = nextChats;
+    setChats(nextChats);
+    void persistChat(flushedChat);
+  }, [cancelPendingSave]);
+
+  const resetDraftConversation = useCallback(
+    (
+      historyMode: "push" | "replace" = "push",
+      options: { flush?: boolean } = {}
+    ) => {
+      if (options.flush !== false) flushActiveChat();
+      activeChatIdRef.current = "";
+      messagesRef.current = [];
+      setActiveChatId("");
+      setMessages([]);
+      setInput("");
+      setAttachedFile(null);
+      writeHomeUrl(historyMode);
+    },
+    [flushActiveChat]
+  );
 
   function startNewChat(historyMode: "push" | "replace" = "push") {
     setShowSettings(false);
@@ -527,14 +574,18 @@ export default function Home() {
     const nextChats = [chat, ...chatsRef.current];
     chatsRef.current = nextChats;
     setChats(nextChats);
+    activeChatIdRef.current = chat.id;
     setActiveChatId(chat.id);
     writeChatUrl(chat.id, historyMode);
     return chat.id;
   }
 
   function loadChat(id: string) {
+    flushActiveChat();
     const chat = chatsRef.current.find((c) => c.id === id);
     if (!chat) return;
+    activeChatIdRef.current = id;
+    messagesRef.current = chat.messages;
     setActiveChatId(id);
     setMessages(chat.messages);
     setInput("");
@@ -543,6 +594,10 @@ export default function Home() {
   }
 
   function deleteChat(id: string) {
+    if (id === activeChatIdRef.current) {
+      cancelPendingSave();
+    }
+
     void removeChat(id);
     const nextChats = chatsRef.current.filter((c) => c.id !== id);
     chatsRef.current = nextChats;
@@ -554,11 +609,13 @@ export default function Home() {
     setAttachedFile(null);
 
     if (nextChats.length > 0) {
+      activeChatIdRef.current = nextChats[0].id;
+      messagesRef.current = nextChats[0].messages;
       setActiveChatId(nextChats[0].id);
       setMessages(nextChats[0].messages);
       writeChatUrl(nextChats[0].id, "replace");
     } else {
-      resetDraftConversation("replace");
+      resetDraftConversation("replace", { flush: false });
     }
   }
 
@@ -593,6 +650,8 @@ export default function Home() {
         setChats(stored);
 
         if (urlChat) {
+          activeChatIdRef.current = urlChat.id;
+          messagesRef.current = urlChat.messages;
           setActiveChatId(urlChat.id);
           setMessages(urlChat.messages);
           return;
@@ -607,6 +666,8 @@ export default function Home() {
           writeHomeUrl("replace");
         }
 
+        activeChatIdRef.current = "";
+        messagesRef.current = [];
         setActiveChatId("");
         setMessages([]);
       })
@@ -618,12 +679,15 @@ export default function Home() {
       .finally(() => {
         setChatStoreReady(true);
       });
-  }, []);
+  }, [resetDraftConversation]);
 
   useEffect(() => {
     const handlePopState = () => {
       const urlChatId = getChatIdFromUrl();
       if (!urlChatId) {
+        flushActiveChat();
+        activeChatIdRef.current = "";
+        messagesRef.current = [];
         setActiveChatId("");
         setMessages([]);
         setInput("");
@@ -637,6 +701,9 @@ export default function Home() {
         return;
       }
 
+      flushActiveChat();
+      activeChatIdRef.current = chat.id;
+      messagesRef.current = chat.messages;
       setActiveChatId(chat.id);
       setMessages(chat.messages);
       setInput("");
@@ -645,7 +712,23 @@ export default function Home() {
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
+  }, [flushActiveChat, resetDraftConversation]);
+
+  useEffect(() => {
+    const flushOnExit = () => {
+      flushActiveChat();
+    };
+    const flushOnHidden = () => {
+      if (document.visibilityState === "hidden") flushActiveChat();
+    };
+
+    window.addEventListener("pagehide", flushOnExit);
+    document.addEventListener("visibilitychange", flushOnHidden);
+    return () => {
+      window.removeEventListener("pagehide", flushOnExit);
+      document.removeEventListener("visibilitychange", flushOnHidden);
+    };
+  }, [flushActiveChat]);
 
   useEffect(() => {
     if (!activeChatId) return;
@@ -665,6 +748,7 @@ export default function Home() {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     const chatId = activeChatId;
     saveTimeoutRef.current = setTimeout(() => {
+      saveTimeoutRef.current = null;
       const chat = chatsRef.current.find((c) => c.id === chatId);
       if (chat) void persistChat(chat);
     }, 800);
@@ -2212,6 +2296,8 @@ export default function Home() {
                 type="button"
                 onClick={() => startNewChat()}
                 disabled={isLoading || !chatStoreReady}
+                aria-label="New chat"
+                title="New chat"
                 className="flex h-8 items-center gap-1 rounded-full px-2 text-[12px] font-medium disabled:opacity-45 sm:px-2.5"
                 style={{
                   color: "#fff",
