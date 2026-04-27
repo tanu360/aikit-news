@@ -299,54 +299,27 @@
 .search-match-user {
   display: inline;
   border-radius: 0;
-  padding: 0 0.14em;
-  font-weight: 600;
+  padding: 0 0.02em;
+  background-color: #facc15;
+  color: #000;
+  font-weight: 400;
   line-height: inherit;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
 
-.search-match {
-  background-color: #eab308;
-  color: #422006;
-}
-
-.search-match-user {
-  background-color: #facc15;
-  color: #422006;
-}
-
-:root[data-theme="dark"] .search-match {
-  background-color: #facc15;
-  color: #422006;
-}
-
-:root[data-theme="dark"] .search-match-user {
-  background-color: #eab308;
-  color: #422006;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root[data-theme="system"] .search-match {
-    background-color: #facc15;
-    color: #422006;
-  }
-
-  :root[data-theme="system"] .search-match-user {
-    background-color: #eab308;
-    color: #422006;
-  }
-}
-
 .search-match-active {
-  box-shadow: inset 0 -2px 0 currentColor;
+  background-color: var(--color-accent);
+  color: #fff;
 }
 
 .search-nav-button {
   border: 0;
   background: transparent;
   color: var(--color-ink-tertiary);
-  transition: color 150ms var(--theme-ease), opacity 150ms var(--theme-ease);
+  transition:
+    color 150ms var(--theme-ease),
+    opacity 150ms var(--theme-ease);
 }
 
 .search-nav-button:hover:not(:disabled),

@@ -2021,7 +2021,7 @@ export default function Home() {
                         >
                           <HugeiconsIcon
                             icon={ArrowUp01Icon}
-                            size={12}
+                            size={16}
                             strokeWidth={2}
                             primaryColor="currentColor"
                           />
@@ -2037,7 +2037,7 @@ export default function Home() {
                         >
                           <HugeiconsIcon
                             icon={ArrowDown01Icon}
-                            size={12}
+                            size={16}
                             strokeWidth={2}
                             primaryColor="currentColor"
                           />
