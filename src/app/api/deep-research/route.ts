@@ -4,17 +4,20 @@ import type { ChatJimmyAttachment, ChatJimmyOptions } from "@/lib/jimmy";
 
 const EXA_API_KEY = process.env.EXA_API_KEY || "";
 
+// Controlled research tree:
+//   Depth 0: 1 search (original query)        -> 2 follow-ups
+//   Depth 1: 2 searches (follow-ups)          -> 1 follow-up each
+//   Depth 2: 2 searches (deeper follow-ups)   -> no follow-ups
+// Total: 5 searches, ~25-30 sources - fits Llama 8B context comfortably
+
 const MAX_DEPTH = 3;
 const MAX_SOURCES_FOR_ANSWER = 18;
-const EXA_DEEP_SEARCH_SYSTEM_PROMPT =
-  "Prefer official, primary, recent, and non-duplicate sources. Return source text and highlights that directly support the research question.";
 
 type ExaSearchResult = {
   title: string;
   url: string;
   text?: string;
   highlights?: string[];
-  summary?: string;
 };
 
 async function searchExa(query: string) {
@@ -26,19 +29,11 @@ async function searchExa(query: string) {
     },
     body: JSON.stringify({
       query,
-      type: "deep",
-      systemPrompt: EXA_DEEP_SEARCH_SYSTEM_PROMPT,
+      type: "auto",
       numResults: 5,
-      moderation: true,
       contents: {
-        text: { maxCharacters: 1400 },
-        highlights: {
-          maxCharacters: 3000,
-          query,
-        },
-        summary: {
-          query: "Main findings relevant to the research question",
-        },
+        text: { maxCharacters: 1000 },
+        highlights: { numSentences: 2 },
       },
     }),
   });
@@ -119,14 +114,8 @@ function formatResultsForLLM(
   return results
     .map((r, i) => {
       let entry = `[${offset + i + 1}] "${r.title}" (${r.url})`;
-      if (r.summary) {
-        entry += `\nSummary: ${r.summary.slice(0, 500)}`;
-      }
       if (r.text) {
         entry += `\nContent: ${r.text.slice(0, 400)}`;
-      }
-      if (r.highlights && r.highlights.length > 0) {
-        entry += `\nHighlights: ${r.highlights.join(" | ").slice(0, 700)}`;
       }
       return entry;
     })
@@ -276,6 +265,7 @@ export async function POST(req: NextRequest) {
         controller.enqueue(
           encoder.encode(
             sseEvent("research_complete", {
+              totalSources: uniqueSources.length,
               sources: uniqueSources.map((r) => ({
                 title: r.title,
                 url: r.url,
@@ -349,26 +339,16 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(sseEvent("done", {})));
       } catch (error) {
         console.error("Deep research error:", error);
-        try {
-          controller.enqueue(encoder.encode(sseEvent("answer_start", {})));
-          const fallbackAnswer = await chatJimmy(
-            [{ role: "user", content: query }],
-            jimmyOpts
-          );
-          const chunkSize = 12;
-          for (let i = 0; i < fallbackAnswer.length; i += chunkSize) {
-            controller.enqueue(
-              encoder.encode(
-                sseEvent("answer_chunk", {
-                  content: fallbackAnswer.slice(i, i + chunkSize),
-                })
-              )
-            );
-          }
-        } catch (fallbackError) {
-          console.error("Deep research fallback error:", fallbackError);
-        }
-        controller.enqueue(encoder.encode(sseEvent("done", {})));
+        controller.enqueue(
+          encoder.encode(
+            sseEvent("error", {
+              message:
+                error instanceof Error
+                  ? error.message
+                  : "Research failed",
+            })
+          )
+        );
       }
 
       controller.close();
