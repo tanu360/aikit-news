@@ -50,7 +50,7 @@
   --color-input-ripple: oklch(0 0 0 / 0.05);
   --color-grid-dash: color-mix(
     in oklch,
-    var(--color-surface-primary) 88%,
+    var(--color-surface-primary) 90%,
     var(--color-ink-primary)
   );
   --color-accent-muted: color-mix(in oklch, var(--color-accent) 8%, transparent);
@@ -161,7 +161,7 @@
   --color-input-ripple: oklch(0 0 0 / 0.05);
   --color-grid-dash: color-mix(
     in oklch,
-    var(--color-surface-primary) 88%,
+    var(--color-surface-primary) 94%,
     var(--color-ink-primary)
   );
   --color-accent-muted: color-mix(in oklch, var(--color-accent) 8%, transparent);
