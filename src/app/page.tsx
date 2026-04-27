@@ -1050,8 +1050,8 @@ export default function Home() {
             <div className="flex min-w-0 flex-1 items-center">
               <button
                 type="button"
-                onClick={() => {
-                  setSidebarOpen((s) => !s);
+                onClick={() => setSidebarOpen((s) => !s)}
+                onMouseEnter={() => {
                   logoSvgRef.current?.animate(
                     [
                       { transform: "perspective(200px) rotateY(0deg)" },
