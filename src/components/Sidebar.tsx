@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Cancel01Icon,
-  ChatDownloadIcon,
+  MessageDownload01Icon,
   CopyrightIcon,
   Delete02Icon,
 } from "@hugeicons/core-free-icons";
@@ -355,7 +355,7 @@ export default function Sidebar({
                           }
                         >
                           <HugeiconsIcon
-                            icon={ChatDownloadIcon}
+                            icon={MessageDownload01Icon}
                             size={15}
                             strokeWidth={1.5}
                             primaryColor="currentColor"

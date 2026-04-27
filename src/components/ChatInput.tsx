@@ -682,7 +682,7 @@ export default function ChatInput({
                     ? "Disable Weather to attach files"
                     : "Attach text file"
                 }
-                className="flex h-8 w-8 items-center justify-center rounded-full transition-[background-color,border-color,color] duration-200 disabled:opacity-30"
+                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition-[background-color,border-color,color] duration-200 disabled:cursor-not-allowed disabled:opacity-30"
                 style={{
                   backgroundColor: attachedFile ? "var(--color-ink-primary)" : "transparent",
                   color: attachedFile
@@ -708,7 +708,7 @@ export default function ChatInput({
                 onMouseLeave={() => setAgentControlHover(false)}
                 onFocus={() => setAgentControlHover(true)}
                 onBlur={() => setAgentControlHover(false)}
-                className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium transition-[background-color,border-color,color,transform] duration-200"
+                className="flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium transition-[background-color,border-color,color,transform] duration-200"
                 style={{
                   backgroundColor: agentMode
                     ? `color-mix(in oklch, ${exaActiveColor} 10%, transparent)`
@@ -767,7 +767,7 @@ export default function ChatInput({
               <button
                 type="button"
                 onClick={onSettingsClick}
-                className="flex h-8 w-8 items-center justify-center rounded-full transition-colors duration-200"
+                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition-colors duration-200"
                 style={{
                   color: showSettings
                     ? "var(--color-ink-primary)"

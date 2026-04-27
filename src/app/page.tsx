@@ -12,6 +12,7 @@ import {
   ArtificialIntelligence04Icon,
   GithubIcon,
   Search01Icon,
+  MessageSearch01Icon,
   SunCloud01Icon,
 } from "@hugeicons/core-free-icons";
 import type {
@@ -1956,7 +1957,7 @@ export default function Home() {
                 }}
                 aria-label="Toggle sidebar"
                 title="Toggle sidebar"
-                className="flex shrink-0 items-center justify-center"
+                className="flex shrink-0 cursor-pointer items-center justify-center"
                 style={{
                   width: 32,
                   height: 32,
@@ -2022,7 +2023,7 @@ export default function Home() {
                   className="flex h-8 w-40 shrink-0 items-center gap-1.5 rounded-full px-3 sm:w-56"
                   style={{ backgroundColor: "var(--color-surface-tertiary)" }}
                 >
-                  <HugeiconsIcon icon={Search01Icon} size={13} strokeWidth={1.8} primaryColor="var(--color-ink-tertiary)" />
+                  <HugeiconsIcon icon={MessageSearch01Icon} size={13} strokeWidth={1.8} primaryColor="var(--color-ink-tertiary)" />
                   <input
                     ref={searchInputRef}
                     type="text"
