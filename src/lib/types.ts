@@ -2,7 +2,8 @@ export interface AttachedFile {
   name: string;
   content: string;
   size: number;
-  charCount: number;
+  tokenCount: number;
+  charCount?: number;
 }
 
 export interface SearchResult {
@@ -66,6 +67,7 @@ export interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  attachments?: AttachedFile[];
   weather?: WeatherCardData;
   searchQuery?: string;
   searchResults?: SearchResult[];

@@ -173,6 +173,7 @@ export default function SearchTimeline({
                     alt=""
                     width={16}
                     height={16}
+                    unoptimized
                     className="h-4 w-4 shrink-0 rounded-sm"
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = "none";

@@ -168,6 +168,46 @@ function isHorizontalSidebarSwipe(deltaX: number, deltaY: number) {
   );
 }
 
+function escapeFileNameForPrompt(name: string) {
+  return name.replace(/[<>&"]/g, (char) => {
+    switch (char) {
+      case "<":
+        return "&lt;";
+      case ">":
+        return "&gt;";
+      case "&":
+        return "&amp;";
+      case "\"":
+        return "&quot;";
+      default:
+        return char;
+    }
+  });
+}
+
+function buildContentWithAttachments(
+  content: string,
+  attachments?: AttachedFile[]
+) {
+  if (!attachments?.length) return content;
+  const typedMessage = content.trim();
+  const fileBlocks = attachments
+    .map(
+      (file) =>
+        `<file name="${escapeFileNameForPrompt(file.name)}">\n${file.content}\n</file>`
+    )
+    .join("\n\n");
+  const instruction = typedMessage
+    ? `User typed message:\n${typedMessage}\n\nAttached file content for context:`
+    : "The user attached this file as their message. Read the file content and respond to it directly:";
+  return `${instruction}\n\n${fileBlocks}`;
+}
+
+function buildApiContent(message: Message) {
+  if (message.role === "assistant") return stripCitations(message.content);
+  return buildContentWithAttachments(message.content, message.attachments);
+}
+
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -353,7 +393,10 @@ export default function Home() {
     };
   }, [messages, activeChatId]);
 
-  const handleInstantSubmit = async (query: string) => {
+  const handleInstantSubmit = async (
+    query: string,
+    fileForSubmit: AttachedFile | null
+  ) => {
     const assistantId = generateId();
     const assistantMessage: Message = {
       id: assistantId,
@@ -361,13 +404,20 @@ export default function Home() {
       content: "",
       timestamp: Date.now(),
     };
+    const attachments = fileForSubmit ? [fileForSubmit] : undefined;
 
     const userMsgId = generateId();
     scrollTargetRef.current = userMsgId;
 
     setMessages((prev) => [
       ...prev,
-      { id: userMsgId, role: "user", content: query, timestamp: Date.now() },
+      {
+        id: userMsgId,
+        role: "user",
+        content: query,
+        attachments,
+        timestamp: Date.now(),
+      },
       assistantMessage,
     ]);
 
@@ -375,13 +425,12 @@ export default function Home() {
       .filter((m) => m.content)
       .map((m) => ({
         role: m.role,
-        content:
-          m.role === "assistant" ? stripCitations(m.content) : m.content,
+        content: buildApiContent(m),
       }));
-    const filePrefix = attachedFile
-      ? `<file name="${attachedFile.name}">\n${attachedFile.content}\n</file>\n\n`
-      : "";
-    conversationHistory.push({ role: "user", content: filePrefix + query });
+    conversationHistory.push({
+      role: "user",
+      content: buildContentWithAttachments(query, attachments),
+    });
 
     try {
       const tRouterStartWall = Date.now();
@@ -612,15 +661,25 @@ export default function Home() {
     }
   };
 
-  const handleDeepResearch = async (query: string) => {
+  const handleDeepResearch = async (
+    query: string,
+    fileForSubmit: AttachedFile | null
+  ) => {
     const assistantId = generateId();
+    const attachments = fileForSubmit ? [fileForSubmit] : undefined;
 
     const userMsgId = generateId();
     scrollTargetRef.current = userMsgId;
 
     setMessages((prev) => [
       ...prev,
-      { id: userMsgId, role: "user", content: query, timestamp: Date.now() },
+      {
+        id: userMsgId,
+        role: "user",
+        content: query,
+        attachments,
+        timestamp: Date.now(),
+      },
       {
         id: assistantId,
         role: "assistant",
@@ -634,14 +693,11 @@ export default function Home() {
     ]);
 
     try {
-      const deepFilePrefix = attachedFile
-        ? `<file name="${attachedFile.name}">\n${attachedFile.content}\n</file>\n\n`
-        : "";
       const res = await fetch("/api/deep-research", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          query: deepFilePrefix + query,
+          query: buildContentWithAttachments(query, attachments),
           topK,
           ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
         }),
@@ -803,7 +859,8 @@ export default function Home() {
 
   const handleSubmit = async () => {
     const query = input.trim();
-    if (!query || isLoading) return;
+    const fileForSubmit = attachedFile;
+    if ((!query && !fileForSubmit) || isLoading) return;
 
     const isFirstMessage = messages.length === 0;
     const currentChatId = activeChatId;
@@ -813,13 +870,16 @@ export default function Home() {
     setIsLoading(true);
 
     if (agentMode) {
-      await handleDeepResearch(query);
+      await handleDeepResearch(query, fileForSubmit);
     } else {
-      await handleInstantSubmit(query);
+      await handleInstantSubmit(query, fileForSubmit);
     }
 
     if (isFirstMessage && currentChatId) {
-      void generateTitle(query, currentChatId);
+      void generateTitle(
+        query || fileForSubmit?.name || "Attached file",
+        currentChatId
+      );
     }
   };
 

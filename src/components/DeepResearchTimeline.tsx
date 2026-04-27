@@ -122,6 +122,7 @@ function StepItem({ step }: { step: ResearchStep }) {
                     alt=""
                     width={10}
                     height={10}
+                    unoptimized
                     className="h-2.5 w-2.5 rounded-sm"
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = "none";

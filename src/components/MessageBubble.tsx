@@ -2,7 +2,10 @@
 
 import { motion } from "framer-motion";
 import type { ReactNode } from "react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { File01Icon } from "@hugeicons/core-free-icons";
 import type { Message } from "@/lib/types";
+import { formatTokenCount, getAttachmentTokenCount } from "@/lib/tokenCount";
 import SearchTimeline from "./SearchTimeline";
 import DeepResearchTimeline from "./DeepResearchTimeline";
 import MarkdownRenderer from "./MarkdownRenderer";
@@ -27,12 +30,20 @@ function highlightText(text: string, query: string, darkBg = false): ReactNode {
   );
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export default function MessageBubble({
   message,
   isStreaming,
   searchQuery = "",
 }: MessageBubbleProps) {
   if (message.role === "user") {
+    const attachments = message.attachments || [];
+
     return (
       <motion.div
         data-message-id={message.id}
@@ -43,11 +54,51 @@ export default function MessageBubble({
       >
         <div
           className="max-w-[85%] rounded-2xl rounded-br-md px-4 py-2.5"
-          style={{ background: "var(--color-ink-primary)", color: "var(--color-surface-primary)" }}
+          style={{
+            background: "var(--color-ink-primary)",
+            color: "var(--color-surface-primary)",
+          }}
         >
-          <p className="text-[13.5px] leading-relaxed sm:text-[14.5px]">
-            {highlightText(message.content, searchQuery, true)}
-          </p>
+          {attachments.length > 0 && (
+            <div className="mb-2 flex flex-wrap justify-end gap-1.5">
+              {attachments.map((file) => {
+                const tokenCount = getAttachmentTokenCount(file);
+
+                return (
+                  <span
+                    key={`${file.name}-${file.size}-${tokenCount}`}
+                    className="inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-medium"
+                    style={{
+                      background:
+                        "color-mix(in oklch, var(--color-surface-primary) 14%, transparent)",
+                      border:
+                        "1px solid color-mix(in oklch, var(--color-surface-primary) 20%, transparent)",
+                      color: "var(--color-surface-primary)",
+                    }}
+                    title={`${file.name} - ${formatTokenCount(
+                      tokenCount
+                    )} - ${formatFileSize(file.size)}`}
+                  >
+                    <HugeiconsIcon
+                      icon={File01Icon}
+                      size={12}
+                      strokeWidth={1.8}
+                      primaryColor="currentColor"
+                    />
+                    <span className="min-w-0 truncate">{file.name}</span>
+                    <span style={{ opacity: 0.7 }}>
+                      {formatTokenCount(tokenCount)}
+                    </span>
+                  </span>
+                );
+              })}
+            </div>
+          )}
+          {message.content && (
+            <p className="text-[13.5px] leading-relaxed sm:text-[14.5px]">
+              {highlightText(message.content, searchQuery, true)}
+            </p>
+          )}
         </div>
       </motion.div>
     );

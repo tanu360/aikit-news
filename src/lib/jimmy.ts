@@ -32,6 +32,54 @@ export interface ChatJimmyOptions {
   systemPrompt?: string;
 }
 
+export class ChatJimmyError extends Error {
+  status: number;
+  upstreamStatus?: number;
+  responseBody: string;
+  retryable: boolean;
+
+  constructor({
+    message,
+    status,
+    upstreamStatus,
+    responseBody,
+    retryable,
+  }: {
+    message: string;
+    status: number;
+    upstreamStatus?: number;
+    responseBody: string;
+    retryable: boolean;
+  }) {
+    super(message);
+    this.name = "ChatJimmyError";
+    this.status = status;
+    this.upstreamStatus = upstreamStatus;
+    this.responseBody = responseBody;
+    this.retryable = retryable;
+  }
+}
+
+function parseChatJimmyErrorMessage(errorText: string): string {
+  try {
+    const parsed = JSON.parse(errorText) as {
+      error?: { message?: unknown };
+    };
+    return typeof parsed.error?.message === "string"
+      ? parsed.error.message
+      : errorText;
+  } catch {
+    return errorText;
+  }
+}
+
+function parseUpstreamStatus(message: string): number | undefined {
+  const match = message.match(/upstream error\s+(\d+)/i);
+  if (!match?.[1]) return undefined;
+  const status = Number(match[1]);
+  return Number.isFinite(status) ? status : undefined;
+}
+
 function compactSystemPrompt(text: string): string {
   if (text.length <= MAX_SYSTEM_PROMPT_CHARS) {
     return text;
@@ -136,7 +184,23 @@ async function requestChatJimmy(
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`ChatJimmy error ${response.status}: ${errorText}`);
+    const upstreamMessage = parseChatJimmyErrorMessage(errorText);
+    const upstreamStatus = parseUpstreamStatus(upstreamMessage);
+    const effectiveStatus = upstreamStatus ?? response.status;
+    const retryable =
+      effectiveStatus === 429 ||
+      /too many requests|server is busy/i.test(upstreamMessage);
+    const message = retryable
+      ? "ChatJimmy is busy right now. Please try again in a moment."
+      : `ChatJimmy error ${response.status}: ${upstreamMessage}`;
+
+    throw new ChatJimmyError({
+      message,
+      status: response.status,
+      upstreamStatus,
+      responseBody: errorText,
+      retryable,
+    });
   }
 
   const data = await response.json();

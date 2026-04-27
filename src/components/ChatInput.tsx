@@ -12,11 +12,16 @@ import {
   Setting07Icon,
 } from "@hugeicons/core-free-icons";
 import type { AttachedFile } from "@/lib/types";
+import {
+  FILE_TOKEN_LIMIT,
+  formatTokenCount,
+  getAttachmentTokenCount,
+  getSiteTokenCount,
+} from "@/lib/tokenCount";
 import { Slider } from "@/components/ui/Slider";
 import { useIsDarkTheme } from "@/components/ui/ThemeToggler";
 
 const MODEL_NAME = process.env.NEXT_PUBLIC_CHATJIMMY_MODEL || "";
-const FILE_SIZE_LIMIT = 16 * 1024;
 const ACCEPTED_FILE_EXTENSIONS = [
   ".txt", ".md", ".mdx", ".csv", ".json", ".jsonc", ".ts", ".tsx",
   ".js", ".jsx", ".mjs", ".cjs", ".py", ".html", ".htm", ".css",
@@ -135,8 +140,12 @@ export default function ChatInput({
     return () => { cancelled = true; };
   }, []);
 
+  const hasValue = value.trim().length > 0;
+  const canSubmit = (hasValue || !!attachedFile) && !disabled;
+  const isActive = canSubmit;
+
   const submitMessage = () => {
-    if (disabled || !value.trim()) return;
+    if (!canSubmit) return;
     triggerRipple();
     onSubmit();
   };
@@ -170,17 +179,24 @@ export default function ChatInput({
       return;
     }
 
-    if (file.size > FILE_SIZE_LIMIT) {
-      setFileError(`File too large — ${formatFileSize(file.size)} (limit: 16 KB)`);
-      onFileAttach(null);
-      return;
-    }
-
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target?.result as string;
+      const tokenCount = getSiteTokenCount(content);
+
+      if (tokenCount > FILE_TOKEN_LIMIT) {
+        const actualTokens = formatTokenCount(tokenCount);
+        const limitTokens = formatTokenCount(FILE_TOKEN_LIMIT);
+
+        setFileError(
+          `File too large - ${actualTokens} (limit: ${limitTokens}).`
+        );
+        onFileAttach(null);
+        return;
+      }
+
       setFileError(null);
-      onFileAttach({ name: file.name, content, size: file.size, charCount: content.length });
+      onFileAttach({ name: file.name, content, size: file.size, tokenCount });
     };
     reader.onerror = () => {
       setFileError("Could not read file. Make sure it's a plain text file.");
@@ -193,8 +209,6 @@ export default function ChatInput({
     setFileError(null);
   };
 
-  const hasValue = value.trim().length > 0;
-  const isActive = hasValue && !disabled;
   const themeColorTransition =
     "background-color 240ms var(--theme-ease), border-color 240ms var(--theme-ease), color 240ms var(--theme-ease)";
 
@@ -341,7 +355,7 @@ export default function ChatInput({
 
             <motion.button
               type="submit"
-              disabled={disabled || !hasValue}
+              disabled={!canSubmit}
               animate={{
                 scale: isActive ? 1 : 0.8,
                 opacity: isActive ? 1 : 0,
@@ -421,7 +435,8 @@ export default function ChatInput({
                       </span>
                       <span style={{ color: "var(--color-ink-ghost)", opacity: 0.5 }}>·</span>
                       <span className="shrink-0" style={{ color: "var(--color-ink-tertiary)" }}>
-                        {formatFileSize(attachedFile.size)} · {attachedFile.charCount.toLocaleString()} chars
+                        {formatFileSize(attachedFile.size)} ·{" "}
+                        {formatTokenCount(getAttachmentTokenCount(attachedFile))}
                       </span>
                       <button
                         type="button"

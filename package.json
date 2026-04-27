@@ -17,6 +17,7 @@
     "3dsvg": "^0.2.1",
     "exa-js": "^2.7.0",
     "framer-motion": "^12.35.0",
+    "gpt-tokenizer": "^3.4.0",
     "highlight.js": "^11.11.1",
     "katex": "^0.16.37",
     "next": "16.2.4",

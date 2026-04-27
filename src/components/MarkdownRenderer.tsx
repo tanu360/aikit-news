@@ -237,6 +237,7 @@ function CitationPill({
               alt=""
               width={10}
               height={10}
+              unoptimized
               className="h-2.5 w-2.5 rounded-sm"
               style={{ flexShrink: 0 }}
               onError={(e) => {
