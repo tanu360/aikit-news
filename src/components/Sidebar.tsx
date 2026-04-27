@@ -249,8 +249,9 @@ export default function Sidebar({
                     !isCompact && isOpen && hoveredId === chat.id;
                   const showActions = isCompact || isActive || isHovered;
                   const canExport = chat.messages.length > 0;
-                  const actionButtonSize = isCompact ? 36 : 32;
-                  const actionAreaWidth = actionButtonSize * 2 + 4;
+                  const actionButtonSize = isCompact ? 28 : 24;
+                  const actionAreaGap = 2;
+                  const actionAreaWidth = actionButtonSize * 2 + actionAreaGap;
                   return (
                     <div
                       key={chat.id}
@@ -308,7 +309,7 @@ export default function Sidebar({
                         style={{
                           width: showActions ? actionAreaWidth : 0,
                           marginLeft: showActions ? 4 : 0,
-                          gap: showActions ? 4 : 0,
+                          gap: showActions ? actionAreaGap : 0,
                           opacity: showActions ? 1 : 0,
                           pointerEvents: showActions ? "auto" : "none",
                           transition:
