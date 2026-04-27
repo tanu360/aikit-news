@@ -1,6 +1,6 @@
 import { encode } from "gpt-tokenizer/encoding/cl100k_base";
 
-export const MODEL_CONTEXT_TOKEN_LIMIT = 6144;
+const MODEL_CONTEXT_TOKEN_LIMIT = 6144;
 export const FILE_TOKEN_LIMIT = Math.floor(MODEL_CONTEXT_TOKEN_LIMIT * (2 / 3));
 
 export function getSiteTokenCount(text: string): number {

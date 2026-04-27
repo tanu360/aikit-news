@@ -122,7 +122,7 @@ function StepItem({ step }: { step: ResearchStep }) {
           transition={{ duration: 0.3, delay: 0.1 }}
           className="mt-1 text-[12.5px] leading-relaxed"
           style={{
-            color: "var(--color-ink-ghost)",
+            color: "var(--color-ink-secondary)",
             letterSpacing: 0,
           }}
         >

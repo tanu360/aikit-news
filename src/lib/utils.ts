@@ -25,10 +25,6 @@ export function generateId(): string {
   return Math.random().toString(36).slice(2, 11);
 }
 
-export function formatTime(date: Date): string {
-  return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-}
-
 export function stripCitations(text: string): string {
   return text
     .replace(/\s*\[\d+(?:\s*,\s*\d+)*\]/g, "")

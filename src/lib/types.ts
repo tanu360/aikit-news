@@ -16,11 +16,6 @@ export interface SearchResult {
   score?: number;
 }
 
-export interface SearchResponse {
-  results: SearchResult[];
-  autopromptString?: string;
-}
-
 export interface ResearchStep {
   id: string;
   query: string;

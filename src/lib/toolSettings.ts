@@ -1,4 +1,4 @@
-export const CHAT_TOOL_KEYS = [
+const CHAT_TOOL_KEYS = [
   "search",
   "weather",
 ] as const;
