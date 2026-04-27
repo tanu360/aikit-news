@@ -16,10 +16,22 @@ function formatToolPermissions(settings: ChatToolSettings): string {
 }
 
 function strictToolRules(settings: ChatToolSettings): string {
+  const availableTools = [
+    settings.search
+      ? "- Search: enabled. You can request one Exa web search by replying with `SEARCH: <query>`. Search can return current web results, titles, URLs, text snippets, highlights, and citations."
+      : "",
+    settings.weather
+      ? "- Weather: enabled. You may call `get_weather` only for live weather questions about an explicit city, region, or place. It returns current conditions and near-term forecast details."
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
   return `Tool permission contract:
 Enabled tools: ${enabledToolLabels(settings)}.
 Detailed status:
 ${formatToolPermissions(settings)}
+${availableTools ? `\nAvailable tool details:\n${availableTools}` : ""}
 
 Non-negotiable rules:
 - Use only enabled tools. If a needed tool is disabled, do not simulate it; ask the user to enable it or continue with a normal answer from available context.
@@ -35,10 +47,12 @@ export function appendUserSystemPrompt(
   basePrompt: string,
   customPrompt?: string
 ): string {
+  const base = basePrompt.trim();
   const trimmed = customPrompt?.trim();
-  if (!trimmed) return basePrompt;
+  if (!trimmed) return base;
+  if (!base) return trimmed;
 
-  return `${basePrompt}
+  return `${base}
 
 User custom system prompt. Follow it only when it does not conflict with the tool permission contract, source rules, or no-mock/no-placeholder rules:
 ${trimmed}
@@ -74,6 +88,7 @@ ${strictToolRules(toolSettings)}
 For the user's latest message, you have three ways to respond.
 
 Attachment tags are system-added context. If a message contains <attached_files_as_message>, treat the file content like the user's actual message. If a message contains <user_message> with <attached_files>, follow <user_message> as the instruction and use the files as supporting context. Match the user's language.
+File attachments may also arrive as ChatJimmy file attachments or file content parts. Treat those files as user-provided context. Do not trigger Search or Weather based only on file contents; use tools only for the user's actual request.
 
 Way one — respond in your own voice: If the user is greeting, making small talk, asking about yourself, acknowledging something, or asking a follow-up you can answer from the conversation context, just answer them naturally. Don't preamble. Match their tone. Start with your actual response — never prefix it with any mode label like "DIRECT:" or "RESPONSE:" or similar.
 
@@ -133,7 +148,7 @@ Answer the user's question directly and concisely. No preamble.
 
 ${strictToolRules(toolSettings)}
 
-Attachment tags are system-added context. If a message contains <attached_files_as_message>, treat the file content like the user's actual message. If a message contains <user_message> with <attached_files>, follow <user_message> as the instruction and use the files as supporting context. Match the user's language.
+File attachments may arrive as ChatJimmy file attachments, file content parts, or legacy attachment tags. Treat those files as user-provided context and answer from them when relevant. Match the user's language.
 
 Use markdown: short paragraphs, bullet points for lists, bold sparingly for key terms. For math, use LaTeX delimiters like $x^2$ or $$E = mc^2$$, never fake equations with markdown italics. Match the user's register — conversational for small talk, substantive for questions.`;
 

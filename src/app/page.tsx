@@ -174,22 +174,9 @@ function isHorizontalSidebarSwipe(deltaX: number, deltaY: number) {
   );
 }
 
-function escapeFileNameForPrompt(name: string) {
-  return name.replace(/[<>&"]/g, (char) => {
-    switch (char) {
-      case "<":
-        return "&lt;";
-      case ">":
-        return "&gt;";
-      case "&":
-        return "&amp;";
-      case "\"":
-        return "&quot;";
-      default:
-        return char;
-    }
-  });
-}
+type ApiContentPart =
+  | { type: "text"; text: string }
+  | { type: "file"; name: string; content: string; size?: number };
 
 function buildContentWithAttachments(
   content: string,
@@ -197,16 +184,28 @@ function buildContentWithAttachments(
 ) {
   if (!attachments?.length) return content;
   const typedMessage = content.trim();
-  const fileBlocks = attachments
-    .map(
-      (file) =>
-        `<file name="${escapeFileNameForPrompt(file.name)}">\n${file.content}\n</file>`
-    )
-    .join("\n\n");
+  const parts: ApiContentPart[] = [];
   if (typedMessage) {
-    return `<user_message>\n${typedMessage}\n</user_message>\n\n<attached_files>\n${fileBlocks}\n</attached_files>`;
+    parts.push({ type: "text", text: typedMessage });
   }
-  return `<attached_files_as_message>\n${fileBlocks}\n</attached_files_as_message>`;
+  attachments.forEach((file) => {
+    parts.push({
+      type: "file",
+      name: file.name,
+      size: file.size,
+      content: file.content,
+    });
+  });
+  return parts;
+}
+
+function buildApiAttachment(file: AttachedFile | null) {
+  if (!file) return undefined;
+  return {
+    name: file.name,
+    size: file.size,
+    content: file.content,
+  };
 }
 
 function buildApiContent(message: Message) {
@@ -440,6 +439,7 @@ export default function Home() {
       timestamp: Date.now(),
     };
     const attachments = fileForSubmit ? [fileForSubmit] : undefined;
+    const apiAttachment = buildApiAttachment(fileForSubmit);
 
     const userMsgId = generateId();
     scrollTargetRef.current = userMsgId;
@@ -457,14 +457,14 @@ export default function Home() {
     ]);
 
     const conversationHistory = messages
-      .filter((m) => m.content)
+      .filter((m) => m.content || (m.attachments?.length ?? 0) > 0)
       .map((m) => ({
         role: m.role,
         content: buildApiContent(m),
       }));
     conversationHistory.push({
       role: "user",
-      content: buildContentWithAttachments(query, attachments),
+      content: query,
     });
 
     try {
@@ -477,6 +477,7 @@ export default function Home() {
           mode: "router",
           topK,
           toolSettings,
+          ...(apiAttachment ? { attachment: apiAttachment } : {}),
           ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
         }),
       });
@@ -651,6 +652,7 @@ export default function Home() {
           mode: "answer",
           topK,
           toolSettings,
+          ...(apiAttachment ? { attachment: apiAttachment } : {}),
           ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
         }),
       });
@@ -720,6 +722,7 @@ export default function Home() {
   ) => {
     const assistantId = generateId();
     const attachments = fileForSubmit ? [fileForSubmit] : undefined;
+    const apiAttachment = buildApiAttachment(fileForSubmit);
 
     const userMsgId = generateId();
     scrollTargetRef.current = userMsgId;
@@ -750,8 +753,9 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          query: buildContentWithAttachments(query, attachments),
+          query,
           topK,
+          ...(apiAttachment ? { attachment: apiAttachment } : {}),
           ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
         }),
       });

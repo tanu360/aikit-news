@@ -12,11 +12,10 @@ export async function POST(req: NextRequest) {
   try {
     const title = await chatJimmy([
       {
-        role: "system",
+        role: "user",
         content:
-          "Create a concise 3-4 word title that captures the topic of this conversation. Use title case. Be specific and descriptive — do NOT just copy the user's words. Reply with ONLY the title. No punctuation, no quotes, no explanation.",
+          `Create a concise 3-4 word title that captures the topic of this conversation. Use title case. Be specific and descriptive. Reply with only the title, no punctuation, no quotes, no explanation.\n\nMessage:\n${message.trim().slice(0, 300)}`,
       },
-      { role: "user", content: message.trim().slice(0, 300) },
     ]);
     return new Response(JSON.stringify({ title: title.trim().slice(0, 50) }), {
       headers: { "Content-Type": "application/json" },

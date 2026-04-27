@@ -4,7 +4,19 @@ const CHATJIMMY_MODEL = process.env.CHATJIMMY_MODEL;
 const MAX_SYSTEM_PROMPT_CHARS = 16384;
 const SOURCES_MARKER = "\nSources:\n";
 
-type ChatJimmyMessage = { role: string; content: string };
+export type ChatJimmyContentPart =
+  | { type: "text"; text: string }
+  | { type: "file"; name: string; content: string; size?: number };
+
+export type ChatJimmyMessageContent = string | ChatJimmyContentPart[];
+
+type ChatJimmyMessage = { role: string; content: ChatJimmyMessageContent };
+
+export interface ChatJimmyAttachment {
+  name: string;
+  content: string;
+  size?: number;
+}
 
 export interface ChatJimmyTool {
   type: "function";
@@ -30,6 +42,7 @@ export interface ChatJimmyCompletion {
 export interface ChatJimmyOptions {
   topK?: number;
   systemPrompt?: string;
+  attachment?: ChatJimmyAttachment;
 }
 
 export class ChatJimmyError extends Error {
@@ -112,7 +125,9 @@ function compactSystemPrompt(text: string): string {
 function prepareMessages(messages: ChatJimmyMessage[]): ChatJimmyMessage[] {
   const systemPrompt = messages
     .filter((message) => message.role === "system")
-    .map((message) => message.content)
+    .map((message) =>
+      typeof message.content === "string" ? message.content : ""
+    )
     .join("\n")
     .trim();
 
@@ -178,6 +193,7 @@ async function requestChatJimmy(
       stream: false,
       ...(options?.topK != null ? { top_k: options.topK } : {}),
       ...(options?.systemPrompt ? { chatOptions: { systemPrompt: options.systemPrompt } } : {}),
+      ...(options?.attachment ? { attachment: options.attachment } : {}),
       ...(tools && tools.length > 0 ? { tools, tool_choice: "auto" } : {}),
     }),
   });

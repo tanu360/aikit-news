@@ -1,6 +1,10 @@
 import { NextRequest } from "next/server";
 import { ChatJimmyError, chatJimmy, chatJimmyWithTools } from "@/lib/jimmy";
-import type { ChatJimmyTool } from "@/lib/jimmy";
+import type {
+  ChatJimmyAttachment,
+  ChatJimmyMessageContent,
+  ChatJimmyTool,
+} from "@/lib/jimmy";
 import {
   appendUserSystemPrompt,
   buildAnswerSystemPrompt,
@@ -51,7 +55,7 @@ function stripTrailingReferences(text: string): string {
 }
 
 interface RequestBody {
-  messages: Array<{ role: string; content: string }>;
+  messages: Array<{ role: string; content: ChatJimmyMessageContent }>;
   searchResults?: Array<{
     title?: string;
     url?: string;
@@ -62,6 +66,7 @@ interface RequestBody {
   topK?: number;
   systemPrompt?: string;
   toolSettings?: Partial<ChatToolSettings>;
+  attachment?: ChatJimmyAttachment;
 }
 
 function sseData(data: Record<string, unknown>): string {
@@ -134,10 +139,19 @@ function stripFileBlocks(content: string): string {
   return content.replace(/<file\b[^>]*>[\s\S]*?<\/file>/gi, "").trim();
 }
 
+function messageText(content: ChatJimmyMessageContent): string {
+  if (typeof content === "string") return stripFileBlocks(content);
+  return content
+    .map((part) => (part.type === "text" ? part.text : ""))
+    .filter(Boolean)
+    .join("\n")
+    .trim();
+}
+
 function latestUserText(messages: RequestBody["messages"]): string {
   for (let i = messages.length - 1; i >= 0; i--) {
     const message = messages[i];
-    if (message?.role === "user") return stripFileBlocks(message.content);
+    if (message?.role === "user") return messageText(message.content);
   }
   return "";
 }
@@ -193,20 +207,31 @@ export async function POST(req: NextRequest) {
     mode,
     topK,
     systemPrompt,
+    attachment,
   } = body;
   const toolSettings = normalizeChatToolSettings(body.toolSettings);
   const jimmyOpts = {
     ...(topK != null ? { topK } : {}),
+    ...(attachment ? { attachment } : {}),
   };
   const effectiveMode: "router" | "answer" =
     mode === "router" ? "router" : "answer";
 
   const today = todayISODate();
-  const baseSystemContent =
-    effectiveMode === "router"
-      ? buildRouterSystemPrompt(today, toolSettings)
-      : buildAnswerSystemPrompt(searchResults, today, toolSettings);
+  const shouldBuildToolPrompt =
+    effectiveMode === "router" && (toolSettings.search || toolSettings.weather);
+  const shouldBuildSourcePrompt =
+    effectiveMode === "answer" &&
+    (toolSettings.search || searchResults.length > 0);
+  const baseSystemContent = shouldBuildToolPrompt
+    ? buildRouterSystemPrompt(today, toolSettings)
+    : shouldBuildSourcePrompt
+      ? buildAnswerSystemPrompt(searchResults, today, toolSettings)
+      : "";
   const systemContent = appendUserSystemPrompt(baseSystemContent, systemPrompt);
+  const jimmyMessages = systemContent
+    ? [{ role: "system", content: systemContent }, ...messages]
+    : messages;
 
   const tPromptBuilt = Date.now();
 
@@ -222,7 +247,7 @@ export async function POST(req: NextRequest) {
         ? [WEATHER_TOOL]
         : [];
       const completion = await chatJimmyWithTools(
-        [{ role: "system", content: systemContent }, ...messages],
+        jimmyMessages,
         weatherTools,
         jimmyOpts
       );
@@ -247,10 +272,7 @@ export async function POST(req: NextRequest) {
         content = completion.content;
       }
     } else {
-      content = await chatJimmy([
-        { role: "system", content: systemContent },
-        ...messages,
-      ], jimmyOpts);
+      content = await chatJimmy(jimmyMessages, jimmyOpts);
       tChatjimmyDone = Date.now();
     }
 

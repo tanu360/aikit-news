@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { chatJimmy } from "@/lib/jimmy";
-import type { ChatJimmyOptions } from "@/lib/jimmy";
+import type { ChatJimmyAttachment, ChatJimmyOptions } from "@/lib/jimmy";
 
 const EXA_API_KEY = process.env.EXA_API_KEY || "";
 
@@ -55,12 +55,16 @@ async function searchExa(query: string) {
 
 async function synthesize(
   systemPrompt: string,
-  userPrompt: string
+  userPrompt: string,
+  options?: ChatJimmyOptions
 ): Promise<string> {
-  return chatJimmy([
-    { role: "system", content: systemPrompt },
-    { role: "user", content: userPrompt },
-  ]);
+  return chatJimmy(
+    [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+    options
+  );
 }
 
 function parseFollowUps(
@@ -136,10 +140,16 @@ function sseEvent(type: string, data: Record<string, unknown>): string {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { query, topK, systemPrompt } = body as { query: string; topK?: number; systemPrompt?: string };
+  const { query, topK, systemPrompt, attachment } = body as {
+    query: string;
+    topK?: number;
+    systemPrompt?: string;
+    attachment?: ChatJimmyAttachment;
+  };
   const jimmyOpts: ChatJimmyOptions = {
     ...(topK != null ? { topK } : {}),
     ...(systemPrompt?.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
+    ...(attachment ? { attachment } : {}),
   };
 
   if (!query) {
@@ -230,7 +240,11 @@ export async function POST(req: NextRequest) {
               encoder.encode(sseEvent("synthesizing", { stepId }))
             );
 
-            const rawResponse = await synthesize(systemPrompt, userPrompt);
+            const rawResponse = await synthesize(
+              systemPrompt,
+              userPrompt,
+              jimmyOpts
+            );
             const { synthesis, followUps } = parseFollowUps(
               rawResponse,
               maxFollowUpsPerStep
