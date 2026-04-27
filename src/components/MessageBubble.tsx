@@ -1,9 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import type { ReactNode } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { File01Icon } from "@hugeicons/core-free-icons";
+import {
+  File01Icon,
+  Copy01Icon,
+  CopyCheckIcon,
+  ReloadIcon,
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
+} from "@hugeicons/core-free-icons";
 import type { Message } from "@/lib/types";
 import { formatTokenCount, getAttachmentTokenCount } from "@/lib/tokenCount";
 import SearchTimeline from "./SearchTimeline";
@@ -15,6 +23,8 @@ interface MessageBubbleProps {
   message: Message;
   isStreaming?: boolean;
   searchQuery?: string;
+  onRegenerate?: () => void;
+  onNavigateVersion?: (dir: -1 | 1) => void;
 }
 
 function highlightText(text: string, query: string, darkBg = false): ReactNode {
@@ -36,11 +46,60 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function ActionButton({
+  onClick,
+  title,
+  disabled,
+  children,
+}: {
+  onClick?: () => void;
+  title: string;
+  disabled?: boolean;
+  children: ReactNode;
+}) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      disabled={disabled}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className="inline-flex h-7 w-7 items-center justify-center rounded-full disabled:opacity-40 active:scale-[0.94]"
+      style={{
+        background: hovered ? "var(--color-surface-hover)" : "transparent",
+        color: hovered ? "var(--color-ink-secondary)" : "var(--color-ink-ghost)",
+        border: "none",
+        cursor: disabled ? "not-allowed" : "pointer",
+        transition: "color 120ms, background-color 150ms",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function MessageBubble({
   message,
   isStreaming,
   searchQuery = "",
+  onRegenerate,
+  onNavigateVersion,
 }: MessageBubbleProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(message.content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const hasVersions = (message.versions?.length ?? 0) > 1;
+  const versionIndex = message.versionIndex ?? 0;
+  const totalVersions = message.versions?.length ?? 1;
+
   if (message.role === "user") {
     const attachments = message.attachments || [];
 
@@ -51,54 +110,75 @@ export default function MessageBubble({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2, ease: "easeOut" }}
         className="flex justify-end"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
-        <div
-          className="max-w-[85%] rounded-2xl rounded-br-md px-4 py-2.5"
-          style={{
-            background: "var(--color-ink-primary)",
-            color: "var(--color-surface-primary)",
-          }}
-        >
-          {attachments.length > 0 && (
-            <div className="mb-2 flex flex-wrap justify-end gap-1.5">
-              {attachments.map((file) => {
-                const tokenCount = getAttachmentTokenCount(file);
+        <div className="flex flex-col items-end gap-0.5">
+          <div
+            className="max-w-full rounded-2xl rounded-br-md px-4 py-2.5"
+            style={{
+              background: "var(--color-ink-primary)",
+              color: "var(--color-surface-primary)",
+            }}
+          >
+            {attachments.length > 0 && (
+              <div className="mb-2 flex flex-wrap justify-end gap-1.5">
+                {attachments.map((file) => {
+                  const tokenCount = getAttachmentTokenCount(file);
 
-                return (
-                  <span
-                    key={`${file.name}-${file.size}-${tokenCount}`}
-                    className="inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-medium"
-                    style={{
-                      background:
-                        "color-mix(in oklch, var(--color-surface-primary) 14%, transparent)",
-                      border:
-                        "1px solid color-mix(in oklch, var(--color-surface-primary) 20%, transparent)",
-                      color: "var(--color-surface-primary)",
-                    }}
-                    title={`${file.name} - ${formatTokenCount(
-                      tokenCount
-                    )} - ${formatFileSize(file.size)}`}
-                  >
-                    <HugeiconsIcon
-                      icon={File01Icon}
-                      size={12}
-                      strokeWidth={1.8}
-                      primaryColor="currentColor"
-                    />
-                    <span className="min-w-0 truncate">{file.name}</span>
-                    <span style={{ opacity: 0.7 }}>
-                      {formatTokenCount(tokenCount)}
+                  return (
+                    <span
+                      key={`${file.name}-${file.size}-${tokenCount}`}
+                      className="inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-medium"
+                      style={{
+                        background:
+                          "color-mix(in oklch, var(--color-surface-primary) 14%, transparent)",
+                        border:
+                          "1px solid color-mix(in oklch, var(--color-surface-primary) 20%, transparent)",
+                        color: "var(--color-surface-primary)",
+                      }}
+                      title={`${file.name} - ${formatTokenCount(
+                        tokenCount
+                      )} - ${formatFileSize(file.size)}`}
+                    >
+                      <HugeiconsIcon
+                        icon={File01Icon}
+                        size={12}
+                        strokeWidth={1.8}
+                        primaryColor="currentColor"
+                      />
+                      <span className="min-w-0 truncate">{file.name}</span>
+                      <span style={{ opacity: 0.7 }}>
+                        {formatTokenCount(tokenCount)}
+                      </span>
                     </span>
-                  </span>
-                );
-              })}
-            </div>
-          )}
-          {message.content && (
-            <p className="text-[13.5px] leading-relaxed sm:text-[14.5px]">
-              {highlightText(message.content, searchQuery, true)}
-            </p>
-          )}
+                  );
+                })}
+              </div>
+            )}
+            {message.content && (
+              <p className="text-[13.5px] leading-relaxed sm:text-[14.5px]">
+                {highlightText(message.content, searchQuery, true)}
+              </p>
+            )}
+          </div>
+
+          <div
+            className="flex items-center gap-0.5 pr-0.5"
+            style={{
+              opacity: isHovered ? 1 : 0,
+              transition: "opacity 150ms ease",
+            }}
+          >
+            <ActionButton onClick={handleCopy} title={copied ? "Copied!" : "Copy"}>
+              <HugeiconsIcon
+                icon={copied ? CopyCheckIcon : Copy01Icon}
+                size={13}
+                strokeWidth={1.8}
+                primaryColor="currentColor"
+              />
+            </ActionButton>
+          </div>
         </div>
       </motion.div>
     );
@@ -122,6 +202,8 @@ export default function MessageBubble({
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
       className="flex justify-start"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       <div className="max-w-[92%]">
         {message.isDeepResearch && message.researchSteps && (
@@ -171,6 +253,77 @@ export default function MessageBubble({
             ))}
           </div>
         )}
+
+        <div
+          className="flex items-center gap-0.5 mt-0.5"
+          style={{
+            opacity: isHovered ? 1 : 0,
+            transition: "opacity 150ms ease",
+          }}
+        >
+          <ActionButton onClick={handleCopy} title={copied ? "Copied!" : "Copy"}>
+            <HugeiconsIcon
+              icon={copied ? CopyCheckIcon : Copy01Icon}
+              size={13}
+              strokeWidth={1.8}
+              primaryColor="currentColor"
+            />
+          </ActionButton>
+
+          {onRegenerate && (
+            <ActionButton
+              onClick={onRegenerate}
+              title="Regenerate"
+              disabled={isStreaming}
+            >
+              <HugeiconsIcon
+                icon={ReloadIcon}
+                size={13}
+                strokeWidth={1.8}
+                primaryColor="currentColor"
+              />
+            </ActionButton>
+          )}
+
+          {hasVersions && !isStreaming && (
+            <div className="ml-0.5 flex items-center gap-0">
+              <ActionButton
+                onClick={() => onNavigateVersion?.(-1)}
+                title="Previous response"
+                disabled={versionIndex === 0}
+              >
+                <HugeiconsIcon
+                  icon={ArrowLeft01Icon}
+                  size={12}
+                  strokeWidth={2}
+                  primaryColor="currentColor"
+                />
+              </ActionButton>
+              <span
+                className="select-none px-0.5 tabular-nums"
+                style={{
+                  color: "var(--color-ink-tertiary)",
+                  fontSize: 11,
+                  letterSpacing: 0,
+                }}
+              >
+                {versionIndex + 1}/{totalVersions}
+              </span>
+              <ActionButton
+                onClick={() => onNavigateVersion?.(1)}
+                title="Next response"
+                disabled={versionIndex === totalVersions - 1}
+              >
+                <HugeiconsIcon
+                  icon={ArrowRight01Icon}
+                  size={12}
+                  strokeWidth={2}
+                  primaryColor="currentColor"
+                />
+              </ActionButton>
+            </div>
+          )}
+        </div>
       </div>
     </motion.div>
   );

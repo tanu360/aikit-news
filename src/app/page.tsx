@@ -739,6 +739,277 @@ export default function Home() {
     }
   };
 
+  const handleNavigateVersion = (messageId: string, dir: -1 | 1) => {
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id !== messageId || !m.versions) return m;
+        const newIdx = Math.max(
+          0,
+          Math.min((m.versionIndex ?? 0) + dir, m.versions.length - 1)
+        );
+        return { ...m, versionIndex: newIdx, content: m.versions[newIdx] };
+      })
+    );
+  };
+
+  const handleRegenerate = async (assistantMessageId: string) => {
+    if (isLoading) return;
+
+    const currentMessages = messages;
+    const assistantIdx = currentMessages.findIndex(
+      (m) => m.id === assistantMessageId
+    );
+    if (assistantIdx === -1) return;
+
+    const userMsg = currentMessages[assistantIdx - 1];
+    if (!userMsg || userMsg.role !== "user") return;
+
+    const assistantMsg = currentMessages[assistantIdx];
+    const existingVersions = assistantMsg.versions ?? [assistantMsg.content];
+
+    const historyBefore = currentMessages.slice(0, assistantIdx - 1);
+    const conversationHistory = historyBefore
+      .filter((m) => m.content || (m.attachments?.length ?? 0) > 0)
+      .map((m) => ({ role: m.role, content: buildApiContent(m) }));
+    conversationHistory.push({
+      role: "user",
+      content: buildApiContent(userMsg),
+    });
+
+    const apiAttachment = buildApiAttachment(userMsg.attachments?.[0] ?? null);
+    const clientDate = getClientDate();
+
+    setIsLoading(true);
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === assistantMessageId
+          ? {
+            ...m,
+            content: "",
+            versions: existingVersions,
+            searchQuery: undefined,
+            searchResults: undefined,
+            searchStatus: undefined,
+            weather: undefined,
+          }
+          : m
+      )
+    );
+
+    let answerContent = "";
+
+    try {
+      const routerRes = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: conversationHistory,
+          mode: "router",
+          topK,
+          toolSettings,
+          clientDate,
+          ...(apiAttachment ? { attachment: apiAttachment } : {}),
+          ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
+        }),
+      });
+
+      if (!routerRes.ok || !routerRes.body) throw new Error("Router failed");
+
+      const routerReader = routerRes.body.getReader();
+      const routerDecoder = new TextDecoder();
+      let routerContent = "";
+      let routerDecision: "direct" | "search" | null = null;
+
+      const routerParser = parseSSEStream(
+        (text) => {
+          routerContent += text;
+          if (routerDecision === null && routerContent.trimStart().length >= 10) {
+            const trimmedUpper = routerContent.trimStart().toUpperCase();
+            routerDecision = trimmedUpper.startsWith("SEARCH:") ? "search" : "direct";
+          }
+          if (routerDecision === "direct") {
+            answerContent = routerContent;
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMessageId ? { ...m, content: routerContent } : m
+              )
+            );
+          }
+        },
+        () => {},
+        (event) => {
+          if (event.type !== "weather") return;
+          routerDecision = "direct";
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMessageId
+                ? { ...m, weather: event.weather as WeatherCardData }
+                : m
+            )
+          );
+        }
+      );
+
+      while (true) {
+        const { done, value } = await routerReader.read();
+        if (done) break;
+        routerParser.processChunk(routerDecoder.decode(value, { stream: true }));
+      }
+
+      if (routerDecision === null) {
+        routerDecision = "direct";
+        answerContent = routerContent || "…";
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessageId
+              ? { ...m, content: routerContent || "…" }
+              : m
+          )
+        );
+      }
+
+      if (routerDecision === "direct") {
+        const newVersions = [...existingVersions, answerContent];
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessageId
+              ? { ...m, versions: newVersions, versionIndex: newVersions.length - 1 }
+              : m
+          )
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      if (!toolSettings.search) {
+        const msg =
+          "Search is disabled. Enable Search in Tools settings to use live web results, or I can continue with a normal answer from existing context.";
+        const newVersions = [...existingVersions, msg];
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessageId
+              ? { ...m, content: msg, versions: newVersions, versionIndex: newVersions.length - 1 }
+              : m
+          )
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      const trimmed = routerContent.trimStart();
+      const afterMarker = trimmed.slice("SEARCH:".length);
+      const newlineIdx = afterMarker.indexOf("\n");
+      const rawQuery = newlineIdx >= 0 ? afterMarker.slice(0, newlineIdx) : afterMarker;
+      const refinedQuery = rawQuery.trim() || userMsg.content;
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMessageId
+            ? {
+              ...m,
+              content: "",
+              searchQuery: refinedQuery,
+              searchResults: [],
+              searchStatus: "searching" as const,
+            }
+            : m
+        )
+      );
+
+      let searchResults: SearchResult[] = [];
+      let searchError: string | undefined;
+      try {
+        const searchRes = await fetch("/api/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: refinedQuery, toolSettings }),
+        });
+        const body = await searchRes.json().catch(() => null);
+        if (body && Array.isArray(body.results)) searchResults = body.results;
+        if (body && typeof body.searchError === "string") searchError = body.searchError;
+        if (!searchRes.ok && !searchError) searchError = "Search failed before returning usable sources.";
+      } catch (e) {
+        console.error("Search failed:", e);
+        searchError = "Search failed before returning usable sources.";
+      }
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMessageId
+            ? { ...m, searchResults, searchStatus: "done" as const }
+            : m
+        )
+      );
+
+      const answerRes = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: conversationHistory,
+          searchResults: searchResults.map((r) => ({
+            title: r.title,
+            url: r.url,
+            text: r.text,
+            highlights: r.highlights,
+          })),
+          mode: "answer",
+          topK,
+          toolSettings,
+          clientDate,
+          searchAttempted: true,
+          ...(searchError ? { searchError } : {}),
+          ...(apiAttachment ? { attachment: apiAttachment } : {}),
+          ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
+        }),
+      });
+
+      if (!answerRes.ok || !answerRes.body) throw new Error("Answer failed");
+
+      const answerReader = answerRes.body.getReader();
+      const answerDecoder = new TextDecoder();
+
+      const answerParser = parseSSEStream((text) => {
+        answerContent += text;
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessageId ? { ...m, content: answerContent } : m
+          )
+        );
+      }, () => {});
+
+      while (true) {
+        const { done, value } = await answerReader.read();
+        if (done) break;
+        answerParser.processChunk(answerDecoder.decode(value, { stream: true }));
+      }
+
+      const newVersions = [...existingVersions, answerContent];
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMessageId
+            ? { ...m, versions: newVersions, versionIndex: newVersions.length - 1 }
+            : m
+        )
+      );
+      setIsLoading(false);
+    } catch (e) {
+      console.error("Regenerate failed:", e);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMessageId
+            ? {
+              ...m,
+              content:
+                "Failed to connect to chat service. ChatJimmy may be temporarily unavailable.",
+              searchStatus: "done" as const,
+            }
+            : m
+        )
+      );
+      setIsLoading(false);
+    }
+  };
+
   const handleDeepResearch = async (
     query: string,
     fileForSubmit: AttachedFile | null
@@ -1310,18 +1581,34 @@ export default function Home() {
               style={{ width: "min(100%, 58rem)" }}
             >
               <div className="flex flex-col gap-4 sm:gap-5">
-                {messages.map((message) => (
-                  <MessageBubble
-                    key={message.id}
-                    message={message}
-                    isStreaming={
-                      isLoading &&
-                      message.role === "assistant" &&
-                      message.id === messages[messages.length - 1]?.id
-                    }
-                    searchQuery={searchQuery}
-                  />
-                ))}
+                {(() => {
+                  const lastAssistantIdx = messages.reduce(
+                    (last, m, i) => (m.role === "assistant" ? i : last),
+                    -1
+                  );
+                  return messages.map((message, idx) => (
+                    <MessageBubble
+                      key={message.id}
+                      message={message}
+                      isStreaming={
+                        isLoading &&
+                        message.role === "assistant" &&
+                        message.id === messages[messages.length - 1]?.id
+                      }
+                      searchQuery={searchQuery}
+                      onRegenerate={
+                        message.role === "assistant" && idx === lastAssistantIdx
+                          ? () => handleRegenerate(message.id)
+                          : undefined
+                      }
+                      onNavigateVersion={
+                        message.role === "assistant"
+                          ? (dir) => handleNavigateVersion(message.id, dir)
+                          : undefined
+                      }
+                    />
+                  ));
+                })()}
               </div>
             </div>
           )}

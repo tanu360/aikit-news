@@ -71,6 +71,8 @@ export interface Message {
   researchSteps?: ResearchStep[];
   researchStatus?: "researching" | "answering" | "done";
   allSources?: SearchResult[];
+  versions?: string[];
+  versionIndex?: number;
   timestamp: number;
 }
 
