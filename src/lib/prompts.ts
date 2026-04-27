@@ -8,6 +8,13 @@ export function todayISODate(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+export function normalizePromptDate(value?: string): string {
+  const trimmed = value?.trim();
+  return trimmed && /^\d{4}-\d{2}-\d{2}$/.test(trimmed)
+    ? trimmed
+    : todayISODate();
+}
+
 function formatToolPermissions(settings: ChatToolSettings): string {
   return [
     `Search: ${settings.search ? "enabled" : "disabled"}`,
@@ -119,8 +126,8 @@ Assistant: I'm AiKit — a helpful AI assistant. What's on your mind?
 User: what can you do
 Assistant: I can answer questions and chat. If you enable Search or Weather, I can use those tools when needed.
 
-User: what is rust
-Assistant: Rust is a systems programming language focused on performance, memory safety, and concurrency.
+User: what is Tokio
+Assistant: Tokio is an asynchronous runtime for Rust, commonly used to build network services and other concurrent applications.
 
 [context: the conversation previously discussed the Tokio async runtime]
 User: who created it
@@ -137,11 +144,21 @@ interface SourceLike {
   highlights?: string[];
 }
 
+export type SourceStatus = "not_requested" | "available" | "empty" | "error";
+
 export function buildAnswerSystemPrompt(
   sources: SourceLike[],
   date: string,
-  toolSettings: ChatToolSettings = DEFAULT_CHAT_TOOL_SETTINGS
+  toolSettings: ChatToolSettings = DEFAULT_CHAT_TOOL_SETTINGS,
+  options: {
+    sourceStatus?: SourceStatus;
+    searchError?: string;
+  } = {}
 ): string {
+  const sourceStatus =
+    sources && sources.length > 0
+      ? "available"
+      : options.sourceStatus ?? "not_requested";
   const base = `You are AiKit, a helpful AI assistant. Today is ${date}.
 
 Answer the user's question directly and concisely. No preamble.
@@ -153,6 +170,18 @@ File attachments may arrive as ChatJimmy file attachments, file content parts, o
 Use markdown: short paragraphs, bullet points for lists, bold sparingly for key terms. For math, use LaTeX delimiters like $x^2$ or $$E = mc^2$$, never fake equations with markdown italics. Match the user's register — conversational for small talk, substantive for questions.`;
 
   if (!sources || sources.length === 0) {
+    if (sourceStatus === "error") {
+      return `${base}
+
+A web search was attempted, but it failed before usable sources were returned${options.searchError ? ` (${options.searchError})` : ""}. Briefly say the search failed if relevant. Do not cite sources, do not imply web verification, and do not invent current facts.`;
+    }
+
+    if (sourceStatus === "empty") {
+      return `${base}
+
+A web search was attempted, but it returned no usable sources. Briefly say no usable sources were found if relevant. Do not cite sources, do not imply web verification, and do not invent current facts.`;
+    }
+
     return `${base}
 
 No external sources were provided for this answer. Do not imply that you searched, browsed, checked weather, used location data, or verified current facts.`;

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { chatJimmy } from "@/lib/jimmy";
 import type { ChatJimmyAttachment, ChatJimmyOptions } from "@/lib/jimmy";
+import { appendUserSystemPrompt, normalizePromptDate } from "@/lib/prompts";
 
 const EXA_API_KEY = process.env.EXA_API_KEY || "";
 
@@ -20,31 +21,54 @@ type ExaSearchResult = {
   highlights?: string[];
 };
 
-async function searchExa(query: string) {
-  const response = await fetch("https://api.exa.ai/search", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": EXA_API_KEY,
-    },
-    body: JSON.stringify({
-      query,
-      type: "auto",
-      numResults: 5,
-      contents: {
-        text: { maxCharacters: 1000 },
-        highlights: { numSentences: 2 },
-      },
-    }),
-  });
+type SearchExaResponse = {
+  results: ExaSearchResult[];
+  error?: string;
+};
 
-  if (!response.ok) {
-    console.error("Exa search failed:", await response.text());
-    return [];
+async function searchExa(query: string): Promise<SearchExaResponse> {
+  if (!EXA_API_KEY) {
+    return {
+      results: [],
+      error: "Search is not configured.",
+    };
   }
 
-  const data = await response.json();
-  return data.results || [];
+  try {
+    const response = await fetch("https://api.exa.ai/search", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": EXA_API_KEY,
+      },
+      body: JSON.stringify({
+        query,
+        type: "auto",
+        numResults: 5,
+        contents: {
+          text: { maxCharacters: 1000 },
+          highlights: { numSentences: 2 },
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("Exa search failed:", await response.text());
+      return {
+        results: [],
+        error: "Search failed before returning usable sources.",
+      };
+    }
+
+    const data = await response.json();
+    return { results: Array.isArray(data.results) ? data.results : [] };
+  } catch (error) {
+    console.error("Exa search failed:", error);
+    return {
+      results: [],
+      error: "Search failed before returning usable sources.",
+    };
+  }
 }
 
 async function synthesize(
@@ -126,19 +150,34 @@ function sseEvent(type: string, data: Record<string, unknown>): string {
   return `data: ${JSON.stringify({ type, ...data })}\n\n`;
 }
 
+function streamAnswerText(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  encoder: TextEncoder,
+  content: string
+) {
+  const chunkSize = 12;
+  for (let i = 0; i < content.length; i += chunkSize) {
+    const chunk = content.slice(i, i + chunkSize);
+    controller.enqueue(
+      encoder.encode(sseEvent("answer_chunk", { content: chunk }))
+    );
+  }
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { query, topK, systemPrompt, attachment } = body as {
+  const { query, topK, systemPrompt, attachment, clientDate } = body as {
     query: string;
     topK?: number;
     systemPrompt?: string;
     attachment?: ChatJimmyAttachment;
+    clientDate?: string;
   };
   const jimmyOpts: ChatJimmyOptions = {
     ...(topK != null ? { topK } : {}),
-    ...(systemPrompt?.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
     ...(attachment ? { attachment } : {}),
   };
+  const today = normalizePromptDate(clientDate);
 
   if (!query) {
     return new Response(JSON.stringify({ error: "Query required" }), {
@@ -178,7 +217,8 @@ export async function POST(req: NextRequest) {
               )
             );
 
-            const results = await searchExa(currentQuery);
+            const search = await searchExa(currentQuery);
+            const results = search.results;
             allResults.push(...results);
 
             controller.enqueue(
@@ -195,6 +235,23 @@ export async function POST(req: NextRequest) {
               )
             );
 
+            if (results.length === 0) {
+              const synthesis = search.error
+                ? `No usable sources found for "${currentQuery}" because search failed.`
+                : `No usable sources found for "${currentQuery}".`;
+
+              controller.enqueue(
+                encoder.encode(
+                  sseEvent("step_done", {
+                    stepId,
+                    synthesis,
+                    followUps: [],
+                  })
+                )
+              );
+              continue;
+            }
+
             const previousContext =
               allSyntheses.length > 0
                 ? "Previous research found:\n" +
@@ -204,9 +261,9 @@ export async function POST(req: NextRequest) {
                 "\n\n"
                 : "";
 
-            const systemPrompt = isLastDepth
-              ? "You are AiKit research assistant. Write a 2-3 sentence synthesis of the new findings. Do NOT generate follow-up questions."
-              : "You are AiKit research assistant. Given search results, do two things:\n" +
+            const baseSystemPrompt = isLastDepth
+              ? `You are AiKit research assistant. Today is ${today}. Write a 2-3 sentence synthesis of the new findings. Do NOT generate follow-up questions.`
+              : `You are AiKit research assistant. Today is ${today}. Given search results, do two things:\n` +
               "1. Write a 2-3 sentence synthesis of what was found.\n" +
               `2. List exactly ${maxFollowUpsPerStep} follow-up question${maxFollowUpsPerStep > 1 ? "s" : ""} to deepen understanding. Each MUST start on its own line with \"FOLLOW_UP:\" prefix.\n\n` +
               "Example:\nThe results show X is important for Y. Key findings suggest Z.\n\n" +
@@ -214,6 +271,10 @@ export async function POST(req: NextRequest) {
               (maxFollowUpsPerStep > 1
                 ? "FOLLOW_UP: How does Z compare to alternatives?"
                 : "");
+            const researchSystemPrompt = appendUserSystemPrompt(
+              baseSystemPrompt,
+              systemPrompt
+            );
 
             const userPrompt =
               previousContext +
@@ -229,7 +290,7 @@ export async function POST(req: NextRequest) {
             );
 
             const rawResponse = await synthesize(
-              systemPrompt,
+              researchSystemPrompt,
               userPrompt,
               jimmyOpts
             );
@@ -274,12 +335,28 @@ export async function POST(req: NextRequest) {
           )
         );
 
+        if (uniqueSources.length === 0) {
+          controller.enqueue(
+            encoder.encode(sseEvent("answer_start", {}))
+          );
+          streamAnswerText(
+            controller,
+            encoder,
+            "I couldn't find usable research sources for this query. Try rephrasing the question or checking the search setup, then run Deep Research again."
+          );
+          controller.enqueue(
+            encoder.encode(sseEvent("all_sources", { sources: [] }))
+          );
+          controller.enqueue(encoder.encode(sseEvent("done", {})));
+          return;
+        }
+
         const researchContext = allSyntheses
           .map((s) => `- ${s.synthesis}`)
           .join("\n");
 
-        const finalSystemPrompt =
-          "You are AiKit, a helpful AI assistant. Write a well-structured answer using markdown.\n" +
+        const finalSystemPrompt = appendUserSystemPrompt(
+          "You are AiKit, a helpful AI assistant. Today is " + today + ". Write a well-structured answer using markdown.\n" +
           "IMPORTANT RULES:\n" +
           "1. Cite sources INLINE using [1], [2], [3] etc. right after each claim\n" +
           "2. Example: \"Rust prevents memory bugs at compile time [2] and performs like C++ [5].\"\n" +
@@ -287,7 +364,9 @@ export async function POST(req: NextRequest) {
           "4. Use **bold** for key terms. Use bullet points for lists.\n" +
           "5. For math, use LaTeX delimiters like $x^2$ or $$E = mc^2$$, never fake equations with markdown italics.\n\n" +
           "Sources:\n" +
-          formatResultsForLLM(sourcesForAnswer);
+          formatResultsForLLM(sourcesForAnswer),
+          systemPrompt
+        );
 
         const finalUserPrompt = `${query}\n\nResearch notes:\n${researchContext}`;
 
@@ -315,13 +394,7 @@ export async function POST(req: NextRequest) {
           }
         );
 
-        const chunkSize = 12;
-        for (let i = 0; i < fullAnswer.length; i += chunkSize) {
-          const chunk = fullAnswer.slice(i, i + chunkSize);
-          controller.enqueue(
-            encoder.encode(sseEvent("answer_chunk", { content: chunk }))
-          );
-        }
+        streamAnswerText(controller, encoder, fullAnswer);
 
         controller.enqueue(
           encoder.encode(

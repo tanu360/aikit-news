@@ -9,8 +9,9 @@ import {
   appendUserSystemPrompt,
   buildAnswerSystemPrompt,
   buildRouterSystemPrompt,
-  todayISODate,
+  normalizePromptDate,
 } from "@/lib/prompts";
+import type { SourceStatus } from "@/lib/prompts";
 import type { WeatherCardData } from "@/lib/types";
 import type { ChatToolSettings } from "@/lib/toolSettings";
 import { normalizeChatToolSettings } from "@/lib/toolSettings";
@@ -67,6 +68,9 @@ interface RequestBody {
   systemPrompt?: string;
   toolSettings?: Partial<ChatToolSettings>;
   attachment?: ChatJimmyAttachment;
+  clientDate?: string;
+  searchAttempted?: boolean;
+  searchError?: string;
 }
 
 function sseData(data: Record<string, unknown>): string {
@@ -163,8 +167,13 @@ function shouldEnableWeatherTool(messages: RequestBody["messages"]): boolean {
     /\b(file|document|attachment|attached|uploaded|content|text|snippet)\b/.test(
       text
     );
+  const weatherTerm =
+    /\b(?:weather|forecast|humidity|wind|rain|snow|sunrise|sunset)\b/i.test(
+      text
+    );
   const explicitWeather =
-    /\b(weather|forecast|humidity|wind|rain|snow|sunrise|sunset)\b/.test(text) ||
+    weatherTerm ||
+    /\b(temp|temperature)\b/.test(text) ||
     /\b(current|now|today|tonight|tomorrow|live|outside)\b.{0,48}\b(temp|temperature|high|low)\b/.test(
       text
     ) ||
@@ -208,6 +217,9 @@ export async function POST(req: NextRequest) {
     topK,
     systemPrompt,
     attachment,
+    clientDate,
+    searchAttempted,
+    searchError,
   } = body;
   const toolSettings = normalizeChatToolSettings(body.toolSettings);
   const jimmyOpts = {
@@ -217,16 +229,31 @@ export async function POST(req: NextRequest) {
   const effectiveMode: "router" | "answer" =
     mode === "router" ? "router" : "answer";
 
-  const today = todayISODate();
+  const today = normalizePromptDate(clientDate);
+  const sourceStatus: SourceStatus =
+    searchResults.length > 0
+      ? "available"
+      : searchError
+        ? "error"
+        : searchAttempted
+          ? "empty"
+          : "not_requested";
   const shouldBuildToolPrompt =
     effectiveMode === "router" && (toolSettings.search || toolSettings.weather);
   const shouldBuildSourcePrompt =
     effectiveMode === "answer" &&
-    (toolSettings.search || searchResults.length > 0);
+    (toolSettings.search ||
+      toolSettings.weather ||
+      searchResults.length > 0 ||
+      !!searchAttempted ||
+      !!searchError);
   const baseSystemContent = shouldBuildToolPrompt
     ? buildRouterSystemPrompt(today, toolSettings)
     : shouldBuildSourcePrompt
-      ? buildAnswerSystemPrompt(searchResults, today, toolSettings)
+      ? buildAnswerSystemPrompt(searchResults, today, toolSettings, {
+        sourceStatus,
+        searchError,
+      })
       : "";
   const systemContent = appendUserSystemPrompt(baseSystemContent, systemPrompt);
   const jimmyMessages = systemContent

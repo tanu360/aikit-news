@@ -23,7 +23,13 @@ export async function POST(req: NextRequest) {
 
   const apiKey = process.env.EXA_API_KEY;
   if (!apiKey) {
-    return NextResponse.json({ error: "EXA_API_KEY not configured" }, { status: 500 });
+    return NextResponse.json(
+      {
+        results: [],
+        searchError: "Search is not configured.",
+      },
+      { status: 500 }
+    );
   }
 
   try {
@@ -54,7 +60,10 @@ export async function POST(req: NextRequest) {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Exa API error:", errorText);
-      return NextResponse.json({ results: [] });
+      return NextResponse.json({
+        results: [],
+        searchError: "Search failed before returning usable sources.",
+      });
     }
 
     const data = await response.json();
@@ -78,6 +87,9 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error("Search error:", error);
-    return NextResponse.json({ results: [] });
+    return NextResponse.json({
+      results: [],
+      searchError: "Search failed before returning usable sources.",
+    });
   }
 }

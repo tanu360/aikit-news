@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Add01Icon,
+  ArrowUpRight01Icon,
   ArtificialIntelligence04Icon,
   GithubIcon,
   MarketAnalysisIcon,
@@ -211,6 +212,14 @@ function buildApiAttachment(file: AttachedFile | null) {
 function buildApiContent(message: Message) {
   if (message.role === "assistant") return stripCitations(message.content);
   return buildContentWithAttachments(message.content, message.attachments);
+}
+
+function getClientDate() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export default function Home() {
@@ -441,6 +450,7 @@ export default function Home() {
     };
     const attachments = fileForSubmit ? [fileForSubmit] : undefined;
     const apiAttachment = buildApiAttachment(fileForSubmit);
+    const clientDate = getClientDate();
 
     const userMsgId = generateId();
     scrollTargetRef.current = userMsgId;
@@ -478,6 +488,7 @@ export default function Home() {
           mode: "router",
           topK,
           toolSettings,
+          clientDate,
           ...(apiAttachment ? { attachment: apiAttachment } : {}),
           ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
         }),
@@ -603,6 +614,7 @@ export default function Home() {
       );
 
       let searchResults: SearchResult[] = [];
+      let searchError: string | undefined;
       try {
         const tSearchStartWall = Date.now();
         const searchRes = await fetch("/api/search", {
@@ -611,23 +623,30 @@ export default function Home() {
           body: JSON.stringify({ query: refinedQuery, toolSettings }),
         });
         const tSearchFirstByteWall = Date.now();
-        if (searchRes.ok) {
-          const body = await searchRes.json();
-          const tSearchEndWall = Date.now();
-          searchResults = body.results || [];
-          logTiming("Search", {
-            query: refinedQuery,
-            tStartWall: tSearchStartWall,
-            tFirstByteWall: tSearchFirstByteWall,
-            tEndWall: tSearchEndWall,
-            serverTiming:
-              searchRes.headers.get("Server-Timing") ??
-              searchRes.headers.get("x-debug-timing"),
-            vercelId: searchRes.headers.get("x-vercel-id"),
-          });
+        const body = await searchRes.json().catch(() => null);
+        const tSearchEndWall = Date.now();
+        if (body && Array.isArray(body.results)) {
+          searchResults = body.results;
         }
+        if (body && typeof body.searchError === "string") {
+          searchError = body.searchError;
+        }
+        if (!searchRes.ok && !searchError) {
+          searchError = "Search failed before returning usable sources.";
+        }
+        logTiming("Search", {
+          query: refinedQuery,
+          tStartWall: tSearchStartWall,
+          tFirstByteWall: tSearchFirstByteWall,
+          tEndWall: tSearchEndWall,
+          serverTiming:
+            searchRes.headers.get("Server-Timing") ??
+            searchRes.headers.get("x-debug-timing"),
+          vercelId: searchRes.headers.get("x-vercel-id"),
+        });
       } catch (e) {
         console.error("Search failed:", e);
+        searchError = "Search failed before returning usable sources.";
       }
 
       setMessages((prev) =>
@@ -653,6 +672,9 @@ export default function Home() {
           mode: "answer",
           topK,
           toolSettings,
+          clientDate,
+          searchAttempted: true,
+          ...(searchError ? { searchError } : {}),
           ...(apiAttachment ? { attachment: apiAttachment } : {}),
           ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
         }),
@@ -724,9 +746,32 @@ export default function Home() {
     const assistantId = generateId();
     const attachments = fileForSubmit ? [fileForSubmit] : undefined;
     const apiAttachment = buildApiAttachment(fileForSubmit);
+    const clientDate = getClientDate();
 
     const userMsgId = generateId();
     scrollTargetRef.current = userMsgId;
+
+    if (!query && fileForSubmit) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: userMsgId,
+          role: "user",
+          content: query,
+          attachments,
+          timestamp: Date.now(),
+        },
+        {
+          id: assistantId,
+          role: "assistant",
+          content:
+            "Please add a research question for the attached file before running Deep Research.",
+          timestamp: Date.now(),
+        },
+      ]);
+      setIsLoading(false);
+      return;
+    }
 
     setMessages((prev) => [
       ...prev,
@@ -756,6 +801,7 @@ export default function Home() {
         body: JSON.stringify({
           query,
           topK,
+          clientDate,
           ...(apiAttachment ? { attachment: apiAttachment } : {}),
           ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
         }),
@@ -1182,6 +1228,13 @@ export default function Home() {
                   primaryColor="currentColor"
                 />
                 <span className="hidden sm:inline">New</span>
+                <HugeiconsIcon
+                  icon={ArrowUpRight01Icon}
+                  size={13}
+                  strokeWidth={2}
+                  primaryColor="currentColor"
+                  className="hidden sm:block"
+                />
               </button>
             </div>
           </nav>
