@@ -515,6 +515,10 @@ textarea::placeholder {
     color 150ms ease,
     opacity 150ms ease;
 }
+:root:not(.dark) .source-row-domain {
+  color: oklch(58% 0 0);
+  opacity: 1;
+}
 .source-row:hover .source-row-domain,
 .source-row:focus-visible .source-row-domain {
   color: var(--color-ink-secondary);
