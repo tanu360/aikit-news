@@ -9,9 +9,15 @@ import {
   Attachment01Icon,
   Cancel01Icon,
   File01Icon,
+  Search01Icon,
   Setting07Icon,
+  SunCloud01Icon,
 } from "@hugeicons/core-free-icons";
 import type { AttachedFile } from "@/lib/types";
+import type {
+  ChatToolKey,
+  ChatToolSettings,
+} from "@/lib/toolSettings";
 import {
   FILE_TOKEN_LIMIT,
   formatTokenCount,
@@ -33,6 +39,25 @@ const ACCEPTED_FILE_EXTENSIONS = [
 ] as const;
 const ACCEPTED_TYPES = ACCEPTED_FILE_EXTENSIONS.join(",");
 const BLOCKED_FILE_TYPE_PREFIXES = ["image/", "video/", "audio/"] as const;
+const TOOL_OPTIONS: Array<{
+  key: ChatToolKey;
+  label: string;
+  shortLabel: string;
+  icon: typeof Search01Icon;
+}> = [
+  {
+    key: "search",
+    label: "Search",
+    shortLabel: "Search",
+    icon: Search01Icon,
+  },
+  {
+    key: "weather",
+    label: "Weather",
+    shortLabel: "Weather",
+    icon: SunCloud01Icon,
+  },
+];
 
 function isSupportedAttachment(file: File): boolean {
   const lowerName = file.name.toLowerCase();
@@ -73,6 +98,8 @@ interface ChatInputProps {
   onSystemPromptChange: (v: string) => void;
   topK: number;
   onTopKChange: (v: number) => void;
+  toolSettings: ChatToolSettings;
+  onToolSettingsChange: (settings: ChatToolSettings) => void;
   showSettings: boolean;
   onSettingsClick: () => void;
 }
@@ -91,6 +118,8 @@ export default function ChatInput({
   onSystemPromptChange,
   topK,
   onTopKChange,
+  toolSettings,
+  onToolSettingsChange,
   showSettings,
   onSettingsClick,
 }: ChatInputProps) {
@@ -109,6 +138,7 @@ export default function ChatInput({
   const agentControlColor = isAgentActive ? exaActiveColor : "var(--color-ink-tertiary)";
   const exaIconColor = isAgentActive ? exaActiveColor : "var(--color-ink-tertiary)";
   const minTextareaHeight = 52;
+  const enabledToolCount = TOOL_OPTIONS.filter((tool) => toolSettings[tool.key]).length;
 
   useLayoutEffect(() => {
     const el = textareaRef.current;
@@ -209,6 +239,13 @@ export default function ChatInput({
     setFileError(null);
   };
 
+  const toggleTool = (key: ChatToolKey) => {
+    onToolSettingsChange({
+      ...toolSettings,
+      [key]: !toolSettings[key],
+    });
+  };
+
   const themeColorTransition =
     "background-color 240ms var(--theme-ease), border-color 240ms var(--theme-ease), color 240ms var(--theme-ease)";
 
@@ -292,6 +329,82 @@ export default function ChatInput({
                           caretColor: "var(--color-accent)",
                         }}
                       />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <span
+                        className="text-[11px] font-medium"
+                        style={{ color: "var(--color-ink-tertiary)" }}
+                      >
+                        Tools
+                      </span>
+                      <span
+                        className="shrink-0 text-[11px] font-medium"
+                        style={{ color: "var(--color-ink-tertiary)" }}
+                      >
+                        {enabledToolCount}/{TOOL_OPTIONS.length} enabled
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {TOOL_OPTIONS.map((tool) => {
+                        const enabled = toolSettings[tool.key];
+                        return (
+                          <button
+                            key={tool.key}
+                            type="button"
+                            role="switch"
+                            aria-checked={enabled}
+                            aria-label={`Toggle ${tool.label}`}
+                            onClick={() => toggleTool(tool.key)}
+                            className="flex min-h-10 items-center gap-2 rounded-xl px-2.5 py-2 text-left transition-[background-color,border-color,color,opacity] duration-200"
+                            style={{
+                              backgroundColor: enabled
+                                ? `color-mix(in oklch, ${exaActiveColor} 10%, transparent)`
+                                : "var(--color-surface-secondary)",
+                              border: "1px solid",
+                              borderColor: enabled
+                                ? `color-mix(in oklch, ${exaActiveColor} 26%, transparent)`
+                                : "var(--color-border-light)",
+                              color: enabled
+                                ? exaActiveColor
+                                : "var(--color-ink-secondary)",
+                              transitionTimingFunction: "var(--theme-ease)",
+                            }}
+                            title={tool.label}
+                          >
+                            <HugeiconsIcon
+                              icon={tool.icon}
+                              size={13}
+                              strokeWidth={1.8}
+                              primaryColor="currentColor"
+                              style={{ flexShrink: 0 }}
+                            />
+                            <span className="min-w-0 flex-1 truncate text-[12px] font-medium">
+                              {tool.shortLabel}
+                            </span>
+                            <span
+                              className="relative h-4 w-7 shrink-0 rounded-full transition-colors duration-200"
+                              style={{
+                                backgroundColor: enabled
+                                  ? exaActiveColor
+                                  : "color-mix(in oklch, var(--color-ink-tertiary) 18%, transparent)",
+                              }}
+                            >
+                              <span
+                                className="absolute top-0.5 h-3 w-3 rounded-full transition-transform duration-200"
+                                style={{
+                                  left: 2,
+                                  transform: enabled
+                                    ? "translateX(12px)"
+                                    : "translateX(0)",
+                                  backgroundColor: "var(--color-icon-on-fill)",
+                                }}
+                              />
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                   <div className="flex items-center gap-3">

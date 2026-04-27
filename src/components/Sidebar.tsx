@@ -10,7 +10,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import type { Chat } from "@/lib/types";
 
-const SIDEBAR_W = 252;
+const SIDEBAR_W = 284;
 const COLLAPSED_W = 64;
 const COMPACT_MEDIA_QUERY = "(max-width: 1023px)";
 

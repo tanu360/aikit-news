@@ -6,6 +6,16 @@ const EXA_API_KEY = process.env.EXA_API_KEY || "";
 
 const MAX_DEPTH = 3;
 const MAX_SOURCES_FOR_ANSWER = 18;
+const EXA_DEEP_SEARCH_SYSTEM_PROMPT =
+  "Prefer official, primary, recent, and non-duplicate sources. Return source text and highlights that directly support the research question.";
+
+type ExaSearchResult = {
+  title: string;
+  url: string;
+  text?: string;
+  highlights?: string[];
+  summary?: string;
+};
 
 async function searchExa(query: string) {
   const response = await fetch("https://api.exa.ai/search", {
@@ -16,11 +26,20 @@ async function searchExa(query: string) {
     },
     body: JSON.stringify({
       query,
-      type: "auto",
+      type: "deep",
+      systemPrompt: EXA_DEEP_SEARCH_SYSTEM_PROMPT,
       numResults: 5,
+      moderation: true,
       contents: {
-        text: { maxCharacters: 1000 },
-        highlights: { numSentences: 2 },
+        text: { maxCharacters: 1400 },
+        highlights: {
+          maxCharacters: 3000,
+          query,
+        },
+        summary: {
+          query: "Main findings relevant to the research question",
+        },
+        maxAgeHours: 24,
       },
     }),
   });
@@ -80,7 +99,7 @@ function parseFollowUps(
 }
 
 function deduplicateSources(
-  sources: { title: string; url: string; text?: string; highlights?: string[] }[]
+  sources: ExaSearchResult[]
 ) {
   const seen = new Set<string>();
   return sources.filter((s) => {
@@ -91,14 +110,20 @@ function deduplicateSources(
 }
 
 function formatResultsForLLM(
-  results: { title: string; url: string; text?: string }[],
+  results: ExaSearchResult[],
   offset: number = 0
 ): string {
   return results
     .map((r, i) => {
       let entry = `[${offset + i + 1}] "${r.title}" (${r.url})`;
+      if (r.summary) {
+        entry += `\nSummary: ${r.summary.slice(0, 500)}`;
+      }
       if (r.text) {
         entry += `\nContent: ${r.text.slice(0, 400)}`;
+      }
+      if (r.highlights && r.highlights.length > 0) {
+        entry += `\nHighlights: ${r.highlights.join(" | ").slice(0, 700)}`;
       }
       return entry;
     })
@@ -126,12 +151,7 @@ export async function POST(req: NextRequest) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
-      const allResults: {
-        title: string;
-        url: string;
-        text?: string;
-        highlights?: string[];
-      }[] = [];
+      const allResults: ExaSearchResult[] = [];
       const allSyntheses: { query: string; synthesis: string }[] = [];
       let queuesToResearch: string[] = [query];
 

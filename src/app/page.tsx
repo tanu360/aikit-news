@@ -22,6 +22,11 @@ import type {
   ResearchStep,
   WeatherCardData,
 } from "@/lib/types";
+import type { ChatToolSettings } from "@/lib/toolSettings";
+import {
+  DEFAULT_CHAT_TOOL_SETTINGS,
+  normalizeChatToolSettings,
+} from "@/lib/toolSettings";
 import { generateId, parseSSEStream, stripCitations } from "@/lib/utils";
 import { loadAllChats, persistChat, removeChat } from "@/lib/chatStore";
 import { SVG3D } from "3dsvg";
@@ -58,6 +63,7 @@ const DESKTOP_MEDIA_QUERY = "(min-width: 1024px)";
 const SIDEBAR_EDGE_SWIPE_WIDTH = 72;
 const SIDEBAR_SWIPE_TRIGGER_DISTANCE = 42;
 const SIDEBAR_SWIPE_DIRECTION_RATIO = 1.15;
+const TOOL_SETTINGS_STORAGE_KEY = "aikit-tool-settings";
 
 const EMPTY_STATE_SUGGESTIONS = [
   { label: "Top AI stories today", icon: ArtificialIntelligence04Icon },
@@ -216,6 +222,10 @@ export default function Home() {
   const [attachedFile, setAttachedFile] = useState<AttachedFile | null>(null);
   const [systemPrompt, setSystemPrompt] = useState("");
   const [topK, setTopK] = useState(8);
+  const [toolSettings, setToolSettings] = useState<ChatToolSettings>(
+    DEFAULT_CHAT_TOOL_SETTINGS
+  );
+  const [toolSettingsLoaded, setToolSettingsLoaded] = useState(false);
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChatId, setActiveChatId] = useState<string>("");
   const [showSettings, setShowSettings] = useState(false);
@@ -247,6 +257,31 @@ export default function Home() {
       mediaQuery.removeEventListener("change", syncSidebarForViewport);
     };
   }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const stored = window.localStorage.getItem(TOOL_SETTINGS_STORAGE_KEY);
+        if (stored) {
+          setToolSettings(normalizeChatToolSettings(JSON.parse(stored)));
+        }
+      } catch {
+        setToolSettings(DEFAULT_CHAT_TOOL_SETTINGS);
+      } finally {
+        setToolSettingsLoaded(true);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!toolSettingsLoaded) return;
+    window.localStorage.setItem(
+      TOOL_SETTINGS_STORAGE_KEY,
+      JSON.stringify(toolSettings)
+    );
+  }, [toolSettings, toolSettingsLoaded]);
 
   useEffect(() => {
     if (!scrollTargetRef.current) return;
@@ -441,6 +476,7 @@ export default function Home() {
           messages: conversationHistory,
           mode: "router",
           topK,
+          toolSettings,
           ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
         }),
       });
@@ -527,6 +563,22 @@ export default function Home() {
         return;
       }
 
+      if (!toolSettings.search) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? {
+                ...m,
+                content:
+                  "Search is disabled. Enable Search in Tools settings to use live web results, or I can continue with a normal answer from existing context.",
+              }
+              : m
+          )
+        );
+        setIsLoading(false);
+        return;
+      }
+
       const trimmed = routerContent.trimStart();
       const afterMarker = trimmed.slice("SEARCH:".length);
       const newlineIdx = afterMarker.indexOf("\n");
@@ -554,7 +606,7 @@ export default function Home() {
         const searchRes = await fetch("/api/search", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: refinedQuery }),
+          body: JSON.stringify({ query: refinedQuery, toolSettings }),
         });
         const tSearchFirstByteWall = Date.now();
         if (searchRes.ok) {
@@ -598,6 +650,7 @@ export default function Home() {
           })),
           mode: "answer",
           topK,
+          toolSettings,
           ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
         }),
       });
@@ -1234,6 +1287,8 @@ export default function Home() {
               onSystemPromptChange={setSystemPrompt}
               topK={topK}
               onTopKChange={setTopK}
+              toolSettings={toolSettings}
+              onToolSettingsChange={setToolSettings}
               showSettings={showSettings}
               onSettingsClick={() => setShowSettings((s) => !s)}
               placeholder={

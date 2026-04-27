@@ -1,12 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
+import { normalizeChatToolSettings } from "@/lib/toolSettings";
 
 export async function POST(req: NextRequest) {
   const tEntry = Date.now();
-  const { query } = await req.json();
+  const { query, toolSettings: rawToolSettings } = await req.json();
   const tParsed = Date.now();
+  const toolSettings = normalizeChatToolSettings(rawToolSettings);
 
   if (!query) {
     return NextResponse.json({ error: "Query is required" }, { status: 400 });
+  }
+
+  if (!toolSettings.search) {
+    return NextResponse.json(
+      {
+        error:
+          "Search tool is disabled. Enable Search in Tools settings to search the web.",
+      },
+      { status: 403 }
+    );
   }
 
   const apiKey = process.env.EXA_API_KEY;
@@ -26,10 +38,14 @@ export async function POST(req: NextRequest) {
         query,
         type: "instant",
         numResults: 8,
+        moderation: true,
         contents: {
           text: { maxCharacters: 1500 },
-          highlights: { numSentences: 3 },
-          livecrawl: "never",
+          highlights: {
+            maxCharacters: 3000,
+            query,
+          },
+          maxAgeHours: 24,
         },
       }),
     });

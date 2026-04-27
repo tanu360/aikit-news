@@ -2,11 +2,14 @@ import { NextRequest } from "next/server";
 import { ChatJimmyError, chatJimmy, chatJimmyWithTools } from "@/lib/jimmy";
 import type { ChatJimmyTool } from "@/lib/jimmy";
 import {
+  appendUserSystemPrompt,
   buildAnswerSystemPrompt,
   buildRouterSystemPrompt,
   todayISODate,
 } from "@/lib/prompts";
 import type { WeatherCardData } from "@/lib/types";
+import type { ChatToolSettings } from "@/lib/toolSettings";
+import { normalizeChatToolSettings } from "@/lib/toolSettings";
 import { getWeather } from "@/lib/weather";
 
 const WEATHER_TOOL: ChatJimmyTool = {
@@ -14,7 +17,7 @@ const WEATHER_TOOL: ChatJimmyTool = {
   function: {
     name: "get_weather",
     description:
-      "Get current weather and the next few hours of forecast for a location.",
+      "Get current weather and the next few hours of forecast for an explicit city, region, or place from the user's request. Never use this for 'near me' or an assumed location.",
     parameters: {
       type: "object",
       properties: {
@@ -58,6 +61,7 @@ interface RequestBody {
   mode?: "router" | "answer";
   topK?: number;
   systemPrompt?: string;
+  toolSettings?: Partial<ChatToolSettings>;
 }
 
 function sseData(data: Record<string, unknown>): string {
@@ -130,27 +134,30 @@ function stripFileBlocks(content: string): string {
   return content.replace(/<file\b[^>]*>[\s\S]*?<\/file>/gi, "").trim();
 }
 
-function extractUserInstruction(content: string): string {
-  const typedMatch = content.match(
-    /<user_message>\s*([\s\S]*?)\s*<\/user_message>/i
-  );
-  if (typedMatch) return typedMatch[1].trim();
-  if (/<attached_files_as_message\b/i.test(content)) return "";
-  return stripFileBlocks(content)
-    .replace(/<\/?attached_files>/gi, "")
-    .trim();
-}
-
 function latestUserText(messages: RequestBody["messages"]): string {
   for (let i = messages.length - 1; i >= 0; i--) {
     const message = messages[i];
-    if (message?.role === "user") return extractUserInstruction(message.content);
+    if (message?.role === "user") return stripFileBlocks(message.content);
   }
   return "";
 }
 
 function shouldEnableWeatherTool(messages: RequestBody["messages"]): boolean {
-  return latestUserText(messages).length > 0;
+  const text = latestUserText(messages).toLowerCase();
+  if (!text) return false;
+  const asksAboutDocument =
+    /\b(file|document|attachment|attached|uploaded|content|text|snippet)\b/.test(
+      text
+    );
+  const explicitWeather =
+    /\b(weather|forecast|humidity|wind|rain|snow|sunrise|sunset)\b/.test(text) ||
+    /\b(current|now|today|tonight|tomorrow|live|outside)\b.{0,48}\b(temp|temperature|high|low)\b/.test(
+      text
+    ) ||
+    /\b(temp|temperature|high|low)\b.{0,48}\b(current|now|today|tonight|tomorrow|live|outside)\b/.test(
+      text
+    );
+  return explicitWeather && !asksAboutDocument;
 }
 
 function formatWeatherAnswer(weather: WeatherCardData): string {
@@ -180,19 +187,26 @@ export async function POST(req: NextRequest) {
   const body = (await req.json()) as RequestBody;
   const tParsed = Date.now();
 
-  const { messages = [], searchResults = [], mode, topK, systemPrompt } = body;
+  const {
+    messages = [],
+    searchResults = [],
+    mode,
+    topK,
+    systemPrompt,
+  } = body;
+  const toolSettings = normalizeChatToolSettings(body.toolSettings);
   const jimmyOpts = {
     ...(topK != null ? { topK } : {}),
-    ...(systemPrompt?.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
   };
   const effectiveMode: "router" | "answer" =
     mode === "router" ? "router" : "answer";
 
   const today = todayISODate();
-  const systemContent =
+  const baseSystemContent =
     effectiveMode === "router"
-      ? buildRouterSystemPrompt(today)
-      : buildAnswerSystemPrompt(searchResults, today);
+      ? buildRouterSystemPrompt(today, toolSettings)
+      : buildAnswerSystemPrompt(searchResults, today, toolSettings);
+  const systemContent = appendUserSystemPrompt(baseSystemContent, systemPrompt);
 
   const tPromptBuilt = Date.now();
 
@@ -203,7 +217,8 @@ export async function POST(req: NextRequest) {
     let tChatjimmyDone = 0;
 
     if (effectiveMode === "router") {
-      const weatherTools: ChatJimmyTool[] = shouldEnableWeatherTool(messages)
+      const weatherTools: ChatJimmyTool[] =
+        toolSettings.weather && shouldEnableWeatherTool(messages)
         ? [WEATHER_TOOL]
         : [];
       const completion = await chatJimmyWithTools(
