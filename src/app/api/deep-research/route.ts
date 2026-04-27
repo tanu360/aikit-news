@@ -180,22 +180,22 @@ export async function POST(req: NextRequest) {
             const previousContext =
               allSyntheses.length > 0
                 ? "Previous research found:\n" +
-                  allSyntheses
-                    .map((s) => `- ${s.synthesis}`)
-                    .join("\n") +
-                  "\n\n"
+                allSyntheses
+                  .map((s) => `- ${s.synthesis}`)
+                  .join("\n") +
+                "\n\n"
                 : "";
 
             const systemPrompt = isLastDepth
-              ? "You are a research assistant. Write a 2-3 sentence synthesis of the new findings. Do NOT generate follow-up questions."
-              : "You are a research assistant. Given search results, do two things:\n" +
-                "1. Write a 2-3 sentence synthesis of what was found.\n" +
-                `2. List exactly ${maxFollowUpsPerStep} follow-up question${maxFollowUpsPerStep > 1 ? "s" : ""} to deepen understanding. Each MUST start on its own line with \"FOLLOW_UP:\" prefix.\n\n` +
-                "Example:\nThe results show X is important for Y. Key findings suggest Z.\n\n" +
-                "FOLLOW_UP: What mechanisms cause Y?\n" +
-                (maxFollowUpsPerStep > 1
-                  ? "FOLLOW_UP: How does Z compare to alternatives?"
-                  : "");
+              ? "You are AiKit research assistant. Write a 2-3 sentence synthesis of the new findings. Do NOT generate follow-up questions."
+              : "You are AiKit research assistant. Given search results, do two things:\n" +
+              "1. Write a 2-3 sentence synthesis of what was found.\n" +
+              `2. List exactly ${maxFollowUpsPerStep} follow-up question${maxFollowUpsPerStep > 1 ? "s" : ""} to deepen understanding. Each MUST start on its own line with \"FOLLOW_UP:\" prefix.\n\n` +
+              "Example:\nThe results show X is important for Y. Key findings suggest Z.\n\n" +
+              "FOLLOW_UP: What mechanisms cause Y?\n" +
+              (maxFollowUpsPerStep > 1
+                ? "FOLLOW_UP: How does Z compare to alternatives?"
+                : "");
 
             const userPrompt =
               previousContext +
@@ -256,7 +256,7 @@ export async function POST(req: NextRequest) {
           .join("\n");
 
         const finalSystemPrompt =
-          "You are News, a helpful AI assistant. Write a well-structured answer using markdown.\n" +
+          "You are AiKit, a helpful AI assistant. Write a well-structured answer using markdown.\n" +
           "IMPORTANT RULES:\n" +
           "1. Cite sources INLINE using [1], [2], [3] etc. right after each claim\n" +
           "2. Example: \"Rust prevents memory bugs at compile time [2] and performs like C++ [5].\"\n" +

@@ -197,10 +197,10 @@ function buildContentWithAttachments(
         `<file name="${escapeFileNameForPrompt(file.name)}">\n${file.content}\n</file>`
     )
     .join("\n\n");
-  const instruction = typedMessage
-    ? `User typed message:\n${typedMessage}\n\nAttached file content for context:`
-    : "The user attached this file as their message. Read the file content and respond to it directly:";
-  return `${instruction}\n\n${fileBlocks}`;
+  if (typedMessage) {
+    return `<user_message>\n${typedMessage}\n</user_message>\n\n<attached_files>\n${fileBlocks}\n</attached_files>`;
+  }
+  return `<attached_files_as_message>\n${fileBlocks}\n</attached_files_as_message>`;
 }
 
 function buildApiContent(message: Message) {
