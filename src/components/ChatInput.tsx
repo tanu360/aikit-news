@@ -6,8 +6,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   ArrowUp02Icon,
-  Attachment01Icon,
   Cancel01Icon,
+  FileAddIcon,
   File01Icon,
   Search01Icon,
   Setting07Icon,
@@ -655,7 +655,7 @@ export default function ChatInput({
                 }}
               >
                 <HugeiconsIcon
-                  icon={Attachment01Icon}
+                  icon={FileAddIcon}
                   size={13}
                   strokeWidth={1.8}
                   primaryColor="currentColor"
