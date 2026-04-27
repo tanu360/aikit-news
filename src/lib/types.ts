@@ -59,8 +59,11 @@ export interface WeatherCardData {
   updatedAt: string;
 }
 
+export type MessageResponseMode = "chat" | "search" | "weather" | "deepResearch";
+
 export interface MessageVersion {
   content: string;
+  responseMode?: MessageResponseMode;
   weather?: WeatherCardData;
   searchQuery?: string;
   searchResults?: SearchResult[];
@@ -75,6 +78,7 @@ export interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  responseMode?: MessageResponseMode;
   attachments?: AttachedFile[];
   weather?: WeatherCardData;
   searchQuery?: string;

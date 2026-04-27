@@ -19,6 +19,7 @@ import type {
   AttachedFile,
   Chat,
   Message,
+  MessageResponseMode,
   MessageVersion,
   SearchResult,
   ResearchStep,
@@ -215,11 +216,10 @@ function buildApiContent(message: Message) {
   return buildContentWithAttachments(message.content, message.attachments);
 }
 
-type LegacyMessageVersion = MessageVersion | string;
-
 function captureAssistantVersion(message: Message): MessageVersion {
   return {
     content: message.content,
+    responseMode: message.responseMode ?? "chat",
     weather: message.weather,
     searchQuery: message.searchQuery,
     searchResults: message.searchResults,
@@ -232,11 +232,8 @@ function captureAssistantVersion(message: Message): MessageVersion {
 }
 
 function normalizeMessageVersions(message: Message): MessageVersion[] {
-  const versions = message.versions as LegacyMessageVersion[] | undefined;
-  if (!versions?.length) return [captureAssistantVersion(message)];
-  return versions.map((version) =>
-    typeof version === "string" ? { content: version } : version
-  );
+  if (!message.versions?.length) return [captureAssistantVersion(message)];
+  return message.versions;
 }
 
 function applyAssistantVersion(
@@ -248,6 +245,7 @@ function applyAssistantVersion(
   return {
     ...message,
     content: version.content,
+    responseMode: version.responseMode ?? "chat",
     weather: version.weather,
     searchQuery: version.searchQuery,
     searchResults: version.searchResults,
@@ -510,6 +508,7 @@ export default function Home() {
       id: assistantId,
       role: "assistant",
       content: "",
+      responseMode: "chat",
       timestamp: Date.now(),
     };
     const attachments = fileForSubmit ? [fileForSubmit] : undefined;
@@ -549,11 +548,11 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: conversationHistory,
-          mode: "router",
-          topK,
-          toolSettings,
-          clientDate,
+	          messages: conversationHistory,
+	          mode: "router",
+	          topK,
+	          toolSettings,
+	          clientDate,
           ...(apiAttachment ? { attachment: apiAttachment } : {}),
           ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
         }),
@@ -568,9 +567,10 @@ export default function Home() {
       const routerVercelId = routerRes.headers.get("x-vercel-id");
 
       const routerReader = routerRes.body.getReader();
-      const routerDecoder = new TextDecoder();
-      let routerContent = "";
-      let routerDecision: "direct" | "search" | null = null;
+	      const routerDecoder = new TextDecoder();
+	      let routerContent = "";
+	      let routerDecision: "direct" | "search" | null = null;
+	      let directResponseMode: MessageResponseMode = "chat";
 
       const routerParser = parseSSEStream(
         (text) => {
@@ -589,19 +589,30 @@ export default function Home() {
           if (routerDecision === "direct") {
             setMessages((prev) =>
               prev.map((m) =>
-                m.id === assistantId ? { ...m, content: routerContent } : m
+	                m.id === assistantId
+	                  ? {
+	                    ...m,
+	                    content: routerContent,
+	                    responseMode: directResponseMode,
+	                  }
+	                  : m
               )
             );
           }
         },
         () => { },
         (event) => {
-          if (event.type !== "weather") return;
-          routerDecision = "direct";
+	          if (event.type !== "weather") return;
+	          routerDecision = "direct";
+	          directResponseMode = "weather";
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantId
-                ? { ...m, weather: event.weather as WeatherCardData }
+                ? {
+                  ...m,
+                  weather: event.weather as WeatherCardData,
+                  responseMode: "weather",
+                }
                 : m
             )
           );
@@ -620,8 +631,12 @@ export default function Home() {
         routerDecision = "direct";
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === assistantId
-              ? { ...m, content: routerContent || "…" }
+	            m.id === assistantId
+	              ? {
+	                ...m,
+	                content: routerContent || "…",
+	                responseMode: directResponseMode,
+	              }
               : m
           )
         );
@@ -647,6 +662,7 @@ export default function Home() {
             m.id === assistantId
               ? {
                 ...m,
+                responseMode: "chat",
                 content:
                   "Search is disabled. Enable Search in Tools settings to use live web results, or I can continue with a normal answer from existing context.",
               }
@@ -669,6 +685,7 @@ export default function Home() {
           m.id === assistantId
             ? {
               ...m,
+              responseMode: "search",
               content: "",
               searchQuery: refinedQuery,
               searchResults: [],
@@ -716,8 +733,13 @@ export default function Home() {
 
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === assistantId
-            ? { ...m, searchResults, searchStatus: "done" as const }
+            m.id === assistantId
+              ? {
+                ...m,
+                responseMode: "search",
+                searchResults,
+                searchStatus: "done" as const,
+              }
             : m
         )
       );
@@ -762,7 +784,9 @@ export default function Home() {
           answerContent += text;
           setMessages((prev) =>
             prev.map((m) =>
-              m.id === assistantId ? { ...m, content: answerContent } : m
+              m.id === assistantId
+                ? { ...m, content: answerContent, responseMode: "search" }
+                : m
             )
           );
         },
@@ -831,6 +855,7 @@ export default function Home() {
     if (!userMsg || userMsg.role !== "user") return;
 
     const assistantMsg = currentMessages[assistantIdx];
+    const responseMode = assistantMsg.responseMode ?? "chat";
     const existingVersions = normalizeMessageVersions(assistantMsg);
 
     const historyBefore = currentMessages.slice(0, assistantIdx - 1);
@@ -848,14 +873,15 @@ export default function Home() {
     setIsLoading(true);
     setStreamingMessageId(assistantMessageId);
 
-    if (assistantMsg.isDeepResearch) {
+    if (responseMode === "deepResearch") {
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantMessageId
-            ? {
-              ...m,
-              content: "",
-              weather: undefined,
+	            ? {
+	              ...m,
+	              content: "",
+	              responseMode: "deepResearch",
+	              weather: undefined,
               searchQuery: undefined,
               searchResults: undefined,
               searchStatus: undefined,
@@ -896,6 +922,7 @@ export default function Home() {
       const commitDeepResearchVersion = (content: string) => {
         const version: MessageVersion = {
           content,
+          responseMode: "deepResearch",
           isDeepResearch: true,
           researchSteps,
           researchStatus: "done",
@@ -1038,12 +1065,159 @@ export default function Home() {
       return;
     }
 
+    if (responseMode === "search") {
+      const refinedQuery = assistantMsg.searchQuery?.trim() || userMsg.content;
+      const searchToolSettings = { ...toolSettings, search: true };
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMessageId
+            ? {
+              ...m,
+              content: "",
+              responseMode: "search",
+              weather: undefined,
+              searchQuery: refinedQuery,
+              searchResults: [],
+              searchStatus: "searching" as const,
+              isDeepResearch: undefined,
+              researchSteps: undefined,
+              researchStatus: undefined,
+              allSources: undefined,
+              versions: existingVersions,
+              versionIndex: existingVersions.length - 1,
+            }
+            : m
+        )
+      );
+
+      let answerContent = "";
+      let searchResults: SearchResult[] = [];
+      let searchError: string | undefined;
+
+      try {
+        const searchRes = await fetch("/api/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: refinedQuery,
+            toolSettings: searchToolSettings,
+          }),
+        });
+        const body = await searchRes.json().catch(() => null);
+        if (body && Array.isArray(body.results)) searchResults = body.results;
+        if (body && typeof body.searchError === "string") {
+          searchError = body.searchError;
+        }
+        if (!searchRes.ok && !searchError) {
+          searchError = "Search failed before returning usable sources.";
+        }
+
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessageId
+              ? {
+                ...m,
+                responseMode: "search",
+                searchResults,
+                searchStatus: "done" as const,
+              }
+              : m
+          )
+        );
+
+        const answerRes = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: conversationHistory,
+            searchResults: searchResults.map((r) => ({
+              title: r.title,
+              url: r.url,
+              text: r.text,
+              highlights: r.highlights,
+            })),
+            mode: "answer",
+            topK,
+            toolSettings: searchToolSettings,
+            clientDate,
+            searchAttempted: true,
+            ...(searchError ? { searchError } : {}),
+            ...(apiAttachment ? { attachment: apiAttachment } : {}),
+            ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
+          }),
+        });
+
+        if (!answerRes.ok || !answerRes.body) throw new Error("Answer failed");
+
+        const answerReader = answerRes.body.getReader();
+        const answerDecoder = new TextDecoder();
+        const answerParser = parseSSEStream((text) => {
+          answerContent += text;
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMessageId
+                ? { ...m, content: answerContent, responseMode: "search" }
+                : m
+            )
+          );
+        }, () => {});
+
+        while (true) {
+          const { done, value } = await answerReader.read();
+          if (done) break;
+          answerParser.processChunk(answerDecoder.decode(value, { stream: true }));
+        }
+
+        const version: MessageVersion = {
+          content: answerContent,
+          responseMode: "search",
+          searchQuery: refinedQuery,
+          searchResults,
+          searchStatus: "done",
+        };
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessageId
+              ? appendAssistantVersion(m, existingVersions, version)
+              : m
+          )
+        );
+        finishResponse();
+      } catch (e) {
+        console.error("Search regenerate failed:", e);
+        const version: MessageVersion = {
+          content:
+            "Failed to connect to chat service. ChatJimmy may be temporarily unavailable.",
+          responseMode: "search",
+          searchQuery: refinedQuery,
+          searchResults,
+          searchStatus: "done",
+        };
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessageId
+              ? appendAssistantVersion(m, existingVersions, version)
+              : m
+          )
+        );
+        finishResponse();
+      }
+      return;
+    }
+
+    const regenerationToolSettings: ChatToolSettings =
+      responseMode === "weather"
+        ? { ...toolSettings, search: false, weather: true }
+        : { ...toolSettings, search: false, weather: false };
+
     setMessages((prev) =>
       prev.map((m) =>
         m.id === assistantMessageId
           ? {
             ...m,
             content: "",
+            responseMode: responseMode === "weather" ? "weather" : "chat",
             weather: undefined,
             searchQuery: undefined,
             searchResults: undefined,
@@ -1066,10 +1240,10 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: conversationHistory,
-          mode: "router",
-          topK,
-          toolSettings,
+	          messages: conversationHistory,
+	          mode: "router",
+	          topK,
+	          toolSettings: regenerationToolSettings,
           clientDate,
           ...(apiAttachment ? { attachment: apiAttachment } : {}),
           ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
@@ -1083,6 +1257,8 @@ export default function Home() {
       let routerContent = "";
       let routerDecision: "direct" | "search" | null = null;
       let weather: WeatherCardData | undefined;
+      let directResponseMode: MessageResponseMode =
+        responseMode === "weather" ? "weather" : "chat";
 
       const routerParser = parseSSEStream(
         (text) => {
@@ -1091,25 +1267,32 @@ export default function Home() {
             const trimmedUpper = routerContent.trimStart().toUpperCase();
             routerDecision = trimmedUpper.startsWith("SEARCH:") ? "search" : "direct";
           }
-          if (routerDecision === "direct") {
-            answerContent = routerContent;
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantMessageId ? { ...m, content: routerContent } : m
-              )
-            );
-          }
+	          if (routerDecision === "direct") {
+	            answerContent = routerContent;
+	            setMessages((prev) =>
+	              prev.map((m) =>
+	                m.id === assistantMessageId
+	                  ? {
+	                    ...m,
+	                    content: routerContent,
+	                    responseMode: directResponseMode,
+	                  }
+	                  : m
+	              )
+	            );
+	          }
         },
         () => {},
         (event) => {
-          if (event.type !== "weather") return;
-          routerDecision = "direct";
-          weather = event.weather as WeatherCardData;
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantMessageId
-                ? { ...m, weather }
-                : m
+	          if (event.type !== "weather") return;
+	          routerDecision = "direct";
+	          weather = event.weather as WeatherCardData;
+	          directResponseMode = "weather";
+	          setMessages((prev) =>
+	            prev.map((m) =>
+	              m.id === assistantMessageId
+	                ? { ...m, weather, responseMode: "weather" }
+	                : m
             )
           );
         }
@@ -1126,15 +1309,23 @@ export default function Home() {
         answerContent = routerContent || "…";
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === assistantMessageId
-              ? { ...m, content: routerContent || "…" }
-              : m
+	            m.id === assistantMessageId
+	              ? {
+	                ...m,
+	                content: routerContent || "…",
+	                responseMode: directResponseMode,
+	              }
+	              : m
           )
         );
       }
 
       if (routerDecision === "direct") {
-        const version: MessageVersion = { content: answerContent, weather };
+        const version: MessageVersion = {
+          content: answerContent,
+          responseMode: directResponseMode,
+          weather,
+        };
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantMessageId
@@ -1146,10 +1337,10 @@ export default function Home() {
         return;
       }
 
-      if (!toolSettings.search) {
+      if (!regenerationToolSettings.search) {
         const msg =
           "Search is disabled. Enable Search in Tools settings to use live web results, or I can continue with a normal answer from existing context.";
-        const version: MessageVersion = { content: msg };
+        const version: MessageVersion = { content: msg, responseMode: "chat" };
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantMessageId
@@ -1170,10 +1361,11 @@ export default function Home() {
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantMessageId
-            ? {
-              ...m,
-              content: "",
-              searchQuery: refinedQuery,
+	            ? {
+	              ...m,
+	              content: "",
+	              responseMode: "search",
+	              searchQuery: refinedQuery,
               searchResults: [],
               searchStatus: "searching" as const,
             }
@@ -1187,7 +1379,10 @@ export default function Home() {
         const searchRes = await fetch("/api/search", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: refinedQuery, toolSettings }),
+          body: JSON.stringify({
+            query: refinedQuery,
+            toolSettings: regenerationToolSettings,
+          }),
         });
         const body = await searchRes.json().catch(() => null);
         if (body && Array.isArray(body.results)) searchResults = body.results;
@@ -1200,8 +1395,13 @@ export default function Home() {
 
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === assistantMessageId
-            ? { ...m, searchResults, searchStatus: "done" as const }
+	            m.id === assistantMessageId
+	            ? {
+	              ...m,
+	              responseMode: "search",
+	              searchResults,
+	              searchStatus: "done" as const,
+	            }
             : m
         )
       );
@@ -1219,7 +1419,7 @@ export default function Home() {
           })),
           mode: "answer",
           topK,
-          toolSettings,
+          toolSettings: regenerationToolSettings,
           clientDate,
           searchAttempted: true,
           ...(searchError ? { searchError } : {}),
@@ -1250,6 +1450,7 @@ export default function Home() {
 
       const version: MessageVersion = {
         content: answerContent,
+        responseMode: "search",
         searchQuery: refinedQuery,
         searchResults,
         searchStatus: "done",
@@ -1264,11 +1465,11 @@ export default function Home() {
       finishResponse();
     } catch (e) {
       console.error("Regenerate failed:", e);
-      const version: MessageVersion = {
-        content:
-          "Failed to connect to chat service. ChatJimmy may be temporarily unavailable.",
-        searchStatus: "done",
-      };
+	      const version: MessageVersion = {
+	        content:
+	          "Failed to connect to chat service. ChatJimmy may be temporarily unavailable.",
+	        responseMode: responseMode === "weather" ? "weather" : "chat",
+	      };
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantMessageId
@@ -1306,6 +1507,7 @@ export default function Home() {
         {
           id: assistantId,
           role: "assistant",
+          responseMode: "chat",
           content:
             "Please add a research question for the attached file before running Deep Research.",
           timestamp: Date.now(),
@@ -1328,6 +1530,7 @@ export default function Home() {
         id: assistantId,
         role: "assistant",
         content: "",
+        responseMode: "deepResearch",
         isDeepResearch: true,
         researchSteps: [],
         researchStatus: "researching",
