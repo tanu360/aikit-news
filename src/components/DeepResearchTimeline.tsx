@@ -145,39 +145,33 @@ export default function DeepResearchTimeline({
     <div className="mb-4">
       <button
         onClick={() => setManualCollapsed(!collapsed)}
-        className="timeline-trigger group flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left"
+        className="timeline-trigger group flex w-full items-center gap-1 rounded-lg px-3 py-2 text-left"
       >
         <div className="flex h-5 w-5 shrink-0 items-center justify-center">
           {status === "researching" || status === "answering" ? (
-            <div className="relative">
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 16 16"
-                fill="none"
-                style={{ color: "var(--color-accent)" }}
-              >
-                <path
-                  d="M8 2v4l2.5 1.5"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <circle
-                  cx="8"
-                  cy="8"
-                  r="6"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  opacity="0.4"
-                />
-              </svg>
-              <div
-                className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full animate-pulse-soft"
-                style={{ background: "var(--color-accent)" }}
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 16 16"
+              fill="none"
+              style={{ color: "var(--color-accent)" }}
+            >
+              <path
+                d="M8 2v4l2.5 1.5"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               />
-            </div>
+              <circle
+                cx="8"
+                cy="8"
+                r="6"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                opacity="0.4"
+              />
+            </svg>
           ) : (
             <svg
               width="14"
@@ -205,7 +199,7 @@ export default function DeepResearchTimeline({
           )}
         </div>
 
-        <div className="flex flex-1 items-center gap-2">
+        <div className="flex flex-1 items-center gap-1.5">
           <span
             className="text-[13px] font-medium"
             style={{ color: "var(--color-ink-secondary)" }}
@@ -216,6 +210,13 @@ export default function DeepResearchTimeline({
                 ? "Writing answer..."
                 : "Deep research complete"}
           </span>
+          {(status === "researching" || status === "answering") && (
+            <span
+              aria-hidden="true"
+              className="h-2 w-2 shrink-0 rounded-full animate-pulse-soft"
+              style={{ background: "var(--color-accent)" }}
+            />
+          )}
         </div>
 
         <motion.svg

@@ -38,7 +38,7 @@ export default function SearchTimeline({
     <div className="mb-4">
       <button
         onClick={() => setManualCollapsed(!collapsed)}
-        className="timeline-trigger group flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left"
+        className="timeline-trigger group flex w-full items-center gap-1 rounded-lg px-3 py-2 text-left"
       >
         <div className="flex h-5 w-5 shrink-0 items-center justify-center">
           {status === "searching" ? (
