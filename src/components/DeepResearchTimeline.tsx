@@ -17,11 +17,9 @@ function StepItem({ step }: { step: ResearchStep }) {
 
   useEffect(() => {
     let showTimer: ReturnType<typeof setTimeout> | undefined;
-    let hideTimer: ReturnType<typeof setTimeout> | undefined;
 
     if (step.status === "done" && step.results.length > 0) {
       showTimer = setTimeout(() => setShowResults(true), 0);
-      hideTimer = setTimeout(() => setShowResults(false), 3000);
     } else if (step.status === "searching") {
       showTimer = setTimeout(() => setShowResults(true), 0);
     } else {
@@ -30,7 +28,6 @@ function StepItem({ step }: { step: ResearchStep }) {
 
     return () => {
       if (showTimer) clearTimeout(showTimer);
-      if (hideTimer) clearTimeout(hideTimer);
     };
   }, [step.status, step.results.length]);
 
