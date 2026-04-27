@@ -6,6 +6,8 @@ import { motion } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Add01Icon,
+  ArrowDown01Icon,
+  ArrowUp01Icon,
   PencilEdit01Icon,
   ArtificialIntelligence04Icon,
   GithubIcon,
@@ -297,6 +299,8 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [activeSearchMatchIndex, setActiveSearchMatchIndex] = useState(0);
+  const [searchMatchCount, setSearchMatchCount] = useState(0);
   const [isCompactViewport, setIsCompactViewport] = useState(false);
   const isDark = useIsDarkTheme();
   const logo3DTheme = isDark ? LOGO_3D_THEME.dark : LOGO_3D_THEME.light;
@@ -382,6 +386,50 @@ export default function Home() {
       scrollChatToBottom(isLoading ? "auto" : "smooth");
     });
   }, [isLoading, messages, scrollChatToBottom, streamingMessageId]);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      const query = searchQuery.trim();
+      if (!query) {
+        setSearchMatchCount(0);
+        setActiveSearchMatchIndex(0);
+        return;
+      }
+
+      const count = document.querySelectorAll(
+        "mark.search-match, mark.search-match-user"
+      ).length;
+      setSearchMatchCount(count);
+      setActiveSearchMatchIndex((index) =>
+        count > 0 ? Math.min(index, count - 1) : 0
+      );
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [messages, searchQuery]);
+
+  useEffect(() => {
+    const matches = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        "mark.search-match, mark.search-match-user"
+      )
+    );
+
+    matches.forEach((match) => {
+      match.classList.remove("search-match-active");
+    });
+
+    if (!searchQuery.trim() || matches.length === 0) return;
+
+    const index = Math.min(activeSearchMatchIndex, matches.length - 1);
+    const activeMatch = matches[index];
+    activeMatch.classList.add("search-match-active");
+    activeMatch.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+      inline: "nearest",
+    });
+  }, [activeSearchMatchIndex, messages, searchMatchCount, searchQuery]);
 
   function startNewChat() {
     const id = generateId();
@@ -553,11 +601,11 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-	          messages: conversationHistory,
-	          mode: "router",
-	          topK,
-	          toolSettings,
-	          clientDate,
+          messages: conversationHistory,
+          mode: "router",
+          topK,
+          toolSettings,
+          clientDate,
           ...(apiAttachment ? { attachment: apiAttachment } : {}),
           ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
         }),
@@ -572,10 +620,10 @@ export default function Home() {
       const routerVercelId = routerRes.headers.get("x-vercel-id");
 
       const routerReader = routerRes.body.getReader();
-	      const routerDecoder = new TextDecoder();
-	      let routerContent = "";
-	      let routerDecision: "direct" | "search" | null = null;
-	      let directResponseMode: MessageResponseMode = "chat";
+      const routerDecoder = new TextDecoder();
+      let routerContent = "";
+      let routerDecision: "direct" | "search" | null = null;
+      let directResponseMode: MessageResponseMode = "chat";
 
       const routerParser = parseSSEStream(
         (text) => {
@@ -594,22 +642,22 @@ export default function Home() {
           if (routerDecision === "direct") {
             setMessages((prev) =>
               prev.map((m) =>
-	                m.id === assistantId
-	                  ? {
-	                    ...m,
-	                    content: routerContent,
-	                    responseMode: directResponseMode,
-	                  }
-	                  : m
+                m.id === assistantId
+                  ? {
+                    ...m,
+                    content: routerContent,
+                    responseMode: directResponseMode,
+                  }
+                  : m
               )
             );
           }
         },
         () => { },
         (event) => {
-	          if (event.type !== "weather") return;
-	          routerDecision = "direct";
-	          directResponseMode = "weather";
+          if (event.type !== "weather") return;
+          routerDecision = "direct";
+          directResponseMode = "weather";
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantId
@@ -636,12 +684,12 @@ export default function Home() {
         routerDecision = "direct";
         setMessages((prev) =>
           prev.map((m) =>
-	            m.id === assistantId
-	              ? {
-	                ...m,
-	                content: routerContent || "…",
-	                responseMode: directResponseMode,
-	              }
+            m.id === assistantId
+              ? {
+                ...m,
+                content: routerContent || "…",
+                responseMode: directResponseMode,
+              }
               : m
           )
         );
@@ -738,13 +786,13 @@ export default function Home() {
 
       setMessages((prev) =>
         prev.map((m) =>
-            m.id === assistantId
-              ? {
-                ...m,
-                responseMode: "search",
-                searchResults,
-                searchStatus: "done" as const,
-              }
+          m.id === assistantId
+            ? {
+              ...m,
+              responseMode: "search",
+              searchResults,
+              searchStatus: "done" as const,
+            }
             : m
         )
       );
@@ -882,11 +930,11 @@ export default function Home() {
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantMessageId
-	            ? {
-	              ...m,
-	              content: "",
-	              responseMode: "deepResearch",
-	              weather: undefined,
+            ? {
+              ...m,
+              content: "",
+              responseMode: "deepResearch",
+              weather: undefined,
               searchQuery: undefined,
               searchResults: undefined,
               searchStatus: undefined,
@@ -1166,7 +1214,7 @@ export default function Home() {
                 : m
             )
           );
-        }, () => {});
+        }, () => { });
 
         while (true) {
           const { done, value } = await answerReader.read();
@@ -1245,10 +1293,10 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-	          messages: conversationHistory,
-	          mode: "router",
-	          topK,
-	          toolSettings: regenerationToolSettings,
+          messages: conversationHistory,
+          mode: "router",
+          topK,
+          toolSettings: regenerationToolSettings,
           clientDate,
           ...(apiAttachment ? { attachment: apiAttachment } : {}),
           ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
@@ -1272,32 +1320,32 @@ export default function Home() {
             const trimmedUpper = routerContent.trimStart().toUpperCase();
             routerDecision = trimmedUpper.startsWith("SEARCH:") ? "search" : "direct";
           }
-	          if (routerDecision === "direct") {
-	            answerContent = routerContent;
-	            setMessages((prev) =>
-	              prev.map((m) =>
-	                m.id === assistantMessageId
-	                  ? {
-	                    ...m,
-	                    content: routerContent,
-	                    responseMode: directResponseMode,
-	                  }
-	                  : m
-	              )
-	            );
-	          }
+          if (routerDecision === "direct") {
+            answerContent = routerContent;
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMessageId
+                  ? {
+                    ...m,
+                    content: routerContent,
+                    responseMode: directResponseMode,
+                  }
+                  : m
+              )
+            );
+          }
         },
-        () => {},
+        () => { },
         (event) => {
-	          if (event.type !== "weather") return;
-	          routerDecision = "direct";
-	          weather = event.weather as WeatherCardData;
-	          directResponseMode = "weather";
-	          setMessages((prev) =>
-	            prev.map((m) =>
-	              m.id === assistantMessageId
-	                ? { ...m, weather, responseMode: "weather" }
-	                : m
+          if (event.type !== "weather") return;
+          routerDecision = "direct";
+          weather = event.weather as WeatherCardData;
+          directResponseMode = "weather";
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMessageId
+                ? { ...m, weather, responseMode: "weather" }
+                : m
             )
           );
         }
@@ -1314,13 +1362,13 @@ export default function Home() {
         answerContent = routerContent || "…";
         setMessages((prev) =>
           prev.map((m) =>
-	            m.id === assistantMessageId
-	              ? {
-	                ...m,
-	                content: routerContent || "…",
-	                responseMode: directResponseMode,
-	              }
-	              : m
+            m.id === assistantMessageId
+              ? {
+                ...m,
+                content: routerContent || "…",
+                responseMode: directResponseMode,
+              }
+              : m
           )
         );
       }
@@ -1366,11 +1414,11 @@ export default function Home() {
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantMessageId
-	            ? {
-	              ...m,
-	              content: "",
-	              responseMode: "search",
-	              searchQuery: refinedQuery,
+            ? {
+              ...m,
+              content: "",
+              responseMode: "search",
+              searchQuery: refinedQuery,
               searchResults: [],
               searchStatus: "searching" as const,
             }
@@ -1400,13 +1448,13 @@ export default function Home() {
 
       setMessages((prev) =>
         prev.map((m) =>
-	            m.id === assistantMessageId
-	            ? {
-	              ...m,
-	              responseMode: "search",
-	              searchResults,
-	              searchStatus: "done" as const,
-	            }
+          m.id === assistantMessageId
+            ? {
+              ...m,
+              responseMode: "search",
+              searchResults,
+              searchStatus: "done" as const,
+            }
             : m
         )
       );
@@ -1445,7 +1493,7 @@ export default function Home() {
             m.id === assistantMessageId ? { ...m, content: answerContent } : m
           )
         );
-      }, () => {});
+      }, () => { });
 
       while (true) {
         const { done, value } = await answerReader.read();
@@ -1470,11 +1518,11 @@ export default function Home() {
       finishResponse();
     } catch (e) {
       console.error("Regenerate failed:", e);
-	      const version: MessageVersion = {
-	        content:
-	          "Failed to connect to chat service. ChatJimmy may be temporarily unavailable.",
-	        responseMode: responseMode === "weather" ? "weather" : "chat",
-	      };
+      const version: MessageVersion = {
+        content:
+          "Failed to connect to chat service. ChatJimmy may be temporarily unavailable.",
+        responseMode: responseMode === "weather" ? "weather" : "chat",
+      };
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantMessageId
@@ -1794,9 +1842,17 @@ export default function Home() {
   };
 
   const hasMessages = messages.length > 0;
-  const matchedCount = searchQuery.trim()
-    ? messages.filter((m) => m.content.toLowerCase().includes(searchQuery.toLowerCase())).length
-    : 0;
+  const searchCountLabel =
+    searchMatchCount > 0
+      ? `${Math.min(activeSearchMatchIndex + 1, searchMatchCount)}/${searchMatchCount}`
+      : "0";
+
+  const navigateSearchMatch = (direction: -1 | 1) => {
+    if (searchMatchCount === 0) return;
+    setActiveSearchMatchIndex((index) =>
+      (index + direction + searchMatchCount) % searchMatchCount
+    );
+  };
 
   return (
     <div
@@ -1896,7 +1952,7 @@ export default function Home() {
               </span>
             </div>
 
-            <div className="flex shrink-0 items-center gap-1.5">
+            <div className="flex shrink-0 items-center gap-2">
               <a
                 href="https://github.com/tanu360"
                 target="_blank"
@@ -1933,7 +1989,7 @@ export default function Home() {
 
               {searchOpen ? (
                 <div
-                  className="flex h-8 w-28 shrink-0 items-center gap-1.5 rounded-full px-3 sm:w-40"
+                  className="flex h-8 w-40 shrink-0 items-center gap-1.5 rounded-full px-3 sm:w-56"
                   style={{ backgroundColor: "var(--color-surface-tertiary)" }}
                 >
                   <HugeiconsIcon icon={Search01Icon} size={13} strokeWidth={1.8} primaryColor="var(--color-ink-tertiary)" />
@@ -1941,7 +1997,10 @@ export default function Home() {
                     ref={searchInputRef}
                     type="text"
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setActiveSearchMatchIndex(0);
+                    }}
                     onKeyDown={(e) => { if (e.key === "Escape") { setSearchOpen(false); setSearchQuery(""); } }}
                     onBlur={() => { if (!searchQuery) setSearchOpen(false); }}
                     placeholder={isCompactViewport ? "Search.." : "Search chats..."}
@@ -1949,9 +2008,51 @@ export default function Home() {
                     style={{ color: "var(--color-ink-primary)", letterSpacing: 0 }}
                   />
                   {searchQuery && (
-                    <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-semibold" style={{ backgroundColor: "var(--color-accent)", color: "var(--color-icon-on-fill)" }}>
-                      {matchedCount}
-                    </span>
+                    <>
+                      <div className="flex shrink-0 items-center gap-0.5">
+                        <button
+                          type="button"
+                          aria-label="Previous search match"
+                          title="Previous search match"
+                          disabled={searchMatchCount === 0}
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => navigateSearchMatch(-1)}
+                          className="search-nav-button flex h-5 w-5 items-center justify-center p-0 disabled:cursor-not-allowed disabled:opacity-35"
+                        >
+                          <HugeiconsIcon
+                            icon={ArrowUp01Icon}
+                            size={12}
+                            strokeWidth={2}
+                            primaryColor="currentColor"
+                          />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Next search match"
+                          title="Next search match"
+                          disabled={searchMatchCount === 0}
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => navigateSearchMatch(1)}
+                          className="search-nav-button flex h-5 w-5 items-center justify-center p-0 disabled:cursor-not-allowed disabled:opacity-35"
+                        >
+                          <HugeiconsIcon
+                            icon={ArrowDown01Icon}
+                            size={12}
+                            strokeWidth={2}
+                            primaryColor="currentColor"
+                          />
+                        </button>
+                      </div>
+                      <span
+                        className="shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums"
+                        style={{
+                          backgroundColor: "var(--color-accent)",
+                          color: "#fff",
+                        }}
+                      >
+                        {searchCountLabel}
+                      </span>
+                    </>
                   )}
                 </div>
               ) : (
