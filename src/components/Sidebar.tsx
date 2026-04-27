@@ -142,7 +142,7 @@ export default function Sidebar({
               {chats.length === 0 ? (
                 <p
                   className="px-2 py-6 text-center text-[12px] leading-relaxed"
-                  style={{ color: "var(--color-ink-ghost)" }}
+                  style={{ color: "var(--color-ink-tertiary)" }}
                 >
                   No chats yet
                 </p>

@@ -65,6 +65,8 @@ function getMessageCopyText(message: Message): string {
   return lines.join("\n");
 }
 
+const MESSAGE_ACTION_ICON_SIZE = 14;
+
 function ActionButton({
   onClick,
   title,
@@ -208,7 +210,7 @@ export default function MessageBubble({
             <ActionButton onClick={handleCopy} title={copied ? "Copied!" : "Copy"}>
               <HugeiconsIcon
                 icon={copied ? CopyCheckIcon : Copy01Icon}
-                size={15}
+                size={MESSAGE_ACTION_ICON_SIZE}
                 strokeWidth={1.8}
                 primaryColor="currentColor"
               />
@@ -283,7 +285,7 @@ export default function MessageBubble({
                 key={delay}
                 className="h-1.5 w-1.5 rounded-full animate-pulse-soft"
                 style={{
-                  background: "var(--color-ink-ghost)",
+                  background: "var(--color-ink-tertiary)",
                   animationDelay: `${delay}ms`,
                 }}
               />
@@ -298,7 +300,7 @@ export default function MessageBubble({
           <ActionButton onClick={handleCopy} title={copied ? "Copied!" : "Copy"}>
             <HugeiconsIcon
               icon={copied ? CopyCheckIcon : Copy01Icon}
-              size={15}
+              size={MESSAGE_ACTION_ICON_SIZE}
               strokeWidth={1.8}
               primaryColor="currentColor"
             />
@@ -312,7 +314,7 @@ export default function MessageBubble({
             >
               <HugeiconsIcon
                 icon={ReloadIcon}
-                size={15}
+                size={MESSAGE_ACTION_ICON_SIZE}
                 strokeWidth={1.8}
                 primaryColor="currentColor"
               />
@@ -328,7 +330,7 @@ export default function MessageBubble({
               >
                 <HugeiconsIcon
                   icon={ArrowLeft01Icon}
-                  size={14}
+                  size={MESSAGE_ACTION_ICON_SIZE}
                   strokeWidth={2}
                   primaryColor="currentColor"
                 />
@@ -350,7 +352,7 @@ export default function MessageBubble({
               >
                 <HugeiconsIcon
                   icon={ArrowRight01Icon}
-                  size={14}
+                  size={MESSAGE_ACTION_ICON_SIZE}
                   strokeWidth={2}
                   primaryColor="currentColor"
                 />

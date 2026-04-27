@@ -224,7 +224,7 @@ export default function DeepResearchTimeline({
           height="12"
           viewBox="0 0 12 12"
           className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-          style={{ color: "var(--color-ink-ghost)" }}
+          style={{ color: "var(--color-ink-tertiary)" }}
           animate={{ rotate: collapsed ? 0 : 180 }}
           transition={{ duration: 0.2 }}
         >
@@ -275,7 +275,7 @@ export default function DeepResearchTimeline({
                   />
                   <span
                     className="text-[11px] animate-pulse-soft"
-                    style={{ color: "var(--color-ink-ghost)" }}
+                    style={{ color: "var(--color-ink-tertiary)" }}
                   >
                     Thinking of follow-up questions...
                   </span>

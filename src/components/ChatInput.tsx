@@ -563,7 +563,7 @@ export default function ChatInput({
                       style={{
                         backgroundColor: "var(--color-surface-secondary)",
                         border: "1px solid var(--color-border-light)",
-                        color: "var(--color-ink-ghost)",
+                        color: "var(--color-ink-tertiary)",
                       }}
                     >
                       <HugeiconsIcon
@@ -571,7 +571,7 @@ export default function ChatInput({
                         size={12}
                         strokeWidth={1.7}
                         primaryColor="currentColor"
-                        style={{ color: "var(--color-ink-ghost)", flexShrink: 0 }}
+                        style={{ color: "var(--color-ink-tertiary)", flexShrink: 0 }}
                       />
                       <span
                         className="shrink-0 font-medium"
@@ -579,7 +579,7 @@ export default function ChatInput({
                       >
                         {truncateFileName(attachedFile.name)}
                       </span>
-                      <span style={{ color: "var(--color-ink-ghost)", opacity: 0.5 }}>·</span>
+                      <span style={{ color: "var(--color-ink-tertiary)", opacity: 0.5 }}>·</span>
                       <span className="shrink-0" style={{ color: "var(--color-ink-tertiary)" }}>
                         {formatFileSize(attachedFile.size)} ·{" "}
                         {formatTokenCount(getAttachmentTokenCount(attachedFile))}
