@@ -972,6 +972,7 @@ export default function Home() {
     setInput("");
     setAttachedFile(null);
     setIsLoading(true);
+    setShowSettings(false);
 
     if (agentMode) {
       await handleDeepResearch(query, fileForSubmit);
