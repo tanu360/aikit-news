@@ -116,7 +116,11 @@
     --color-input-border: oklch(1 0 0 / 0.08);
     --color-input-ring: oklch(1 0 0 / 0.16);
     --color-input-ripple: oklch(1 0 0 / 0.06);
-    --color-grid-dash: #28292e;
+    --color-grid-dash: color-mix(
+      in oklch,
+      var(--color-surface-primary) 90%,
+      var(--color-ink-primary)
+    );
     --color-accent-muted: oklch(0.68 0.18 255 / 0.14);
     --color-accent-muted-strong: oklch(0.78 0.12 255);
     --color-accent-dot: oklch(0.72 0.16 255 / 0.88);
@@ -209,7 +213,11 @@
   --color-input-border: oklch(1 0 0 / 0.08);
   --color-input-ring: oklch(1 0 0 / 0.16);
   --color-input-ripple: oklch(1 0 0 / 0.06);
-  --color-grid-dash: #28292e;
+  --color-grid-dash: color-mix(
+    in oklch,
+    var(--color-surface-primary) 90%,
+    var(--color-ink-primary)
+  );
   --color-accent-muted: oklch(0.68 0.18 255 / 0.14);
   --color-accent-muted-strong: oklch(0.78 0.12 255);
   --color-accent-dot: oklch(0.72 0.16 255 / 0.88);
