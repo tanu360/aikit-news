@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Add01Icon,
-  ArrowUpRight01Icon,
+  PencilEdit01Icon,
   ArtificialIntelligence04Icon,
   GithubIcon,
   MarketAnalysisIcon,
@@ -1229,7 +1229,7 @@ export default function Home() {
                 />
                 <span className="hidden sm:inline">New</span>
                 <HugeiconsIcon
-                  icon={ArrowUpRight01Icon}
+                  icon={PencilEdit01Icon}
                   size={13}
                   strokeWidth={2}
                   primaryColor="currentColor"
