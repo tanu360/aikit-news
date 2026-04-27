@@ -120,7 +120,7 @@ function StepItem({ step }: { step: ResearchStep }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3, delay: 0.1 }}
-          className="mt-1 text-[12.5px] leading-relaxed"
+          className="mt-1 text-[12.5px] leading-relaxed font-medium"
           style={{
             color: "var(--color-ink-secondary)",
             letterSpacing: 0,
