@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -303,6 +303,7 @@ export default function Home() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const scrollTargetRef = useRef<string | null>(null);
+  const shouldAutoScrollRef = useRef(true);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chatsRef = useRef<Chat[]>([]);
   const touchStartXRef = useRef<number | null>(null);
@@ -314,6 +315,18 @@ export default function Home() {
     setIsLoading(false);
     setStreamingMessageId(null);
   };
+
+  const scrollChatToBottom = useCallback(
+    (behavior: ScrollBehavior = "smooth") => {
+      const container = chatContainerRef.current;
+      if (!container) return;
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior,
+      });
+    },
+    []
+  );
 
   useEffect(() => {
     const mediaQuery = window.matchMedia(DESKTOP_MEDIA_QUERY);
@@ -356,27 +369,19 @@ export default function Home() {
 
   useEffect(() => {
     if (!scrollTargetRef.current) return;
-    const targetId = scrollTargetRef.current;
     scrollTargetRef.current = null;
+    shouldAutoScrollRef.current = true;
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const el = document.querySelector(
-          `[data-message-id="${targetId}"]`
-        );
-        const container = chatContainerRef.current;
-        if (!el || !container) return;
-        void container.scrollHeight;
-        const elRect = el.getBoundingClientRect();
-        const containerRect = container.getBoundingClientRect();
-        const scrollTop =
-          container.scrollTop + elRect.top - containerRect.top - 12;
-        container.scrollTo({
-          top: Math.max(0, scrollTop),
-          behavior: "smooth",
-        });
-      });
+      scrollChatToBottom("smooth");
     });
-  }, [messages]);
+  }, [messages, scrollChatToBottom]);
+
+  useEffect(() => {
+    if (!messages.length || !shouldAutoScrollRef.current) return;
+    requestAnimationFrame(() => {
+      scrollChatToBottom(isLoading ? "auto" : "smooth");
+    });
+  }, [isLoading, messages, scrollChatToBottom, streamingMessageId]);
 
   function startNewChat() {
     const id = generateId();
@@ -1780,6 +1785,14 @@ export default function Home() {
     touchHandledRef.current = false;
   };
 
+  const handleChatScroll = () => {
+    const container = chatContainerRef.current;
+    if (!container) return;
+    const distanceFromBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
+    shouldAutoScrollRef.current = distanceFromBottom < 96;
+  };
+
   const hasMessages = messages.length > 0;
   const matchedCount = searchQuery.trim()
     ? messages.filter((m) => m.content.toLowerCase().includes(searchQuery.toLowerCase())).length
@@ -1986,7 +1999,11 @@ export default function Home() {
           </nav>
         </header>
 
-        <div ref={chatContainerRef} className="flex-1 overflow-y-auto">
+        <div
+          ref={chatContainerRef}
+          className="flex-1 overflow-y-auto"
+          onScroll={handleChatScroll}
+        >
           {!hasMessages && (
             <motion.div
               initial={{ opacity: 0 }}
