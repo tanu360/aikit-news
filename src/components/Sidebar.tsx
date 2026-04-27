@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Cancel01Icon,
+  ChatDownloadIcon,
   CopyrightIcon,
   Delete02Icon,
 } from "@hugeicons/core-free-icons";
@@ -13,6 +14,88 @@ import type { Chat } from "@/lib/types";
 const SIDEBAR_W = 284;
 const COMPACT_MEDIA_QUERY = "(max-width: 1023px)";
 
+function formatExportDate(timestamp: number) {
+  if (!timestamp) return "Unknown";
+  return new Date(timestamp).toLocaleString();
+}
+
+function sanitizeFilenamePart(value: string) {
+  return (
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 48) || "chat"
+  );
+}
+
+function buildChatExport(chat: Chat) {
+  const title = chat.title || "New conversation";
+  const lines = [
+    `# ${title}`,
+    "",
+    `Chat ID: ${chat.id}`,
+    `Created: ${formatExportDate(chat.createdAt)}`,
+    `Updated: ${formatExportDate(chat.updatedAt)}`,
+    `Messages: ${chat.messages.length}`,
+    "",
+    "---",
+    "",
+  ];
+
+  chat.messages.forEach((message, index) => {
+    const role = message.role === "assistant" ? "Assistant" : "You";
+    lines.push(
+      `## ${index + 1}. ${role} - ${formatExportDate(message.timestamp)}`,
+      "",
+      message.content.trim() || "_Empty message_",
+      ""
+    );
+
+    if (message.attachments?.length) {
+      lines.push("Attachments:");
+      message.attachments.forEach((file) => {
+        lines.push(`- ${file.name} (${file.size.toLocaleString()} bytes)`);
+      });
+      lines.push("");
+    }
+
+    const sources = message.allSources?.length
+      ? message.allSources
+      : message.searchResults;
+    if (sources?.length) {
+      lines.push("Sources:");
+      sources.forEach((source, sourceIndex) => {
+        lines.push(
+          `${sourceIndex + 1}. ${source.title || source.url}${
+            source.url ? ` - ${source.url}` : ""
+          }`
+        );
+      });
+      lines.push("");
+    }
+  });
+
+  return lines.join("\n");
+}
+
+function exportChat(chat: Chat) {
+  const title = chat.title || "New conversation";
+  const datePart = new Date().toISOString().slice(0, 10);
+  const filename = `${sanitizeFilenamePart(title)}-${datePart}.md`;
+  const blob = new Blob([buildChatExport(chat)], {
+    type: "text/markdown;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
 
 interface SidebarProps {
   isOpen: boolean;
@@ -83,16 +166,31 @@ export default function Sidebar({
               transition={{ duration: 0.18 }}
               className="relative flex flex-1 items-center justify-center overflow-hidden"
             >
-              <span
-                className="truncate select-none font-semibold text-center"
-                style={{
-                  fontSize: 14,
-                  letterSpacing: 0,
-                  color: "var(--color-ink-primary)",
-                }}
-              >
-                AiKit News Chats
-              </span>
+              <div className="flex min-w-0 items-center justify-center gap-2">
+                <span
+                  className="truncate select-none text-center font-semibold"
+                  style={{
+                    fontSize: 14,
+                    letterSpacing: 0,
+                    color: "var(--color-ink-primary)",
+                  }}
+                >
+                  AiKit News Chats
+                </span>
+                <span
+                  className="flex h-5 min-w-5 shrink-0 select-none items-center justify-center rounded-full px-1.5 text-[11px] font-semibold"
+                  style={{
+                    backgroundColor: "var(--color-surface-tertiary)",
+                    color: "var(--color-ink-secondary)",
+                    border:
+                      "1px solid color-mix(in oklch, var(--color-border-light) 86%, transparent)",
+                  }}
+                  aria-label={`${chats.length} chats`}
+                  title={`${chats.length} chats`}
+                >
+                  {chats.length}
+                </span>
+              </div>
               {isCompact && (
                 <button
                   type="button"
@@ -147,18 +245,20 @@ export default function Sidebar({
                   No chats yet
                 </p>
               ) : (
-                chats.map((chat) => {
+                chats.map((chat, index) => {
                   const isActive = chat.id === activeChatId;
                   const isHovered =
                     !isCompact && isOpen && hoveredId === chat.id;
-                  const showDelete = isCompact || isActive || isHovered;
+                  const showActions = isCompact || isActive || isHovered;
+                  const canExport = chat.messages.length > 0;
                   return (
                     <div
                       key={chat.id}
                       className="group relative mb-1 flex cursor-pointer items-center rounded-xl"
                       style={{
-                        paddingLeft: 10,
-                        paddingRight: isCompact ? 6 : 8,
+                        gap: 8,
+                        paddingLeft: 8,
+                        paddingRight: isCompact ? 6 : 7,
                         backgroundColor: isActive
                           ? "var(--color-surface-tertiary)"
                           : isHovered
@@ -168,7 +268,7 @@ export default function Sidebar({
                           ? "var(--color-ink-primary)"
                           : "var(--color-ink-secondary)",
                         transition: "background-color 120ms ease, color 120ms ease",
-                        minHeight: isCompact ? 44 : 32,
+                        minHeight: isCompact ? 50 : 40,
                       }}
                       onClick={() => handleSelectChat(chat.id)}
                       onMouseEnter={() => {
@@ -180,6 +280,23 @@ export default function Sidebar({
                       aria-current={isActive ? "page" : undefined}
                     >
                       <span
+                        className="flex shrink-0 select-none items-center justify-center font-semibold"
+                        style={{
+                          width: isCompact ? 30 : 26,
+                          height: isCompact ? 30 : 26,
+                          fontSize: isCompact ? 12 : 11,
+                          letterSpacing: 0,
+                          color: isActive
+                            ? "var(--color-ink-primary)"
+                            : isHovered
+                              ? "var(--color-ink-secondary)"
+                              : "var(--color-ink-tertiary)",
+                        }}
+                        aria-hidden="true"
+                      >
+                        {index + 1}
+                      </span>
+                      <span
                         className="flex-1 select-none truncate py-1.5 leading-snug"
                         style={{
                           fontSize: 12.5,
@@ -188,41 +305,95 @@ export default function Sidebar({
                       >
                         {chat.title || "New conversation"}
                       </span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setHoveredId(null);
-                          onDeleteChat(chat.id);
-                        }}
-                        className="ml-1 flex shrink-0 items-center justify-center rounded-lg transition-opacity duration-150"
+                      <div
+                        className="flex shrink-0 items-center"
                         style={{
-                          width: isCompact ? 44 : 22,
-                          height: isCompact ? 44 : 22,
-                          color: "var(--color-ink-tertiary)",
-                          opacity: showDelete ? 0.7 : 0,
-                          pointerEvents: showDelete ? "auto" : "none",
+                          gap: isCompact ? 6 : 4,
+                          opacity: showActions ? 1 : 0,
+                          pointerEvents: showActions ? "auto" : "none",
+                          transition: "opacity 140ms ease",
                         }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.opacity = "1";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.opacity = showDelete
-                            ? "0.7"
-                            : "0";
-                        }}
-                        tabIndex={showDelete ? 0 : -1}
-                        aria-hidden={showDelete ? undefined : true}
-                        aria-label={`Delete ${chat.title || "conversation"}`}
-                        title="Delete"
+                        aria-hidden={showActions ? undefined : true}
                       >
-                        <HugeiconsIcon
-                          icon={Delete02Icon}
-                          size={isCompact ? 12 : 10}
-                          strokeWidth={2.2}
-                          primaryColor="currentColor"
-                        />
-                      </button>
+                        <button
+                          type="button"
+                          disabled={!canExport}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!canExport) return;
+                            exportChat(chat);
+                          }}
+                          className="flex shrink-0 items-center justify-center rounded-xl transition-colors duration-150 disabled:cursor-not-allowed"
+                          style={{
+                            width: isCompact ? 42 : 32,
+                            height: isCompact ? 42 : 32,
+                            color: canExport
+                              ? "var(--color-ink-secondary)"
+                              : "var(--color-ink-tertiary)",
+                            opacity: canExport ? 1 : 0.42,
+                            backgroundColor: "transparent",
+                            WebkitTapHighlightColor: "transparent",
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!canExport) return;
+                            e.currentTarget.style.color =
+                              "var(--color-ink-primary)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color =
+                              canExport
+                                ? "var(--color-ink-secondary)"
+                                : "var(--color-ink-tertiary)";
+                          }}
+                          tabIndex={showActions && canExport ? 0 : -1}
+                          aria-label={`Export ${chat.title || "conversation"}`}
+                          title={
+                            canExport
+                              ? "Export chat"
+                              : "No messages to export"
+                          }
+                        >
+                          <HugeiconsIcon
+                            icon={ChatDownloadIcon}
+                            size={isCompact ? 17 : 15}
+                            strokeWidth={2}
+                            primaryColor="currentColor"
+                          />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setHoveredId(null);
+                            onDeleteChat(chat.id);
+                          }}
+                          className="flex shrink-0 items-center justify-center rounded-xl transition-colors duration-150"
+                          style={{
+                            width: isCompact ? 42 : 32,
+                            height: isCompact ? 42 : 32,
+                            color: "var(--color-ink-secondary)",
+                            backgroundColor: "transparent",
+                            WebkitTapHighlightColor: "transparent",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = "#dc2626";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color =
+                              "var(--color-ink-secondary)";
+                          }}
+                          tabIndex={showActions ? 0 : -1}
+                          aria-label={`Delete ${chat.title || "conversation"}`}
+                          title="Delete"
+                        >
+                          <HugeiconsIcon
+                            icon={Delete02Icon}
+                            size={isCompact ? 17 : 15}
+                            strokeWidth={2.2}
+                            primaryColor="currentColor"
+                          />
+                        </button>
+                      </div>
                     </div>
                   );
                 })
