@@ -350,16 +350,26 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(sseEvent("done", {})));
       } catch (error) {
         console.error("Deep research error:", error);
-        controller.enqueue(
-          encoder.encode(
-            sseEvent("error", {
-              message:
-                error instanceof Error
-                  ? error.message
-                  : "Research failed",
-            })
-          )
-        );
+        try {
+          controller.enqueue(encoder.encode(sseEvent("answer_start", {})));
+          const fallbackAnswer = await chatJimmy(
+            [{ role: "user", content: query }],
+            jimmyOpts
+          );
+          const chunkSize = 12;
+          for (let i = 0; i < fallbackAnswer.length; i += chunkSize) {
+            controller.enqueue(
+              encoder.encode(
+                sseEvent("answer_chunk", {
+                  content: fallbackAnswer.slice(i, i + chunkSize),
+                })
+              )
+            );
+          }
+        } catch (fallbackError) {
+          console.error("Deep research fallback error:", fallbackError);
+        }
+        controller.enqueue(encoder.encode(sseEvent("done", {})));
       }
 
       controller.close();

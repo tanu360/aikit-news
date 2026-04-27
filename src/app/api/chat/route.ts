@@ -263,10 +263,15 @@ export async function POST(req: NextRequest) {
         if (!location) {
           content = "Which city or place should I check the weather for?";
         } else {
-          const tWeatherStart = Date.now();
-          weatherCard = await getWeather(location, units);
-          weatherDuration = Date.now() - tWeatherStart;
-          content = formatWeatherAnswer(weatherCard);
+          try {
+            const tWeatherStart = Date.now();
+            weatherCard = await getWeather(location, units);
+            weatherDuration = Date.now() - tWeatherStart;
+            content = formatWeatherAnswer(weatherCard);
+          } catch {
+            content = await chatJimmy(jimmyMessages, jimmyOpts);
+            tChatjimmyDone = Date.now();
+          }
         }
       } else {
         content = completion.content;

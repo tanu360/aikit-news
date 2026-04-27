@@ -54,10 +54,7 @@ export async function POST(req: NextRequest) {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Exa API error:", errorText);
-      return NextResponse.json(
-        { error: "Search failed" },
-        { status: response.status }
-      );
+      return NextResponse.json({ results: [] });
     }
 
     const data = await response.json();
@@ -81,6 +78,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error("Search error:", error);
-    return NextResponse.json({ error: "Search failed" }, { status: 500 });
+    return NextResponse.json({ results: [] });
   }
 }
