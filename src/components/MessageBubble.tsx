@@ -85,13 +85,17 @@ function ActionButton({
       disabled={disabled}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      className="inline-flex h-7 w-7 items-center justify-center rounded-full disabled:opacity-40 active:scale-[0.94]"
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
+      className="inline-flex h-8 w-8 items-center justify-center rounded-full disabled:opacity-40 active:scale-[0.94]"
       style={{
-        background: hovered ? "var(--color-surface-hover)" : "transparent",
-        color: hovered ? "var(--color-ink-secondary)" : "var(--color-ink-ghost)",
+        background: "transparent",
+        color: hovered
+          ? "var(--color-ink-primary)"
+          : "var(--color-ink-secondary)",
         border: "none",
         cursor: disabled ? "not-allowed" : "pointer",
-        transition: "color 120ms, background-color 150ms",
+        transition: "color 120ms",
       }}
     >
       {children}
@@ -198,13 +202,13 @@ export default function MessageBubble({
           </div>
 
           <div
-            className="message-actions flex items-center gap-0.5 pr-0.5"
+            className="message-actions mt-0.5 flex items-center gap-0.5 pr-0.5"
             data-visible={actionsVisible ? "true" : "false"}
           >
             <ActionButton onClick={handleCopy} title={copied ? "Copied!" : "Copy"}>
               <HugeiconsIcon
                 icon={copied ? CopyCheckIcon : Copy01Icon}
-                size={13}
+                size={15}
                 strokeWidth={1.8}
                 primaryColor="currentColor"
               />
@@ -294,7 +298,7 @@ export default function MessageBubble({
           <ActionButton onClick={handleCopy} title={copied ? "Copied!" : "Copy"}>
             <HugeiconsIcon
               icon={copied ? CopyCheckIcon : Copy01Icon}
-              size={13}
+              size={15}
               strokeWidth={1.8}
               primaryColor="currentColor"
             />
@@ -308,7 +312,7 @@ export default function MessageBubble({
             >
               <HugeiconsIcon
                 icon={ReloadIcon}
-                size={13}
+                size={15}
                 strokeWidth={1.8}
                 primaryColor="currentColor"
               />
@@ -324,7 +328,7 @@ export default function MessageBubble({
               >
                 <HugeiconsIcon
                   icon={ArrowLeft01Icon}
-                  size={12}
+                  size={14}
                   strokeWidth={2}
                   primaryColor="currentColor"
                 />
@@ -346,7 +350,7 @@ export default function MessageBubble({
               >
                 <HugeiconsIcon
                   icon={ArrowRight01Icon}
-                  size={12}
+                  size={14}
                   strokeWidth={2}
                   primaryColor="currentColor"
                 />
