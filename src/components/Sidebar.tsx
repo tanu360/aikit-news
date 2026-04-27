@@ -11,7 +11,6 @@ import {
 import type { Chat } from "@/lib/types";
 
 const SIDEBAR_W = 284;
-const COLLAPSED_W = 64;
 const COMPACT_MEDIA_QUERY = "(max-width: 1023px)";
 
 
@@ -289,9 +288,9 @@ export default function Sidebar({
         </AnimatePresence>
       )}
       <motion.div
-        animate={{ width: isOpen ? SIDEBAR_W : COLLAPSED_W }}
+        animate={{ width: isOpen ? SIDEBAR_W : 0 }}
         transition={{ duration: 0.26, ease }}
-        className="hidden shrink-0 lg:block"
+        className="hidden shrink-0 overflow-hidden lg:block"
         style={{ height: "100dvh" }}
       >
         <motion.div

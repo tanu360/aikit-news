@@ -242,12 +242,13 @@ export default function Home() {
   const touchStartXRef = useRef<number | null>(null);
   const touchStartYRef = useRef<number | null>(null);
   const touchHandledRef = useRef(false);
+  const logoSvgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia(DESKTOP_MEDIA_QUERY);
     const syncSidebarForViewport = () => {
       setIsCompactViewport(!mediaQuery.matches);
-      setSidebarOpen(mediaQuery.matches);
+      setSidebarOpen(false);
     };
 
     syncSidebarForViewport();
@@ -1028,7 +1029,7 @@ export default function Home() {
     >
       <Sidebar
         isOpen={sidebarOpen}
-        onToggle={() => { if (isCompactViewport) setSidebarOpen((s) => !s); }}
+        onToggle={() => setSidebarOpen((s) => !s)}
         chats={chats}
         activeChatId={activeChatId}
         onSelectChat={loadChat}
@@ -1049,7 +1050,19 @@ export default function Home() {
             <div className="flex min-w-0 flex-1 items-center">
               <button
                 type="button"
-                onClick={() => { if (isCompactViewport) setSidebarOpen((s) => !s); }}
+                onClick={() => {
+                  setSidebarOpen((s) => !s);
+                  logoSvgRef.current?.animate(
+                    [
+                      { transform: "perspective(200px) rotateY(0deg)" },
+                      { transform: "perspective(200px) rotateY(90deg)" },
+                      { transform: "perspective(200px) rotateY(180deg)" },
+                      { transform: "perspective(200px) rotateY(270deg)" },
+                      { transform: "perspective(200px) rotateY(360deg)" },
+                    ],
+                    { duration: 480, easing: "ease-in-out" }
+                  );
+                }}
                 aria-label="Toggle sidebar"
                 title="Toggle sidebar"
                 className="flex shrink-0 items-center justify-center"
@@ -1061,6 +1074,7 @@ export default function Home() {
                 }}
               >
                 <svg
+                  ref={logoSvgRef}
                   aria-hidden="true"
                   viewBox="0 0 512 512"
                   xmlns="http://www.w3.org/2000/svg"
