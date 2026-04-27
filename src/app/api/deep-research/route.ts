@@ -348,6 +348,7 @@ export async function POST(req: NextRequest) {
             encoder.encode(sseEvent("all_sources", { sources: [] }))
           );
           controller.enqueue(encoder.encode(sseEvent("done", {})));
+          controller.close();
           return;
         }
 
