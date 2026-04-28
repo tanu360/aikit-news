@@ -709,7 +709,7 @@ export default function ChatInput({
               >
                 <HugeiconsIcon
                   icon={FileAddIcon}
-                  size={13}
+                  size={attachedFile ? 13 : 16}
                   strokeWidth={1.8}
                   primaryColor="currentColor"
                 />
@@ -761,7 +761,8 @@ export default function ChatInput({
                     transitionTimingFunction: "var(--theme-ease)",
                   }}
                 >
-                  Deep Research
+                  <span className="sm:hidden">Research</span>
+                  <span className="hidden sm:inline">Deep Research</span>
                 </span>
                 <motion.span
                   animate={{
