@@ -281,7 +281,7 @@ export default function Sidebar({
                       <span
                         className="shrink-0 select-none font-semibold leading-none"
                         style={{
-                          marginRight: isCompact ? 14 : 16,
+                          marginRight: isCompact ? 8 : 10,
                           fontSize: isCompact ? 12 : 11,
                           letterSpacing: 0,
                           fontVariantNumeric: "tabular-nums",
