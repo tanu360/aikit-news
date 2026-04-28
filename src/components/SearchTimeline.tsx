@@ -168,7 +168,7 @@ export default function SearchTimeline({
                     }}
                   />
 
-                  <div className="source-row-surface flex min-h-11 items-center gap-2.5 rounded-md px-2 py-2 sm:min-h-0 sm:py-1.5">
+                  <div className="source-row-surface flex min-h-0 items-center gap-2.5 rounded-md px-2 py-1.5">
                     <Image
                       src={getFaviconUrl(result.url)}
                       alt=""

@@ -645,6 +645,11 @@ function TokenCounterChip({
     : hasCompaction
       ? "Summary Active"
       : "Total Tokens";
+  const shortLabel = compacting
+    ? "Compact"
+    : hasCompaction
+      ? "Summary"
+      : "Tokens";
   const title = [
     `Context Tokens: ${safeCount.toLocaleString()} / ${safeLimit.toLocaleString()} (${tokenStatus})`,
     `Auto compact starts at ${safeTrigger.toLocaleString()} tokens.`,
@@ -656,9 +661,8 @@ function TokenCounterChip({
 
   return (
     <div
-      className="absolute bottom-full z-10 mb-3 flex max-w-[calc(100%-68px)] items-center gap-2 rounded-full px-3.5 py-2 text-[11px]"
+      className="absolute right-11 bottom-full z-10 mb-2 flex max-w-[calc(100%-52px)] items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[10px] sm:right-14.5 sm:mb-3 sm:max-w-[calc(100%-68px)] sm:gap-2 sm:px-3.5 sm:py-2 sm:text-[11px]"
       style={{
-        right: 58,
         backgroundColor: chipBackground,
         border:
           isOverLimit
@@ -674,28 +678,33 @@ function TokenCounterChip({
     >
       <span
         aria-hidden="true"
-        className="grid h-7 w-7 shrink-0 place-items-center rounded-full"
+        className="grid h-6 w-6 shrink-0 place-items-center rounded-full sm:h-7 sm:w-7"
         style={{
           background: `conic-gradient(${tone} ${percent}%, ${track} 0)`,
         }}
       >
         <span
-          className="h-4.5 w-4.5 rounded-full"
+          className="h-3.5 w-3.5 rounded-full sm:h-4.5 sm:w-4.5"
           style={{ backgroundColor: chipBackground }}
         />
       </span>
-      <span className="grid place-items-center gap-1 text-center leading-tight">
+      <span className="grid place-items-center gap-0.5 text-center leading-tight sm:gap-1">
         <span
-          className="block w-full text-center text-[13px] leading-none tabular-nums"
-          style={{ color: "currentColor", fontWeight: 700 }}
+          className="block w-full text-center text-[10px] leading-none tabular-nums sm:text-[13px]"
+          style={{ color: "currentColor", fontWeight: 600 }}
         >
           {safeCount.toLocaleString()}/{safeLimit.toLocaleString()}
         </span>
         <span
-          className="block w-full text-center text-[10px] leading-none"
+          className="block w-full text-center text-[9px] leading-none sm:text-[10px]"
           style={{ color: "currentColor", opacity: 0.68 }}
         >
-          {isOverLimit ? "Over Limit" : label}
+          <span className="sm:hidden">
+            {isOverLimit ? "Over" : shortLabel}
+          </span>
+          <span className="hidden sm:inline">
+            {isOverLimit ? "Over Limit" : label}
+          </span>
         </span>
       </span>
     </div>
@@ -1411,19 +1420,19 @@ export default function Home() {
           m.id === assistantId
             ? {
               ...m,
-                responseMode: "chat",
-                content: "",
-                generationStats: undefined,
-                weather: undefined,
-                searchQuery: undefined,
-                searchResults: undefined,
-                searchStatus: undefined,
-                isDeepResearch: undefined,
-                researchSteps: undefined,
-                researchStatus: undefined,
-                allSources: undefined,
-                ...retryPatch,
-              }
+              responseMode: "chat",
+              content: "",
+              generationStats: undefined,
+              weather: undefined,
+              searchQuery: undefined,
+              searchResults: undefined,
+              searchStatus: undefined,
+              isDeepResearch: undefined,
+              researchSteps: undefined,
+              researchStatus: undefined,
+              allSources: undefined,
+              ...retryPatch,
+            }
             : m
         )
       );
@@ -1467,112 +1476,143 @@ export default function Home() {
       }
 
       try {
-      const tRouterStartWall = nowMs();
-      const routerRes = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        const tRouterStartWall = nowMs();
+        const routerRes = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: conversationHistory,
-          mode: "router",
-          topK,
-          toolSettings,
-          clientDate,
-          ...(apiAttachment ? { attachment: apiAttachment } : {}),
-          ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
-        }),
-      });
-      const tRouterFirstByteWall = nowMs();
+            mode: "router",
+            topK,
+            toolSettings,
+            clientDate,
+            ...(apiAttachment ? { attachment: apiAttachment } : {}),
+            ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
+          }),
+        });
+        const tRouterFirstByteWall = nowMs();
 
-      if (!routerRes.ok || !routerRes.body) throw new Error("Router failed");
+        if (!routerRes.ok || !routerRes.body) throw new Error("Router failed");
 
-      const routerServerTiming =
-        routerRes.headers.get("Server-Timing") ??
-        routerRes.headers.get("x-debug-timing");
-      const routerVercelId = routerRes.headers.get("x-vercel-id");
+        const routerServerTiming =
+          routerRes.headers.get("Server-Timing") ??
+          routerRes.headers.get("x-debug-timing");
+        const routerVercelId = routerRes.headers.get("x-vercel-id");
 
-      const routerReader = routerRes.body.getReader();
-      const routerDecoder = new TextDecoder();
-      let routerContent = "";
-      let routerDecision:
-        | "direct"
-        | "search"
-        | "context_compaction_required"
-        | null = null;
-      let directResponseMode: MessageResponseMode = "chat";
-      let routerGenerationStats: GenerationStats | undefined;
-      let routerNeedsCompactionRetry = false;
+        const routerReader = routerRes.body.getReader();
+        const routerDecoder = new TextDecoder();
+        let routerContent = "";
+        let routerDecision:
+          | "direct"
+          | "search"
+          | "context_compaction_required"
+          | null = null;
+        let directResponseMode: MessageResponseMode = "chat";
+        let routerGenerationStats: GenerationStats | undefined;
+        let routerNeedsCompactionRetry = false;
 
-      const routerParser = parseSSEStream(
-        (text) => {
-          routerContent += text;
+        const routerParser = parseSSEStream(
+          (text) => {
+            routerContent += text;
 
-          if (
-            routerDecision === null &&
-            routerContent.trimStart().length >= 10
-          ) {
-            routerDecision =
-              extractSearchControlQuery(routerContent) !== null
-                ? "search"
-                : "direct";
-          }
+            if (
+              routerDecision === null &&
+              routerContent.trimStart().length >= 10
+            ) {
+              routerDecision =
+                extractSearchControlQuery(routerContent) !== null
+                  ? "search"
+                  : "direct";
+            }
 
-          if (routerDecision === "direct") {
+            if (routerDecision === "direct") {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantId
+                    ? {
+                      ...m,
+                      content: routerContent,
+                      responseMode: directResponseMode,
+                    }
+                    : m
+                )
+              );
+            }
+          },
+          () => { },
+          (event) => {
+            if (event.type === "context_compaction_required") {
+              routerNeedsCompactionRetry = true;
+              routerDecision = "context_compaction_required";
+              return;
+            }
+
+            const stats = getGenerationStatsEvent(event);
+            if (stats) {
+              routerGenerationStats = stats;
+              if (routerDecision === "direct") {
+                applyGenerationStats(assistantId, stats);
+              }
+              return;
+            }
+
+            if (event.type !== "weather") return;
+            routerDecision = "direct";
+            directResponseMode = "weather";
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === assistantId
                   ? {
                     ...m,
-                    content: routerContent,
-                    responseMode: directResponseMode,
+                    weather: event.weather as WeatherCardData,
+                    responseMode: "weather",
                   }
                   : m
               )
             );
           }
-        },
-        () => { },
-        (event) => {
-          if (event.type === "context_compaction_required") {
-            routerNeedsCompactionRetry = true;
-            routerDecision = "context_compaction_required";
-            return;
-          }
+        );
 
-          const stats = getGenerationStatsEvent(event);
-          if (stats) {
-            routerGenerationStats = stats;
-            if (routerDecision === "direct") {
-              applyGenerationStats(assistantId, stats);
-            }
-            return;
-          }
+        while (true) {
+          const { done, value } = await routerReader.read();
+          if (done) break;
+          routerParser.processChunk(routerDecoder.decode(value, { stream: true }));
+        }
 
-          if (event.type !== "weather") return;
+        const tRouterEndWall = nowMs();
+
+        if (routerNeedsCompactionRetry) {
+          logTiming(`Chat:router`, {
+            query,
+            tStartWall: tRouterStartWall,
+            tFirstByteWall: tRouterFirstByteWall,
+            tEndWall: tRouterEndWall,
+            serverTiming: routerServerTiming,
+            vercelId: routerVercelId,
+          });
+          if (await prepareForcedCompactionRetry()) continue;
+          return;
+        }
+
+        if (routerDecision === null) {
           routerDecision = "direct";
-          directResponseMode = "weather";
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantId
                 ? {
                   ...m,
-                  weather: event.weather as WeatherCardData,
-                  responseMode: "weather",
+                  content: routerContent || "…",
+                  responseMode: directResponseMode,
                 }
                 : m
             )
           );
         }
-      );
 
-      while (true) {
-        const { done, value } = await routerReader.read();
-        if (done) break;
-        routerParser.processChunk(routerDecoder.decode(value, { stream: true }));
-      }
+        if (routerDecision === "direct" && routerGenerationStats) {
+          applyGenerationStats(assistantId, routerGenerationStats);
+        }
 
-      const tRouterEndWall = nowMs();
-
-      if (routerNeedsCompactionRetry) {
         logTiming(`Chat:router`, {
           query,
           tStartWall: tRouterStartWall,
@@ -1581,125 +1621,94 @@ export default function Home() {
           serverTiming: routerServerTiming,
           vercelId: routerVercelId,
         });
-        if (await prepareForcedCompactionRetry()) continue;
-        return;
-      }
 
-      if (routerDecision === null) {
-        routerDecision = "direct";
+        if (routerDecision === "direct") {
+          finishResponse();
+          return;
+        }
+
+        if (!toolSettings.search) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId
+                ? {
+                  ...m,
+                  responseMode: "chat",
+                  content:
+                    "Search is disabled. Enable Search in Tools settings to use live web results, or I can continue with a normal answer from existing context.",
+                }
+                : m
+            )
+          );
+          finishResponse();
+          return;
+        }
+
+        const refinedQuery = extractSearchControlQuery(routerContent) || query;
+
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId
               ? {
                 ...m,
-                content: routerContent || "…",
-                responseMode: directResponseMode,
+                responseMode: "search",
+                content: "",
+                searchQuery: refinedQuery,
+                searchResults: [],
+                searchStatus: "searching" as const,
               }
               : m
           )
         );
-      }
 
-      if (routerDecision === "direct" && routerGenerationStats) {
-        applyGenerationStats(assistantId, routerGenerationStats);
-      }
-
-      logTiming(`Chat:router`, {
-        query,
-        tStartWall: tRouterStartWall,
-        tFirstByteWall: tRouterFirstByteWall,
-        tEndWall: tRouterEndWall,
-        serverTiming: routerServerTiming,
-        vercelId: routerVercelId,
-      });
-
-      if (routerDecision === "direct") {
-        finishResponse();
-        return;
-      }
-
-      if (!toolSettings.search) {
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantId
-              ? {
-                ...m,
-                responseMode: "chat",
-                content:
-                  "Search is disabled. Enable Search in Tools settings to use live web results, or I can continue with a normal answer from existing context.",
-              }
-              : m
-          )
-        );
-        finishResponse();
-        return;
-      }
-
-      const refinedQuery = extractSearchControlQuery(routerContent) || query;
-
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantId
-            ? {
-              ...m,
-              responseMode: "search",
-              content: "",
-              searchQuery: refinedQuery,
-              searchResults: [],
-              searchStatus: "searching" as const,
-            }
-            : m
-        )
-      );
-
-      let searchResults: SearchResult[] = [];
-      let searchError: string | undefined;
-      try {
-        const tSearchStartWall = nowMs();
-        const searchRes = await fetch("/api/search", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: refinedQuery, toolSettings }),
-        });
-        const tSearchFirstByteWall = nowMs();
-        const body = await searchRes.json().catch(() => null);
-        const tSearchEndWall = nowMs();
-        if (body && Array.isArray(body.results)) {
-          searchResults = body.results;
-        }
-        if (body && typeof body.searchError === "string") {
-          searchError = body.searchError;
-        }
-        if (!searchRes.ok && !searchError) {
+        let searchResults: SearchResult[] = [];
+        let searchError: string | undefined;
+        try {
+          const tSearchStartWall = nowMs();
+          const searchRes = await fetch("/api/search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: refinedQuery, toolSettings }),
+          });
+          const tSearchFirstByteWall = nowMs();
+          const body = await searchRes.json().catch(() => null);
+          const tSearchEndWall = nowMs();
+          if (body && Array.isArray(body.results)) {
+            searchResults = body.results;
+          }
+          if (body && typeof body.searchError === "string") {
+            searchError = body.searchError;
+          }
+          if (!searchRes.ok && !searchError) {
+            searchError = "Search failed before returning usable sources.";
+          }
+          logTiming("Search", {
+            query: refinedQuery,
+            tStartWall: tSearchStartWall,
+            tFirstByteWall: tSearchFirstByteWall,
+            tEndWall: tSearchEndWall,
+            serverTiming:
+              searchRes.headers.get("Server-Timing") ??
+              searchRes.headers.get("x-debug-timing"),
+            vercelId: searchRes.headers.get("x-vercel-id"),
+          });
+        } catch (e) {
+          console.error("Search failed:", e);
           searchError = "Search failed before returning usable sources.";
         }
-        logTiming("Search", {
-          query: refinedQuery,
-          tStartWall: tSearchStartWall,
-          tFirstByteWall: tSearchFirstByteWall,
-          tEndWall: tSearchEndWall,
-          serverTiming:
-            searchRes.headers.get("Server-Timing") ??
-            searchRes.headers.get("x-debug-timing"),
-          vercelId: searchRes.headers.get("x-vercel-id"),
-        });
-      } catch (e) {
-        console.error("Search failed:", e);
-        searchError = "Search failed before returning usable sources.";
-      }
 
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantId
-            ? {
-              ...m,
-              responseMode: "search",
-              searchResults,
-              searchStatus: "done" as const,
-            }
-            : m
-        )
-      );
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? {
+                ...m,
+                responseMode: "search",
+                searchResults,
+                searchStatus: "done" as const,
+              }
+              : m
+          )
+        );
 
         while (true) {
           const tAnswerStartWall = nowMs();
@@ -1812,23 +1821,23 @@ export default function Home() {
           finishResponse();
           return;
         }
-    } catch (e) {
-      console.error("Chat failed:", e);
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantId
-            ? {
-              ...m,
-              content:
-                "Failed to connect to chat service. ChatJimmy may be temporarily unavailable.",
-              searchStatus: "done" as const,
-            }
-            : m
-        )
-      );
-      finishResponse();
-      return;
-    }
+      } catch (e) {
+        console.error("Chat failed:", e);
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? {
+                ...m,
+                content:
+                  "Failed to connect to chat service. ChatJimmy may be temporarily unavailable.",
+                searchStatus: "done" as const,
+              }
+              : m
+          )
+        );
+        finishResponse();
+        return;
+      }
     }
   };
 
@@ -2016,14 +2025,14 @@ export default function Home() {
         const res = await fetch("/api/deep-research", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              query: userMsg.content,
-              contextMessages: buildRegenerateHistoryBeforeUser(),
-              topK,
-              clientDate,
-              ...(apiAttachment ? { attachment: apiAttachment } : {}),
-              ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
-            }),
+          body: JSON.stringify({
+            query: userMsg.content,
+            contextMessages: buildRegenerateHistoryBeforeUser(),
+            topK,
+            clientDate,
+            ...(apiAttachment ? { attachment: apiAttachment } : {}),
+            ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
+          }),
         });
 
         if (!res.ok || !res.body) throw new Error("Deep research failed");
@@ -2213,84 +2222,84 @@ export default function Home() {
           )
         );
 
-          while (true) {
-            answerContent = "";
-            answerGenerationStats = undefined;
-            let answerNeedsCompactionRetry = false;
+        while (true) {
+          answerContent = "";
+          answerGenerationStats = undefined;
+          let answerNeedsCompactionRetry = false;
 
-            const answerRes = await fetch("/api/chat", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messages: buildRegenerateConversationHistory(),
-                searchResults: searchResults.map((r) => ({
-                  title: r.title,
-                  url: r.url,
-                  text: r.text,
-                  highlights: r.highlights,
-                })),
-                mode: "answer",
-                topK,
-                toolSettings: searchToolSettings,
-                clientDate,
-                searchAttempted: true,
-                ...(searchError ? { searchError } : {}),
-                ...(apiAttachment ? { attachment: apiAttachment } : {}),
-                ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
-              }),
-            });
+          const answerRes = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              messages: buildRegenerateConversationHistory(),
+              searchResults: searchResults.map((r) => ({
+                title: r.title,
+                url: r.url,
+                text: r.text,
+                highlights: r.highlights,
+              })),
+              mode: "answer",
+              topK,
+              toolSettings: searchToolSettings,
+              clientDate,
+              searchAttempted: true,
+              ...(searchError ? { searchError } : {}),
+              ...(apiAttachment ? { attachment: apiAttachment } : {}),
+              ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
+            }),
+          });
 
-            if (!answerRes.ok || !answerRes.body) throw new Error("Answer failed");
+          if (!answerRes.ok || !answerRes.body) throw new Error("Answer failed");
 
-            const answerReader = answerRes.body.getReader();
-            const answerDecoder = new TextDecoder();
-            const answerParser = parseSSEStream(
-              (text) => {
-                answerContent += text;
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === assistantMessageId
-                      ? { ...m, content: answerContent, responseMode: "search" }
-                      : m
-                  )
-                );
-              },
-              () => { },
-              (event) => {
-                if (event.type === "context_compaction_required") {
-                  answerNeedsCompactionRetry = true;
-                  return;
-                }
-
-                const stats = getGenerationStatsEvent(event);
-                if (!stats) return;
-                answerGenerationStats = stats;
-                applyGenerationStats(assistantMessageId, stats);
+          const answerReader = answerRes.body.getReader();
+          const answerDecoder = new TextDecoder();
+          const answerParser = parseSSEStream(
+            (text) => {
+              answerContent += text;
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMessageId
+                    ? { ...m, content: answerContent, responseMode: "search" }
+                    : m
+                )
+              );
+            },
+            () => { },
+            (event) => {
+              if (event.type === "context_compaction_required") {
+                answerNeedsCompactionRetry = true;
+                return;
               }
-            );
 
-            while (true) {
-              const { done, value } = await answerReader.read();
-              if (done) break;
-              answerParser.processChunk(answerDecoder.decode(value, { stream: true }));
+              const stats = getGenerationStatsEvent(event);
+              if (!stats) return;
+              answerGenerationStats = stats;
+              applyGenerationStats(assistantMessageId, stats);
             }
+          );
 
-            if (!answerNeedsCompactionRetry) break;
-            const canRetry = await prepareRegenerateCompactionRetry({
-              responseMode: "search",
-              searchQuery: refinedQuery,
-              searchResults,
-              searchStatus: "done",
-            });
-            if (!canRetry) return;
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantMessageId
-                  ? { ...m, content: "", responseMode: "search" }
-                  : m
-              )
-            );
+          while (true) {
+            const { done, value } = await answerReader.read();
+            if (done) break;
+            answerParser.processChunk(answerDecoder.decode(value, { stream: true }));
           }
+
+          if (!answerNeedsCompactionRetry) break;
+          const canRetry = await prepareRegenerateCompactionRetry({
+            responseMode: "search",
+            searchQuery: refinedQuery,
+            searchResults,
+            searchStatus: "done",
+          });
+          if (!canRetry) return;
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMessageId
+                ? { ...m, content: "", responseMode: "search" }
+                : m
+            )
+          );
+        }
 
         const version: MessageVersion = {
           content: answerContent,
@@ -2358,118 +2367,118 @@ export default function Home() {
       )
     );
 
-      let answerContent = "";
-      let answerGenerationStats: GenerationStats | undefined;
-      let routerGenerationStats: GenerationStats | undefined;
-      let routerContent = "";
-      let routerDecision: "direct" | "search" | null = null;
-      let weather: WeatherCardData | undefined;
-      let directResponseMode: MessageResponseMode =
-        responseMode === "weather" ? "weather" : "chat";
+    let answerContent = "";
+    let answerGenerationStats: GenerationStats | undefined;
+    let routerGenerationStats: GenerationStats | undefined;
+    let routerContent = "";
+    let routerDecision: "direct" | "search" | null = null;
+    let weather: WeatherCardData | undefined;
+    let directResponseMode: MessageResponseMode =
+      responseMode === "weather" ? "weather" : "chat";
 
-      try {
-        while (true) {
-          answerContent = "";
-          routerGenerationStats = undefined;
-          routerContent = "";
-          routerDecision = null;
-          weather = undefined;
-          directResponseMode = responseMode === "weather" ? "weather" : "chat";
-          let routerNeedsCompactionRetry = false;
+    try {
+      while (true) {
+        answerContent = "";
+        routerGenerationStats = undefined;
+        routerContent = "";
+        routerDecision = null;
+        weather = undefined;
+        directResponseMode = responseMode === "weather" ? "weather" : "chat";
+        let routerNeedsCompactionRetry = false;
 
-          const routerRes = await fetch("/api/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              messages: buildRegenerateConversationHistory(),
-              mode: "router",
-              topK,
-              toolSettings: regenerationToolSettings,
-              clientDate,
-              ...(apiAttachment ? { attachment: apiAttachment } : {}),
-              ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
-            }),
-          });
+        const routerRes = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: buildRegenerateConversationHistory(),
+            mode: "router",
+            topK,
+            toolSettings: regenerationToolSettings,
+            clientDate,
+            ...(apiAttachment ? { attachment: apiAttachment } : {}),
+            ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
+          }),
+        });
 
-          if (!routerRes.ok || !routerRes.body) throw new Error("Router failed");
+        if (!routerRes.ok || !routerRes.body) throw new Error("Router failed");
 
-          const routerReader = routerRes.body.getReader();
-          const routerDecoder = new TextDecoder();
+        const routerReader = routerRes.body.getReader();
+        const routerDecoder = new TextDecoder();
 
-          const routerParser = parseSSEStream(
-            (text) => {
-              routerContent += text;
-              if (routerDecision === null && routerContent.trimStart().length >= 10) {
-                routerDecision =
-                  extractSearchControlQuery(routerContent) !== null
-                    ? "search"
-                    : "direct";
-              }
-              if (routerDecision === "direct") {
-                answerContent = routerContent;
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === assistantMessageId
-                      ? {
-                        ...m,
-                        content: routerContent,
-                        responseMode: directResponseMode,
-                      }
-                      : m
-                  )
-                );
-              }
-            },
-            () => { },
-            (event) => {
-              if (event.type === "context_compaction_required") {
-                routerNeedsCompactionRetry = true;
-                return;
-              }
-
-              const stats = getGenerationStatsEvent(event);
-              if (stats) {
-                routerGenerationStats = stats;
-                if (routerDecision === "direct") {
-                  applyGenerationStats(assistantMessageId, stats);
-                }
-                return;
-              }
-
-              if (event.type !== "weather") return;
-              routerDecision = "direct";
-              weather = event.weather as WeatherCardData;
-              directResponseMode = "weather";
+        const routerParser = parseSSEStream(
+          (text) => {
+            routerContent += text;
+            if (routerDecision === null && routerContent.trimStart().length >= 10) {
+              routerDecision =
+                extractSearchControlQuery(routerContent) !== null
+                  ? "search"
+                  : "direct";
+            }
+            if (routerDecision === "direct") {
+              answerContent = routerContent;
               setMessages((prev) =>
                 prev.map((m) =>
                   m.id === assistantMessageId
-                    ? { ...m, weather, responseMode: "weather" }
+                    ? {
+                      ...m,
+                      content: routerContent,
+                      responseMode: directResponseMode,
+                    }
                     : m
                 )
               );
             }
-          );
+          },
+          () => { },
+          (event) => {
+            if (event.type === "context_compaction_required") {
+              routerNeedsCompactionRetry = true;
+              return;
+            }
 
-          while (true) {
-            const { done, value } = await routerReader.read();
-            if (done) break;
-            routerParser.processChunk(routerDecoder.decode(value, { stream: true }));
+            const stats = getGenerationStatsEvent(event);
+            if (stats) {
+              routerGenerationStats = stats;
+              if (routerDecision === "direct") {
+                applyGenerationStats(assistantMessageId, stats);
+              }
+              return;
+            }
+
+            if (event.type !== "weather") return;
+            routerDecision = "direct";
+            weather = event.weather as WeatherCardData;
+            directResponseMode = "weather";
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMessageId
+                  ? { ...m, weather, responseMode: "weather" }
+                  : m
+              )
+            );
           }
+        );
 
-          if (!routerNeedsCompactionRetry) break;
-          const retryMode = responseMode === "weather" ? "weather" : "chat";
-          const canRetry = await prepareRegenerateCompactionRetry({
-            responseMode: retryMode,
-          });
-          if (!canRetry) return;
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantMessageId
-                ? { ...m, content: "", responseMode: retryMode }
-                : m
-            )
-          );
+        while (true) {
+          const { done, value } = await routerReader.read();
+          if (done) break;
+          routerParser.processChunk(routerDecoder.decode(value, { stream: true }));
         }
+
+        if (!routerNeedsCompactionRetry) break;
+        const retryMode = responseMode === "weather" ? "weather" : "chat";
+        const canRetry = await prepareRegenerateCompactionRetry({
+          responseMode: retryMode,
+        });
+        if (!canRetry) return;
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessageId
+              ? { ...m, content: "", responseMode: retryMode }
+              : m
+          )
+        );
+      }
 
       if (routerDecision === null) {
         routerDecision = "direct";
@@ -2580,7 +2589,7 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-            messages: buildRegenerateConversationHistory(),
+          messages: buildRegenerateConversationHistory(),
           searchResults: searchResults.map((r) => ({
             title: r.title,
             url: r.url,
@@ -2727,13 +2736,13 @@ export default function Home() {
       const res = await fetch("/api/deep-research", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            query,
-            contextMessages,
-            topK,
-            clientDate,
-            ...(apiAttachment ? { attachment: apiAttachment } : {}),
-            ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
+        body: JSON.stringify({
+          query,
+          contextMessages,
+          topK,
+          clientDate,
+          ...(apiAttachment ? { attachment: apiAttachment } : {}),
+          ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
         }),
       });
 
@@ -3437,7 +3446,7 @@ export default function Home() {
               />
             )}
             <motion.div
-              className="pointer-events-none absolute right-0 bottom-full mb-2"
+              className="pointer-events-none absolute right-0 bottom-full mb-1.5 sm:mb-2"
               animate={{ y: [0, -5, 0, -5, 0], rotate: [0, -2, 0, 2, 0] }}
               transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
             >
@@ -3447,6 +3456,7 @@ export default function Home() {
                 aria-hidden="true"
                 width={48}
                 height={48}
+                className="h-9 w-9 sm:h-12 sm:w-12"
                 unoptimized
               />
             </motion.div>
