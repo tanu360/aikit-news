@@ -335,18 +335,33 @@ function shouldEnablePriceTool(messages: RequestBody["messages"]): boolean {
     );
   if (asksAboutDocument) return false;
 
-  const pairPattern =
-    /\b[a-z0-9]{2,12}\s*(?:\/|-|:)?\s*(?:usdt|fdusd|usdc|tusd|busd|btc|eth|bnb|try|eur|brl|dai)\b/i;
+  const quoteAssets = "usdt|fdusd|usdc|tusd|busd|btc|eth|bnb|try|eur|brl|dai";
+  const separatedPairPattern = new RegExp(
+    `\\b[a-z0-9]{2,12}\\s*(?:/|-|:)\\s*(?:${quoteAssets})\\b`,
+    "i"
+  );
+  const compactPairPattern = new RegExp(
+    `\\b[a-z0-9]{2,12}(?:${quoteAssets})\\b`,
+    "i"
+  );
   const priceIntent =
-    /\b(?:price|ticker|quote|rate|current|live|latest|24h|high|low|bid|ask|volume)\b/i.test(
+    /\b(?:price|ticker|quote|rate|24h|high|low|bid|ask|volume|open|close|change)\b/i.test(
       text
     );
   const cryptoAsset =
     /\b(?:btc|bitcoin|eth|ethereum|bnb|sol|solana|xrp|ada|doge|dogecoin|ltc|litecoin|trx|link|avax|shib|ton|crypto)\b/i.test(
       text
     );
+  const nonPriceTopic =
+    /\b(?:news|roadmap|explain|explainer|what\s+is|who\s+is|history|whitepaper|project|technology|guide|how\s+to|analysis)\b/i.test(
+      text
+    );
+  const hasExplicitPair =
+    separatedPairPattern.test(text) || compactPairPattern.test(text);
 
-  return pairPattern.test(text) || (priceIntent && cryptoAsset);
+  if (priceIntent && (cryptoAsset || hasExplicitPair)) return true;
+
+  return hasExplicitPair && !nonPriceTopic;
 }
 
 function formatWeatherAnswer(weather: WeatherCardData): string {

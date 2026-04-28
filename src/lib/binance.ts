@@ -81,6 +81,52 @@ const ASSET_ALIASES: Record<string, string> = {
   ton: "TON",
 };
 
+const SYMBOL_STOP_WORDS = new Set([
+  "price",
+  "ticker",
+  "quote",
+  "rate",
+  "current",
+  "live",
+  "latest",
+  "last",
+  "binance",
+  "crypto",
+  "spot",
+  "pair",
+  "market",
+  "coin",
+  "token",
+  "volume",
+  "vol",
+  "high",
+  "low",
+  "bid",
+  "ask",
+  "open",
+  "close",
+  "change",
+  "percent",
+  "percentage",
+  "24h",
+  "what",
+  "whats",
+  "is",
+  "the",
+  "a",
+  "an",
+  "of",
+  "in",
+  "on",
+  "for",
+  "to",
+  "tell",
+  "me",
+  "please",
+  "check",
+  "show",
+]);
+
 function cleanToken(value: string): string {
   return value.replace(/[^a-z0-9]/gi, "").toUpperCase();
 }
@@ -90,6 +136,13 @@ function normalizeAsset(value: string | undefined): string | undefined {
   const compact = cleanToken(value);
   if (!compact) return undefined;
   return ASSET_ALIASES[compact.toLowerCase()] || compact;
+}
+
+function normalizeKnownAsset(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const compact = cleanToken(value);
+  if (!compact) return undefined;
+  return ASSET_ALIASES[compact.toLowerCase()];
 }
 
 function isQuoteAsset(value: string | undefined): value is QuoteAsset {
@@ -133,7 +186,7 @@ export function resolveBinanceSymbol(input: string): ResolvedSymbol {
   if (pairMatch) {
     const baseAsset = normalizeAsset(pairMatch[1]);
     const quoteAsset = normalizeAsset(pairMatch[2]);
-    if (baseAsset && quoteAsset) {
+    if (baseAsset && isQuoteAsset(quoteAsset)) {
       return {
         symbol: `${baseAsset}${quoteAsset}`,
         baseAsset,
@@ -146,45 +199,7 @@ export function resolveBinanceSymbol(input: string): ResolvedSymbol {
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .filter(Boolean)
-    .filter(
-      (word) =>
-        ![
-          "price",
-          "ticker",
-          "quote",
-          "rate",
-          "current",
-          "live",
-          "latest",
-          "binance",
-          "crypto",
-          "spot",
-          "pair",
-          "market",
-          "coin",
-          "token",
-          "what",
-          "whats",
-          "is",
-          "the",
-          "a",
-          "an",
-          "of",
-          "in",
-          "on",
-          "for",
-          "to",
-          "tell",
-          "me",
-          "please",
-          "ka",
-          "kya",
-          "hai",
-          "batao",
-          "check",
-          "show",
-        ].includes(word)
-    );
+    .filter((word) => !SYMBOL_STOP_WORDS.has(word));
 
   if (words.length >= 2) {
     for (let index = 0; index < words.length - 1; index += 1) {
@@ -207,15 +222,17 @@ export function resolveBinanceSymbol(input: string): ResolvedSymbol {
   });
   if (exactCandidate) return splitSymbol(exactCandidate);
 
-  const baseCandidate = words.find((word) => normalizeAsset(word));
-  if (baseCandidate) {
-    const baseAsset = normalizeAsset(baseCandidate);
+  const knownBaseCandidate = words.find((word) => normalizeKnownAsset(word));
+  if (knownBaseCandidate) {
+    const baseAsset = normalizeKnownAsset(knownBaseCandidate);
     if (baseAsset) return splitSymbol(baseAsset);
   }
 
   const compactInput = cleanToken(trimmed);
   const inputTokens = trimmed.split(/[^a-z0-9]+/i).filter(Boolean);
   if (compactInput && inputTokens.length === 1) return splitSymbol(compactInput);
+
+  if (words.length === 1) return splitSymbol(words[0]);
 
   throw new BinanceSymbolError("Which coin or Binance Spot pair should I check?");
 }
