@@ -93,12 +93,12 @@ const CHAT_ID_PATTERN =
 
 const EMPTY_STATE_SUGGESTIONS = [
   {
-    label: "Research on OpenAI",
+    label: "Deep Research on OpenAI",
     icon: ArtificialIntelligence04Icon,
     mode: "deepResearch",
   },
   {
-    label: "Search tech news",
+    label: "Search latest tech news",
     icon: Search01Icon,
     mode: "search",
   },
