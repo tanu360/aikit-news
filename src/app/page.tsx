@@ -465,26 +465,40 @@ function TokenCounterChip({
   const ratio = safeCount / safeLimit;
   const percent = Math.min(100, ratio * 100);
   const remaining = Math.max(0, safeLimit - safeCount);
-  const tone =
-    ratio >= 1
-      ? "oklch(58% 0.22 27)"
-      : ratio >= 0.82
-        ? "oklch(70% 0.16 73)"
-        : "oklch(62% 0.16 160)";
-  const track = "var(--color-token-ring-track)";
+  const overflow = Math.max(0, safeCount - safeLimit);
+  const isOverLimit = overflow > 0;
+  const tone = (() => {
+    if (isOverLimit) return "oklch(98.5% 0.008 27)";
+    if (ratio >= 1) return "oklch(58% 0.22 27)";
+    if (ratio >= 0.82) return "oklch(70% 0.16 73)";
+    return "oklch(62% 0.16 160)";
+  })();
+  const track = isOverLimit
+    ? "color-mix(in oklch, oklch(34% 0.12 27) 38%, transparent)"
+    : "var(--color-token-ring-track)";
+  const chipBackground = isOverLimit
+    ? "oklch(0.58 0.23 27)"
+    : "var(--color-ink-primary)";
+  const tokenStatus = isOverLimit
+    ? `${overflow.toLocaleString()} over limit`
+    : `${remaining.toLocaleString()} left`;
 
   return (
     <div
       className="absolute bottom-full z-10 mb-3 flex max-w-[calc(100%-68px)] items-center gap-2 rounded-full px-3.5 py-2 text-[11px]"
       style={{
         right: 58,
-        backgroundColor: "var(--color-ink-primary)",
+        backgroundColor: chipBackground,
         border:
-          "1px solid color-mix(in oklch, var(--color-surface-primary) 18%, transparent)",
-        boxShadow: "0 12px 26px oklch(35% 0.03 255 / 0.14)",
+          isOverLimit
+            ? "1px solid oklch(72% 0.19 27 / 0.42)"
+            : "1px solid color-mix(in oklch, var(--color-surface-primary) 18%, transparent)",
+        boxShadow: isOverLimit
+          ? "0 12px 28px oklch(58% 0.23 27 / 0.24)"
+          : "0 12px 26px oklch(35% 0.03 255 / 0.14)",
         color: "var(--color-surface-primary)",
       }}
-      title={`Total Tokens: ${safeCount.toLocaleString()} / ${safeLimit.toLocaleString()} (${remaining.toLocaleString()} left)`}
+      title={`Total Tokens: ${safeCount.toLocaleString()} / ${safeLimit.toLocaleString()} (${tokenStatus})`}
       aria-label={`Total Tokens ${safeCount.toLocaleString()} out of ${safeLimit.toLocaleString()}`}
     >
       <span
@@ -496,7 +510,7 @@ function TokenCounterChip({
       >
         <span
           className="h-4.5 w-4.5 rounded-full"
-          style={{ backgroundColor: "var(--color-ink-primary)" }}
+          style={{ backgroundColor: chipBackground }}
         />
       </span>
       <span className="grid place-items-center gap-1 text-center leading-tight">
@@ -504,13 +518,13 @@ function TokenCounterChip({
           className="block w-full text-center text-[13px] leading-none tabular-nums"
           style={{ color: "currentColor", fontWeight: 700 }}
         >
-          {safeCount}/{safeLimit}
+          {safeCount.toLocaleString()}/{safeLimit.toLocaleString()}
         </span>
         <span
           className="block w-full text-center text-[10px] leading-none"
           style={{ color: "currentColor", opacity: 0.68 }}
         >
-          Total Tokens
+          {isOverLimit ? "Over Limit" : "Total Tokens"}
         </span>
       </span>
     </div>
@@ -534,6 +548,9 @@ export default function Home() {
   );
   const [agentMode, setAgentMode] = useState(false);
   const [attachedFile, setAttachedFile] = useState<AttachedFile | null>(null);
+  const [rejectedFileTokenCount, setRejectedFileTokenCount] = useState<
+    number | null
+  >(null);
   const [systemPrompt, setSystemPrompt] = useState("");
   const [topK, setTopK] = useState(8);
   const [toolSettings, setToolSettings] = useState<ChatToolSettings>(
@@ -564,6 +581,11 @@ export default function Home() {
   const touchStartYRef = useRef<number | null>(null);
   const touchHandledRef = useRef(false);
   const logoSvgRef = useRef<SVGSVGElement>(null);
+
+  const clearAttachedFile = useCallback(() => {
+    setAttachedFile(null);
+    setRejectedFileTokenCount(null);
+  }, []);
 
   const finishResponse = () => {
     setIsLoading(false);
@@ -739,10 +761,10 @@ export default function Home() {
       setActiveChatId("");
       setMessages([]);
       setInput("");
-      setAttachedFile(null);
+      clearAttachedFile();
       writeHomeUrl(historyMode);
     },
-    [flushActiveChat]
+    [clearAttachedFile, flushActiveChat]
   );
 
   function startNewChat(historyMode: "push" | "replace" = "push") {
@@ -781,7 +803,7 @@ export default function Home() {
     setActiveChatId(id);
     setMessages(chat.messages);
     setInput("");
-    setAttachedFile(null);
+    clearAttachedFile();
     writeChatUrl(id);
   }
 
@@ -798,7 +820,7 @@ export default function Home() {
     if (id !== activeChatId) return;
 
     setInput("");
-    setAttachedFile(null);
+    clearAttachedFile();
 
     if (nextChats.length > 0) {
       activeChatIdRef.current = nextChats[0].id;
@@ -883,7 +905,7 @@ export default function Home() {
         setActiveChatId("");
         setMessages([]);
         setInput("");
-        setAttachedFile(null);
+        clearAttachedFile();
         return;
       }
 
@@ -899,12 +921,12 @@ export default function Home() {
       setActiveChatId(chat.id);
       setMessages(chat.messages);
       setInput("");
-      setAttachedFile(null);
+      clearAttachedFile();
     };
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [flushActiveChat, resetDraftConversation]);
+  }, [clearAttachedFile, flushActiveChat, resetDraftConversation]);
 
   useEffect(() => {
     const flushOnExit = () => {
@@ -2245,7 +2267,7 @@ export default function Home() {
     const currentChatId = materializeDraftChat("replace");
 
     setInput("");
-    setAttachedFile(null);
+    clearAttachedFile();
     setIsLoading(true);
     setShowSettings(false);
 
@@ -2282,7 +2304,7 @@ export default function Home() {
     });
 
     if (suggestion.mode === "weather") {
-      setAttachedFile(null);
+      clearAttachedFile();
     }
   }
 
@@ -2343,8 +2365,10 @@ export default function Home() {
 
   const hasMessages = messages.length > 0;
   const contextTokenCount = useMemo(
-    () => getLiveContextTokens(messages, input, attachedFile),
-    [attachedFile, input, messages]
+    () =>
+      getLiveContextTokens(messages, input, attachedFile) +
+      (attachedFile ? 0 : rejectedFileTokenCount ?? 0),
+    [attachedFile, input, messages, rejectedFileTokenCount]
   );
   const searchCountLabel =
     searchMatchCount > 0
@@ -2742,6 +2766,7 @@ export default function Home() {
               onAgentModeChange={setAgentMode}
               attachedFile={attachedFile}
               onFileAttach={setAttachedFile}
+              onRejectedFileTokenCountChange={setRejectedFileTokenCount}
               systemPrompt={systemPrompt}
               onSystemPromptChange={setSystemPrompt}
               topK={topK}

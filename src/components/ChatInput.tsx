@@ -94,6 +94,7 @@ interface ChatInputProps {
   onAgentModeChange: (mode: boolean) => void;
   attachedFile: AttachedFile | null;
   onFileAttach: (file: AttachedFile | null) => void;
+  onRejectedFileTokenCountChange: (tokenCount: number | null) => void;
   systemPrompt: string;
   onSystemPromptChange: (v: string) => void;
   topK: number;
@@ -115,6 +116,7 @@ export default function ChatInput({
   onAgentModeChange,
   attachedFile,
   onFileAttach,
+  onRejectedFileTokenCountChange,
   systemPrompt,
   onSystemPromptChange,
   topK,
@@ -199,6 +201,10 @@ export default function ChatInput({
 
   const submitMessage = () => {
     if (!canSubmit) return;
+    if (fileError) {
+      setFileError(null);
+      onRejectedFileTokenCountChange(null);
+    }
     triggerRipple();
     onSubmit();
   };
@@ -239,6 +245,7 @@ export default function ChatInput({
         "Only text/code files are supported. Images and videos are not allowed."
       );
       onFileAttach(null);
+      onRejectedFileTokenCountChange(null);
       return;
     }
 
@@ -255,10 +262,12 @@ export default function ChatInput({
           `File too large - ${actualTokens} (limit: ${limitTokens}).`
         );
         onFileAttach(null);
+        onRejectedFileTokenCountChange(tokenCount);
         return;
       }
 
       setFileError(null);
+      onRejectedFileTokenCountChange(null);
       const fileWithPath = file as File & {
         path?: string;
         webkitRelativePath?: string;
@@ -275,12 +284,15 @@ export default function ChatInput({
     };
     reader.onerror = () => {
       setFileError("Could not read file. Make sure it's a plain text file.");
+      onFileAttach(null);
+      onRejectedFileTokenCountChange(null);
     };
     reader.readAsText(file);
   };
 
   const removeFile = () => {
     onFileAttach(null);
+    onRejectedFileTokenCountChange(null);
     setFileError(null);
   };
 
