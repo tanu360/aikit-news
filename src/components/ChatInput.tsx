@@ -103,6 +103,8 @@ interface ChatInputProps {
   showSettings: boolean;
   onSettingsClick: () => void;
   onSettingsClose: () => void;
+  contextTokenCount: number;
+  contextTokenLimit: number;
 }
 
 export default function ChatInput({
@@ -124,6 +126,8 @@ export default function ChatInput({
   showSettings,
   onSettingsClick,
   onSettingsClose,
+  contextTokenCount,
+  contextTokenLimit,
 }: ChatInputProps) {
   const rootRef = useRef<HTMLFormElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -196,6 +200,29 @@ export default function ChatInput({
   const canSubmit = (hasValue || !!attachedFile) && !disabled;
   const isActive = canSubmit;
   const fileErrorLimitIndex = fileError?.indexOf(" (limit:");
+  const rawContextTokenCount = Number.isFinite(contextTokenCount)
+    ? contextTokenCount
+    : 0;
+  const rawContextTokenLimit = Number.isFinite(contextTokenLimit)
+    ? contextTokenLimit
+    : 1;
+  const safeContextTokenCount = Math.max(0, Math.round(rawContextTokenCount));
+  const safeContextTokenLimit = Math.max(1, Math.round(rawContextTokenLimit));
+  const contextTokenRatio = safeContextTokenCount / safeContextTokenLimit;
+  const contextTokenPercent = Math.min(100, contextTokenRatio * 100);
+  const contextTokenTone =
+    contextTokenRatio >= 1
+      ? "oklch(58% 0.22 27)"
+      : contextTokenRatio >= 0.82
+        ? "oklch(70% 0.16 73)"
+        : "oklch(62% 0.16 160)";
+  const contextTokenRemaining = Math.max(
+    0,
+    safeContextTokenLimit - safeContextTokenCount
+  );
+  const contextTokenTitle =
+    `total_tokens: ${safeContextTokenCount.toLocaleString()} / ` +
+    `${safeContextTokenLimit.toLocaleString()} (${contextTokenRemaining.toLocaleString()} left)`;
 
   const submitMessage = () => {
     if (!canSubmit) return;
@@ -660,6 +687,40 @@ export default function ChatInput({
               transition: "background-color 220ms var(--theme-ease)",
             }}
           />
+
+          <div className="px-4 pt-2" title={contextTokenTitle}>
+            <div
+              className="flex items-center gap-2 text-[11px] font-medium"
+              style={{ color: "var(--color-ink-tertiary)" }}
+            >
+              <span className="shrink-0" style={{ color: contextTokenTone }}>
+                total_tokens
+              </span>
+              <div
+                aria-hidden="true"
+                className="h-1 min-w-10 flex-1 overflow-hidden rounded-full"
+                style={{
+                  backgroundColor:
+                    "color-mix(in oklch, var(--color-ink-tertiary) 15%, transparent)",
+                }}
+              >
+                <div
+                  className="h-full rounded-full transition-[width,background-color] duration-200"
+                  style={{
+                    width: `${contextTokenPercent}%`,
+                    backgroundColor: contextTokenTone,
+                  }}
+                />
+              </div>
+              <span
+                className="shrink-0 tabular-nums"
+                style={{ color: contextTokenTone }}
+              >
+                {safeContextTokenCount.toLocaleString()} /{" "}
+                {safeContextTokenLimit.toLocaleString()}
+              </span>
+            </div>
+          </div>
 
           <div className="flex min-h-9 items-center gap-3 px-4 pt-2 pb-2">
             <div className="flex min-w-0 flex-1 items-center gap-1.5">

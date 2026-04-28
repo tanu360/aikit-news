@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -38,6 +38,11 @@ import {
   stripCitations,
 } from "@/lib/utils";
 import { loadAllChats, persistChat, removeChat } from "@/lib/chatStore";
+import {
+  MODEL_CONTEXT_TOKEN_LIMIT,
+  getAttachmentTokenCount,
+  getSiteTokenCount,
+} from "@/lib/tokenCount";
 import { SVG3D } from "3dsvg";
 import ChatInput from "@/components/ChatInput";
 import MessageBubble from "@/components/MessageBubble";
@@ -382,6 +387,70 @@ function appendAssistantVersion(
 ): Message {
   const versions = [...existingVersions, version];
   return applyAssistantVersion(message, version, versions, versions.length - 1);
+}
+
+function readTotalTokens(message: Message): number | undefined {
+  if (message.role !== "assistant") return undefined;
+  const stats = message.generationStats;
+  const totalTokens = stats?.totalTokens;
+  const fallbackTotalTokens =
+    typeof stats?.promptTokens === "number" &&
+      Number.isFinite(stats.promptTokens) &&
+      Number.isFinite(stats.decodeTokens)
+      ? stats.promptTokens + stats.decodeTokens
+      : undefined;
+  const resolvedTotalTokens =
+    typeof totalTokens === "number" && Number.isFinite(totalTokens)
+      ? totalTokens
+      : fallbackTotalTokens;
+  return typeof resolvedTotalTokens === "number" &&
+    Number.isFinite(resolvedTotalTokens)
+    ? Math.max(0, Math.round(resolvedTotalTokens))
+    : undefined;
+}
+
+function estimateMessageTokens(message: Message): number {
+  const content =
+    message.role === "assistant"
+      ? stripCitations(message.content)
+      : message.content;
+  const contentTokens = getSiteTokenCount(content);
+  const attachmentTokens = (message.attachments ?? []).reduce(
+    (sum, file) => sum + getAttachmentTokenCount(file),
+    0
+  );
+
+  return contentTokens + attachmentTokens;
+}
+
+function getLiveContextTokens(
+  messages: Message[],
+  draft: string,
+  draftFile: AttachedFile | null
+): number {
+  let committedTokens = 0;
+  let lastUsageIndex = -1;
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const totalTokens = readTotalTokens(messages[i]);
+    if (totalTokens === undefined) continue;
+    committedTokens = totalTokens;
+    lastUsageIndex = i;
+    break;
+  }
+
+  const messagesToEstimate =
+    lastUsageIndex >= 0 ? messages.slice(lastUsageIndex + 1) : messages;
+
+  committedTokens += messagesToEstimate.reduce(
+    (sum, message) => sum + estimateMessageTokens(message),
+    0
+  );
+
+  const draftTokens = getSiteTokenCount(draft);
+  const draftFileTokens = draftFile ? getAttachmentTokenCount(draftFile) : 0;
+
+  return committedTokens + draftTokens + draftFileTokens;
 }
 
 function getClientDate() {
@@ -2209,6 +2278,10 @@ export default function Home() {
   };
 
   const hasMessages = messages.length > 0;
+  const contextTokenCount = useMemo(
+    () => getLiveContextTokens(messages, input, attachedFile),
+    [attachedFile, input, messages]
+  );
   const searchCountLabel =
     searchMatchCount > 0
       ? `${Math.min(activeSearchMatchIndex + 1, searchMatchCount)}/${searchMatchCount}`
@@ -2610,6 +2683,8 @@ export default function Home() {
               showSettings={showSettings}
               onSettingsClick={() => setShowSettings((s) => !s)}
               onSettingsClose={() => setShowSettings(false)}
+              contextTokenCount={contextTokenCount}
+              contextTokenLimit={MODEL_CONTEXT_TOKEN_LIMIT}
               placeholder={
                 agentMode
                   ? "Ask a complex question for deep research..."
