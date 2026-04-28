@@ -411,7 +411,7 @@ export default function Sidebar({
             className="flex h-12 items-center justify-center overflow-hidden px-3"
             style={{
               background: "var(--color-surface-tertiary)",
-              color: "var(--color-ink-primary)",
+              color: "var(--color-ink-secondary)",
             }}
           >
             <div
