@@ -18,6 +18,7 @@ import {
 import type {
   AttachedFile,
   Chat,
+  ChatContextCompaction,
   GenerationStats,
   Message,
   MessageResponseMode,
@@ -39,6 +40,8 @@ import {
 } from "@/lib/utils";
 import { loadAllChats, persistChat, removeChat } from "@/lib/chatStore";
 import {
+  AUTO_COMPACT_TRIGGER_TOKEN_LIMIT,
+  COMPACTED_CONTEXT_TOKEN_LIMIT,
   MODEL_CONTEXT_TOKEN_LIMIT,
   getAttachmentTokenCount,
   getSiteTokenCount,
@@ -198,8 +201,8 @@ function createEmptyChat(id = generateChatId()): Chat {
     id,
     title: "",
     messages: [],
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
+    createdAt: nowMs(),
+    updatedAt: nowMs(),
   };
 }
 
@@ -255,6 +258,11 @@ type ApiContentPart =
   | { type: "text"; text: string }
   | { type: "file"; name: string; content: string; size?: number };
 
+type ApiChatMessage = {
+  role: string;
+  content: string | ApiContentPart[];
+};
+
 function buildContentWithAttachments(
   content: string,
   attachments?: AttachedFile[]
@@ -288,6 +296,77 @@ function buildApiAttachment(file: AttachedFile | null) {
 function buildApiContent(message: Message) {
   if (message.role === "assistant") return stripCitations(message.content);
   return buildContentWithAttachments(message.content, message.attachments);
+}
+
+function formatCompactionSystemContent(summary: string) {
+  return [
+    "Previous conversation memory summary:",
+    summary.trim(),
+    "",
+    "Use this as durable context for earlier visible chat messages that are intentionally omitted from this API request.",
+  ].join("\n");
+}
+
+function getCompactionBoundaryIndex(
+  messages: Message[],
+  compaction: ChatContextCompaction | null
+): number {
+  if (!compaction?.compactedThroughMessageId) return -1;
+  const idIndex = messages.findIndex(
+    (message) => message.id === compaction.compactedThroughMessageId
+  );
+  if (idIndex >= 0) return idIndex;
+
+  if (!compaction.compactedThroughTimestamp) return -1;
+  let timestampIndex = -1;
+  messages.forEach((message, index) => {
+    if (message.timestamp <= compaction.compactedThroughTimestamp) {
+      timestampIndex = index;
+    }
+  });
+  return timestampIndex;
+}
+
+function getMessagesAfterCompaction(
+  messages: Message[],
+  compaction: ChatContextCompaction | null
+): Message[] {
+  const boundaryIndex = getCompactionBoundaryIndex(messages, compaction);
+  return boundaryIndex >= 0 ? messages.slice(boundaryIndex + 1) : messages;
+}
+
+function getScopedCompaction(
+  messages: Message[],
+  compaction: ChatContextCompaction | null
+): ChatContextCompaction | null {
+  if (!compaction?.summary) return null;
+  return getCompactionBoundaryIndex(messages, compaction) >= 0
+    ? compaction
+    : null;
+}
+
+function buildModelConversationHistory(
+  messages: Message[],
+  compaction: ChatContextCompaction | null
+): ApiChatMessage[] {
+  const history: ApiChatMessage[] = [];
+  if (compaction?.summary) {
+    history.push({
+      role: "system",
+      content: formatCompactionSystemContent(compaction.summary),
+    });
+  }
+
+  getMessagesAfterCompaction(messages, compaction)
+    .filter((message) => message.content || (message.attachments?.length ?? 0) > 0)
+    .forEach((message) => {
+      history.push({
+        role: message.role,
+        content: buildApiContent(message),
+      });
+    });
+
+  return history;
 }
 
 function parseGenerationStats(
@@ -423,11 +502,43 @@ function estimateMessageTokens(message: Message): number {
   return contentTokens + attachmentTokens;
 }
 
-function getLiveContextTokens(
+function estimateModelContextTokens(
   messages: Message[],
   draft: string,
-  draftFile: AttachedFile | null
+  draftFile: AttachedFile | null,
+  compaction: ChatContextCompaction | null = null
 ): number {
+  if (compaction?.summary) {
+    const recentMessages = getMessagesAfterCompaction(messages, compaction);
+    let committedTokens = getSiteTokenCount(
+      formatCompactionSystemContent(compaction.summary)
+    );
+    let lastUsageIndex = -1;
+
+    for (let i = recentMessages.length - 1; i >= 0; i--) {
+      const totalTokens = readTotalTokens(recentMessages[i]);
+      if (totalTokens === undefined) continue;
+      committedTokens = totalTokens;
+      lastUsageIndex = i;
+      break;
+    }
+
+    const messagesToEstimate =
+      lastUsageIndex >= 0
+        ? recentMessages.slice(lastUsageIndex + 1)
+        : recentMessages;
+
+    committedTokens += messagesToEstimate.reduce(
+      (sum, message) => sum + estimateMessageTokens(message),
+      0
+    );
+
+    const draftTokens = getSiteTokenCount(draft);
+    const draftFileTokens = draftFile ? getAttachmentTokenCount(draftFile) : 0;
+
+    return committedTokens + draftTokens + draftFileTokens;
+  }
+
   let committedTokens = 0;
   let lastUsageIndex = -1;
 
@@ -453,24 +564,63 @@ function getLiveContextTokens(
   return committedTokens + draftTokens + draftFileTokens;
 }
 
+function readLatestResponseTokenCount(messages: Message[]): number {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const totalTokens = readTotalTokens(messages[i]);
+    if (totalTokens !== undefined) return totalTokens;
+  }
+  return 0;
+}
+
+function getVisibleContextTokens({
+  messages,
+  draft,
+  draftFile,
+  rejectedFileTokenCount,
+}: {
+  messages: Message[];
+  draft: string;
+  draftFile: AttachedFile | null;
+  rejectedFileTokenCount: number | null;
+}): number {
+  const committedResponseTokens = readLatestResponseTokenCount(messages);
+  const draftTokens = getSiteTokenCount(draft);
+  const fileTokens = draftFile
+    ? getAttachmentTokenCount(draftFile)
+    : rejectedFileTokenCount ?? 0;
+
+  return committedResponseTokens + draftTokens + fileTokens;
+}
+
 function TokenCounterChip({
   count,
   limit,
+  trigger,
+  hasCompaction,
+  compacting,
+  error,
 }: {
   count: number;
   limit: number;
+  trigger: number;
+  hasCompaction: boolean;
+  compacting: boolean;
+  error?: string | null;
 }) {
   const safeCount = Math.max(0, Math.round(Number.isFinite(count) ? count : 0));
   const safeLimit = Math.max(1, Math.round(Number.isFinite(limit) ? limit : 1));
+  const safeTrigger = Math.max(1, Math.round(Number.isFinite(trigger) ? trigger : 1));
   const ratio = safeCount / safeLimit;
   const percent = Math.min(100, ratio * 100);
   const remaining = Math.max(0, safeLimit - safeCount);
   const overflow = Math.max(0, safeCount - safeLimit);
   const isOverLimit = overflow > 0;
+  const isAtCompactionLine = safeCount >= safeTrigger;
   const tone = (() => {
     if (isOverLimit) return "oklch(98.5% 0.008 27)";
+    if (compacting) return "oklch(78% 0.14 255)";
     if (ratio >= 1) return "oklch(58% 0.22 27)";
-    if (ratio >= 0.82) return "oklch(70% 0.16 73)";
+    if (isAtCompactionLine || ratio >= 0.82) return "oklch(70% 0.16 73)";
     return "oklch(62% 0.16 160)";
   })();
   const track = isOverLimit
@@ -482,6 +632,19 @@ function TokenCounterChip({
   const tokenStatus = isOverLimit
     ? `${overflow.toLocaleString()} over limit`
     : `${remaining.toLocaleString()} left`;
+  const label = compacting
+    ? "Compacting"
+    : hasCompaction
+      ? "Summary Active"
+      : "Total Tokens";
+  const title = [
+    `Context Tokens: ${safeCount.toLocaleString()} / ${safeLimit.toLocaleString()} (${tokenStatus})`,
+    `Auto compact starts at ${safeTrigger.toLocaleString()} tokens.`,
+    hasCompaction ? "Older chat turns are represented by compact memory." : "",
+    error || "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div
@@ -498,7 +661,7 @@ function TokenCounterChip({
           : "0 12px 26px oklch(35% 0.03 255 / 0.14)",
         color: "var(--color-surface-primary)",
       }}
-      title={`Total Tokens: ${safeCount.toLocaleString()} / ${safeLimit.toLocaleString()} (${tokenStatus})`}
+      title={title}
       aria-label={`Total Tokens ${safeCount.toLocaleString()} out of ${safeLimit.toLocaleString()}`}
     >
       <span
@@ -524,7 +687,7 @@ function TokenCounterChip({
           className="block w-full text-center text-[10px] leading-none"
           style={{ color: "currentColor", opacity: 0.68 }}
         >
-          {isOverLimit ? "Over Limit" : "Total Tokens"}
+          {isOverLimit ? "Over Limit" : label}
         </span>
       </span>
     </div>
@@ -537,6 +700,10 @@ function getClientDate() {
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function nowMs() {
+  return Date.now();
 }
 
 export default function Home() {
@@ -567,6 +734,11 @@ export default function Home() {
   const [activeSearchMatchIndex, setActiveSearchMatchIndex] = useState(0);
   const [searchMatchCount, setSearchMatchCount] = useState(0);
   const [isCompactViewport, setIsCompactViewport] = useState(false);
+  const [contextCompaction, setContextCompaction] =
+    useState<ChatContextCompaction | null>(null);
+  const [isCompactingContext, setIsCompactingContext] = useState(false);
+  const [contextCompactionError, setContextCompactionError] =
+    useState<string | null>(null);
   const isDark = useIsDarkTheme();
   const logo3DTheme = isDark ? LOGO_3D_THEME.dark : LOGO_3D_THEME.light;
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -577,6 +749,9 @@ export default function Home() {
   const chatsRef = useRef<Chat[]>([]);
   const activeChatIdRef = useRef("");
   const messagesRef = useRef<Message[]>([]);
+  const contextCompactionRef = useRef<ChatContextCompaction | null>(null);
+  const isCompactingContextRef = useRef(false);
+  const isLoadingRef = useRef(false);
   const touchStartXRef = useRef<number | null>(null);
   const touchStartYRef = useRef<number | null>(null);
   const touchHandledRef = useRef(false);
@@ -588,6 +763,7 @@ export default function Home() {
   }, []);
 
   const finishResponse = () => {
+    isLoadingRef.current = false;
     setIsLoading(false);
     setStreamingMessageId(null);
   };
@@ -661,6 +837,10 @@ export default function Home() {
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
+
+  useEffect(() => {
+    contextCompactionRef.current = contextCompaction;
+  }, [contextCompaction]);
 
   useEffect(() => {
     if (!scrollTargetRef.current) return;
@@ -740,7 +920,8 @@ export default function Home() {
     const flushedChat: Chat = {
       ...currentChat,
       messages: messagesRef.current,
-      updatedAt: Date.now(),
+      contextCompaction: contextCompactionRef.current ?? undefined,
+      updatedAt: nowMs(),
     };
     const nextChats = chatsRef.current.map((chat) =>
       chat.id === chatId ? flushedChat : chat
@@ -750,6 +931,33 @@ export default function Home() {
     void persistChat(flushedChat);
   }, [cancelPendingSave]);
 
+  const commitContextCompaction = useCallback(
+    (nextCompaction: ChatContextCompaction | null) => {
+      contextCompactionRef.current = nextCompaction;
+      setContextCompaction(nextCompaction);
+
+      const chatId = activeChatIdRef.current;
+      if (!chatId) return;
+
+      setChats((prev) => {
+        const nextChats = prev.map((chat) =>
+          chat.id === chatId
+            ? {
+              ...chat,
+              contextCompaction: nextCompaction ?? undefined,
+              updatedAt: nowMs(),
+            }
+            : chat
+        );
+        chatsRef.current = nextChats;
+        const updatedChat = nextChats.find((chat) => chat.id === chatId);
+        if (updatedChat) void persistChat(updatedChat);
+        return nextChats;
+      });
+    },
+    []
+  );
+
   const resetDraftConversation = useCallback(
     (
       historyMode: "push" | "replace" = "push",
@@ -758,8 +966,11 @@ export default function Home() {
       if (options.flush !== false) flushActiveChat();
       activeChatIdRef.current = "";
       messagesRef.current = [];
+      contextCompactionRef.current = null;
       setActiveChatId("");
       setMessages([]);
+      setContextCompaction(null);
+      setContextCompactionError(null);
       setInput("");
       clearAttachedFile();
       writeHomeUrl(historyMode);
@@ -800,8 +1011,11 @@ export default function Home() {
     if (!chat) return;
     activeChatIdRef.current = id;
     messagesRef.current = chat.messages;
+    contextCompactionRef.current = chat.contextCompaction ?? null;
     setActiveChatId(id);
     setMessages(chat.messages);
+    setContextCompaction(chat.contextCompaction ?? null);
+    setContextCompactionError(null);
     setInput("");
     clearAttachedFile();
     writeChatUrl(id);
@@ -825,8 +1039,11 @@ export default function Home() {
     if (nextChats.length > 0) {
       activeChatIdRef.current = nextChats[0].id;
       messagesRef.current = nextChats[0].messages;
+      contextCompactionRef.current = nextChats[0].contextCompaction ?? null;
       setActiveChatId(nextChats[0].id);
       setMessages(nextChats[0].messages);
+      setContextCompaction(nextChats[0].contextCompaction ?? null);
+      setContextCompactionError(null);
       writeChatUrl(nextChats[0].id, "replace");
     } else {
       resetDraftConversation("replace", { flush: false });
@@ -854,6 +1071,106 @@ export default function Home() {
     } catch { }
   }
 
+  const compactContextIfNeeded = useCallback(
+    async (
+      candidateMessages: Message[],
+      draft: string,
+      draftFile: AttachedFile | null,
+      options: { force?: boolean } = {}
+    ): Promise<ChatContextCompaction | null> => {
+      const currentCompaction = contextCompactionRef.current;
+      const estimatedTokens = estimateModelContextTokens(
+        candidateMessages,
+        draft,
+        draftFile,
+        currentCompaction
+      );
+
+      if (!options.force && estimatedTokens < AUTO_COMPACT_TRIGGER_TOKEN_LIMIT) {
+        return currentCompaction;
+      }
+
+      if (isCompactingContextRef.current) return currentCompaction;
+
+      const compactableMessages = getMessagesAfterCompaction(
+        candidateMessages,
+        currentCompaction
+      ).filter(
+        (message) => message.content || (message.attachments?.length ?? 0) > 0
+      );
+      const compactThrough = compactableMessages[compactableMessages.length - 1];
+      if (!compactThrough) return currentCompaction;
+
+      isCompactingContextRef.current = true;
+      setIsCompactingContext(true);
+      setContextCompactionError(null);
+
+      try {
+        const response = await fetch("/api/compact", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            previousSummary: currentCompaction?.summary,
+            messages: compactableMessages.map((message) => ({
+              role: message.role,
+              content: buildApiContent(message),
+            })),
+            maxSummaryTokens: COMPACTED_CONTEXT_TOKEN_LIMIT,
+          }),
+        });
+
+        const body = (await response.json().catch(() => null)) as {
+          summary?: unknown;
+          tokenCount?: unknown;
+          error?: unknown;
+        } | null;
+
+        if (!response.ok || typeof body?.summary !== "string") {
+          const message =
+            typeof body?.error === "string"
+              ? body.error
+              : "Auto compact failed before returning a summary.";
+          throw new Error(message);
+        }
+
+        const nextCompaction: ChatContextCompaction = {
+          summary: body.summary.trim(),
+          tokenCount:
+            typeof body.tokenCount === "number" && Number.isFinite(body.tokenCount)
+              ? Math.max(0, Math.round(body.tokenCount))
+              : getSiteTokenCount(body.summary),
+          sourceMessageCount:
+            (currentCompaction?.sourceMessageCount ?? 0) +
+            compactableMessages.length,
+          compactedAt: nowMs(),
+          compactedThroughMessageId: compactThrough.id,
+          compactedThroughTimestamp: compactThrough.timestamp,
+        };
+
+        commitContextCompaction(nextCompaction);
+        return nextCompaction;
+      } catch (error) {
+        console.error("Context compaction failed:", error);
+        setContextCompactionError(
+          error instanceof Error
+            ? error.message
+            : "Auto compact failed. Try again in a moment."
+        );
+        return currentCompaction;
+      } finally {
+        isCompactingContextRef.current = false;
+        setIsCompactingContext(false);
+      }
+    },
+    [commitContextCompaction]
+  );
+
+  const queuePostTurnCompaction = useCallback(() => {
+    window.setTimeout(() => {
+      void compactContextIfNeeded(messagesRef.current, "", null);
+    }, 0);
+  }, [compactContextIfNeeded]);
+
   useEffect(() => {
     loadAllChats()
       .then((stored) => {
@@ -866,8 +1183,10 @@ export default function Home() {
         if (urlChat) {
           activeChatIdRef.current = urlChat.id;
           messagesRef.current = urlChat.messages;
+          contextCompactionRef.current = urlChat.contextCompaction ?? null;
           setActiveChatId(urlChat.id);
           setMessages(urlChat.messages);
+          setContextCompaction(urlChat.contextCompaction ?? null);
           return;
         }
 
@@ -882,8 +1201,10 @@ export default function Home() {
 
         activeChatIdRef.current = "";
         messagesRef.current = [];
+        contextCompactionRef.current = null;
         setActiveChatId("");
         setMessages([]);
+        setContextCompaction(null);
       })
       .catch(() => {
         chatsRef.current = [];
@@ -902,8 +1223,11 @@ export default function Home() {
         flushActiveChat();
         activeChatIdRef.current = "";
         messagesRef.current = [];
+        contextCompactionRef.current = null;
         setActiveChatId("");
         setMessages([]);
+        setContextCompaction(null);
+        setContextCompactionError(null);
         setInput("");
         clearAttachedFile();
         return;
@@ -918,8 +1242,11 @@ export default function Home() {
       flushActiveChat();
       activeChatIdRef.current = chat.id;
       messagesRef.current = chat.messages;
+      contextCompactionRef.current = chat.contextCompaction ?? null;
       setActiveChatId(chat.id);
       setMessages(chat.messages);
+      setContextCompaction(chat.contextCompaction ?? null);
+      setContextCompactionError(null);
       setInput("");
       clearAttachedFile();
     };
@@ -949,7 +1276,12 @@ export default function Home() {
     setChats((prev) => {
       const next = prev.map((c) =>
         c.id === activeChatId
-          ? { ...c, messages, updatedAt: Date.now() }
+          ? {
+            ...c,
+            messages,
+            contextCompaction: contextCompactionRef.current ?? undefined,
+            updatedAt: nowMs(),
+          }
           : c
       );
       chatsRef.current = next;
@@ -975,13 +1307,15 @@ export default function Home() {
     query: string,
     fileForSubmit: AttachedFile | null
   ) => {
+    let retryDepth = 0;
+    let activeCompaction = contextCompactionRef.current;
     const assistantId = generateId();
     const assistantMessage: Message = {
       id: assistantId,
       role: "assistant",
       content: "",
       responseMode: "chat",
-      timestamp: Date.now(),
+      timestamp: nowMs(),
     };
     const attachments = fileForSubmit ? [fileForSubmit] : undefined;
     const apiAttachment = buildApiAttachment(fileForSubmit);
@@ -998,24 +1332,87 @@ export default function Home() {
         role: "user",
         content: query,
         attachments,
-        timestamp: Date.now(),
+        timestamp: nowMs(),
       },
       assistantMessage,
     ]);
 
-    const conversationHistory = messages
-      .filter((m) => m.content || (m.attachments?.length ?? 0) > 0)
-      .map((m) => ({
-        role: m.role,
-        content: buildApiContent(m),
-      }));
-    conversationHistory.push({
-      role: "user",
-      content: query,
-    });
+    const prepareForcedCompactionRetry = async (): Promise<boolean> => {
+      if (retryDepth >= 1) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? {
+                ...m,
+                responseMode: "chat",
+                content:
+                  "The model returned an empty response even after compacting the older context. Please retry your last message.",
+                searchStatus: "done" as const,
+              }
+              : m
+          )
+        );
+        finishResponse();
+        return false;
+      }
 
-    try {
-      const tRouterStartWall = Date.now();
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantId
+            ? {
+              ...m,
+              responseMode: "chat",
+              content: "Compacting older context and retrying...",
+              generationStats: undefined,
+              weather: undefined,
+              searchQuery: undefined,
+              searchResults: undefined,
+              searchStatus: undefined,
+              isDeepResearch: undefined,
+              researchSteps: undefined,
+              researchStatus: undefined,
+              allSources: undefined,
+            }
+            : m
+        )
+      );
+
+      activeCompaction = await compactContextIfNeeded(
+        messages,
+        "",
+        null,
+        { force: true }
+      );
+      retryDepth += 1;
+      return true;
+    };
+
+    while (true) {
+      const conversationHistory = buildModelConversationHistory(
+        messages,
+        activeCompaction
+      );
+      conversationHistory.push({
+        role: "user",
+        content: query,
+      });
+
+      if (retryDepth > 0) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? {
+                ...m,
+                content: "",
+                responseMode: "chat",
+              }
+              : m
+          )
+        );
+      }
+
+      try {
+      const tRouterStartWall = nowMs();
       const routerRes = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1029,7 +1426,7 @@ export default function Home() {
           ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
         }),
       });
-      const tRouterFirstByteWall = Date.now();
+      const tRouterFirstByteWall = nowMs();
 
       if (!routerRes.ok || !routerRes.body) throw new Error("Router failed");
 
@@ -1041,9 +1438,14 @@ export default function Home() {
       const routerReader = routerRes.body.getReader();
       const routerDecoder = new TextDecoder();
       let routerContent = "";
-      let routerDecision: "direct" | "search" | null = null;
+      let routerDecision:
+        | "direct"
+        | "search"
+        | "context_compaction_required"
+        | null = null;
       let directResponseMode: MessageResponseMode = "chat";
       let routerGenerationStats: GenerationStats | undefined;
+      let routerNeedsCompactionRetry = false;
 
       const routerParser = parseSSEStream(
         (text) => {
@@ -1075,6 +1477,12 @@ export default function Home() {
         },
         () => { },
         (event) => {
+          if (event.type === "context_compaction_required") {
+            routerNeedsCompactionRetry = true;
+            routerDecision = "context_compaction_required";
+            return;
+          }
+
           const stats = getGenerationStatsEvent(event);
           if (stats) {
             routerGenerationStats = stats;
@@ -1107,7 +1515,20 @@ export default function Home() {
         routerParser.processChunk(routerDecoder.decode(value, { stream: true }));
       }
 
-      const tRouterEndWall = Date.now();
+      const tRouterEndWall = nowMs();
+
+      if (routerNeedsCompactionRetry) {
+        logTiming(`Chat:router`, {
+          query,
+          tStartWall: tRouterStartWall,
+          tFirstByteWall: tRouterFirstByteWall,
+          tEndWall: tRouterEndWall,
+          serverTiming: routerServerTiming,
+          vercelId: routerVercelId,
+        });
+        if (await prepareForcedCompactionRetry()) continue;
+        return;
+      }
 
       if (routerDecision === null) {
         routerDecision = "direct";
@@ -1179,15 +1600,15 @@ export default function Home() {
       let searchResults: SearchResult[] = [];
       let searchError: string | undefined;
       try {
-        const tSearchStartWall = Date.now();
+        const tSearchStartWall = nowMs();
         const searchRes = await fetch("/api/search", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query: refinedQuery, toolSettings }),
         });
-        const tSearchFirstByteWall = Date.now();
+        const tSearchFirstByteWall = nowMs();
         const body = await searchRes.json().catch(() => null);
-        const tSearchEndWall = Date.now();
+        const tSearchEndWall = nowMs();
         if (body && Array.isArray(body.results)) {
           searchResults = body.results;
         }
@@ -1225,7 +1646,7 @@ export default function Home() {
         )
       );
 
-      const tAnswerStartWall = Date.now();
+      const tAnswerStartWall = nowMs();
       const answerRes = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1247,7 +1668,7 @@ export default function Home() {
           ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
         }),
       });
-      const tAnswerFirstByteWall = Date.now();
+      const tAnswerFirstByteWall = nowMs();
 
       if (!answerRes.ok || !answerRes.body) throw new Error("Answer failed");
 
@@ -1260,6 +1681,7 @@ export default function Home() {
       const answerDecoder = new TextDecoder();
       let answerContent = "";
       let answerGenerationStats: GenerationStats | undefined;
+      let answerNeedsCompactionRetry = false;
 
       const answerParser = parseSSEStream(
         (text) => {
@@ -1274,6 +1696,11 @@ export default function Home() {
         },
         () => { },
         (event) => {
+          if (event.type === "context_compaction_required") {
+            answerNeedsCompactionRetry = true;
+            return;
+          }
+
           const stats = getGenerationStatsEvent(event);
           if (!stats) return;
           answerGenerationStats = stats;
@@ -1287,7 +1714,20 @@ export default function Home() {
         answerParser.processChunk(answerDecoder.decode(value, { stream: true }));
       }
 
-      const tAnswerEndWall = Date.now();
+      const tAnswerEndWall = nowMs();
+      if (answerNeedsCompactionRetry) {
+        logTiming("Chat:answer", {
+          query: refinedQuery,
+          tStartWall: tAnswerStartWall,
+          tFirstByteWall: tAnswerFirstByteWall,
+          tEndWall: tAnswerEndWall,
+          serverTiming: answerServerTiming,
+          vercelId: answerVercelId,
+        });
+        if (await prepareForcedCompactionRetry()) continue;
+        return;
+      }
+
       if (answerGenerationStats) {
         applyGenerationStats(assistantId, answerGenerationStats);
       }
@@ -1301,6 +1741,7 @@ export default function Home() {
       });
 
       finishResponse();
+      return;
     } catch (e) {
       console.error("Chat failed:", e);
       setMessages((prev) =>
@@ -1316,6 +1757,8 @@ export default function Home() {
         )
       );
       finishResponse();
+      return;
+    }
     }
   };
 
@@ -1334,7 +1777,7 @@ export default function Home() {
   };
 
   const handleRegenerate = async (assistantMessageId: string) => {
-    if (isLoading) return;
+    if (isLoading || isLoadingRef.current) return;
 
     const currentMessages = messages;
     const assistantIdx = currentMessages.findIndex(
@@ -1350,9 +1793,10 @@ export default function Home() {
     const existingVersions = normalizeMessageVersions(assistantMsg);
 
     const historyBefore = currentMessages.slice(0, assistantIdx - 1);
-    const conversationHistory = historyBefore
-      .filter((m) => m.content || (m.attachments?.length ?? 0) > 0)
-      .map((m) => ({ role: m.role, content: buildApiContent(m) }));
+    const conversationHistory = buildModelConversationHistory(
+      historyBefore,
+      getScopedCompaction(historyBefore, contextCompactionRef.current)
+    );
     conversationHistory.push({
       role: "user",
       content: buildApiContent(userMsg),
@@ -1361,6 +1805,7 @@ export default function Home() {
     const apiAttachment = buildApiAttachment(userMsg.attachments?.[0] ?? null);
     const clientDate = getClientDate();
 
+    isLoadingRef.current = true;
     setIsLoading(true);
     setStreamingMessageId(assistantMessageId);
 
@@ -2044,7 +2489,7 @@ export default function Home() {
           role: "user",
           content: query,
           attachments,
-          timestamp: Date.now(),
+          timestamp: nowMs(),
         },
         {
           id: assistantId,
@@ -2052,7 +2497,7 @@ export default function Home() {
           responseMode: "chat",
           content:
             "Please add a research question for the attached file before running Deep Research.",
-          timestamp: Date.now(),
+          timestamp: nowMs(),
         },
       ]);
       finishResponse();
@@ -2066,7 +2511,7 @@ export default function Home() {
         role: "user",
         content: query,
         attachments,
-        timestamp: Date.now(),
+        timestamp: nowMs(),
       },
       {
         id: assistantId,
@@ -2077,7 +2522,7 @@ export default function Home() {
         researchSteps: [],
         researchStatus: "researching",
         allSources: [],
-        timestamp: Date.now(),
+        timestamp: nowMs(),
       },
     ]);
 
@@ -2261,21 +2706,56 @@ export default function Home() {
   const handleSubmit = async () => {
     const query = input.trim();
     const fileForSubmit = attachedFile;
-    if ((!query && !fileForSubmit) || isLoading || !chatStoreReady) return;
+    if (
+      (!query && !fileForSubmit) ||
+      isLoading ||
+      isLoadingRef.current ||
+      isCompactingContext ||
+      !chatStoreReady
+    ) {
+      return;
+    }
 
     const isFirstMessage = messages.length === 0;
     const currentChatId = materializeDraftChat("replace");
 
+    setIsLoading(true);
+    isLoadingRef.current = true;
+    setShowSettings(false);
+
+    const effectiveCompaction = await compactContextIfNeeded(
+      messages,
+      query,
+      fileForSubmit
+    );
+    const nextContextTokens = estimateModelContextTokens(
+      messages,
+      query,
+      fileForSubmit,
+      effectiveCompaction
+    );
+
+    if (nextContextTokens > MODEL_CONTEXT_TOKEN_LIMIT) {
+      setContextCompactionError(
+        `This request is still ${(
+          nextContextTokens - MODEL_CONTEXT_TOKEN_LIMIT
+        ).toLocaleString()} tokens over the 6,144 token limit after compacting. Shorten the message or attach a smaller file.`
+      );
+      isLoadingRef.current = false;
+      setIsLoading(false);
+      return;
+    }
+
     setInput("");
     clearAttachedFile();
-    setIsLoading(true);
-    setShowSettings(false);
 
     if (agentMode) {
       await handleDeepResearch(query, fileForSubmit);
     } else {
       await handleInstantSubmit(query, fileForSubmit);
     }
+
+    queuePostTurnCompaction();
 
     if (isFirstMessage && currentChatId) {
       void generateTitle(
@@ -2366,8 +2846,12 @@ export default function Home() {
   const hasMessages = messages.length > 0;
   const contextTokenCount = useMemo(
     () =>
-      getLiveContextTokens(messages, input, attachedFile) +
-      (attachedFile ? 0 : rejectedFileTokenCount ?? 0),
+      getVisibleContextTokens({
+        messages,
+        draft: input,
+        draftFile: attachedFile,
+        rejectedFileTokenCount,
+      }),
     [attachedFile, input, messages, rejectedFileTokenCount]
   );
   const searchCountLabel =
@@ -2423,7 +2907,7 @@ export default function Home() {
         activeChatId={activeChatId}
         onSelectChat={loadChat}
         onDeleteChat={deleteChat}
-        disabled={isLoading || !chatStoreReady}
+        disabled={isLoading || isCompactingContext || !chatStoreReady}
       />
       <div className="square-grid-bg flex min-w-0 flex-1 flex-col">
         <header className="relative z-10 shrink-0 px-3 pt-3 pb-2 sm:px-4 sm:pt-4">
@@ -2601,7 +3085,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => startNewChat()}
-                disabled={isLoading || !chatStoreReady}
+                disabled={isLoading || isCompactingContext || !chatStoreReady}
                 aria-label="New chat"
                 title="New chat"
                 className="flex h-8 items-center gap-1 rounded-full px-2 text-[12px] font-medium disabled:opacity-45 sm:px-2.5"
@@ -2739,10 +3223,16 @@ export default function Home() {
             className="chat-shell relative mx-auto"
             style={{ width: "min(100%, 58rem)" }}
           >
-            <TokenCounterChip
-              count={contextTokenCount}
-              limit={MODEL_CONTEXT_TOKEN_LIMIT}
-            />
+            {contextTokenCount > 0 && (
+              <TokenCounterChip
+                count={contextTokenCount}
+                limit={MODEL_CONTEXT_TOKEN_LIMIT}
+                trigger={AUTO_COMPACT_TRIGGER_TOKEN_LIMIT}
+                hasCompaction={!!contextCompaction?.summary}
+                compacting={isCompactingContext}
+                error={contextCompactionError}
+              />
+            )}
             <motion.div
               className="pointer-events-none absolute right-0 bottom-full mb-2"
               animate={{ y: [0, -5, 0, -5, 0], rotate: [0, -2, 0, 2, 0] }}
@@ -2761,7 +3251,7 @@ export default function Home() {
               value={input}
               onChange={setInput}
               onSubmit={handleSubmit}
-              disabled={isLoading || !chatStoreReady}
+              disabled={isLoading || isCompactingContext || !chatStoreReady}
               agentMode={agentMode}
               onAgentModeChange={setAgentMode}
               attachedFile={attachedFile}

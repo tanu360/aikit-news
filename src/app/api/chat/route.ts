@@ -60,6 +60,12 @@ function stripTrailingReferences(text: string): string {
     .trimEnd();
 }
 
+function stripLeadingSearchControl(text: string): string {
+  return text
+    .replace(/^\s*(?:[-*>`*]\s*)?search\s*:\s*[^\r\n]*(?:\r?\n)*/i, "")
+    .trimStart();
+}
+
 interface RequestBody {
   messages: Array<{ role: string; content: ChatJimmyMessageContent }>;
   searchResults?: Array<{
@@ -130,6 +136,37 @@ function streamChatResponse({
           )
         );
       }
+      controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
+    status,
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "Server-Timing": serverTiming,
+      "x-debug-timing": serverTiming,
+      "Access-Control-Expose-Headers": "Server-Timing, x-debug-timing",
+    },
+  });
+}
+
+function streamControlResponse({
+  event,
+  serverTiming,
+  status = 200,
+}: {
+  event: Record<string, unknown>;
+  serverTiming: string;
+  status?: number;
+}) {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(sseData(event)));
       controller.enqueue(encoder.encode("data: [DONE]\n\n"));
       controller.close();
     },
@@ -222,6 +259,10 @@ function formatWeatherAnswer(weather: WeatherCardData): string {
   return `The current temperature in ${weather.location} is about ${temp}${feelsLike}, with ${weather.condition.toLowerCase()}.${hiLo}${detailText}`;
 }
 
+function isEmptyChatJimmyResponse(error: unknown): boolean {
+  return error instanceof Error && /empty response/i.test(error.message);
+}
+
 export async function POST(req: NextRequest) {
   const tEntry = Date.now();
   const body = (await req.json()) as RequestBody;
@@ -302,6 +343,7 @@ export async function POST(req: NextRequest) {
       );
 
       if (weatherCall) {
+        generationStats = completion.generationStats;
         const location = getStringArg(weatherCall.arguments, "location");
         const units = getStringArg(weatherCall.arguments, "units");
 
@@ -335,7 +377,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (effectiveMode === "answer") {
-      content = stripTrailingReferences(content);
+      content = stripTrailingReferences(stripLeadingSearchControl(content));
+      if (!content.trim()) {
+        content =
+          "I found search results, but couldn't turn them into a final answer. Please try the search again.";
+      }
     }
     const tStripped = Date.now();
 
@@ -380,6 +426,29 @@ export async function POST(req: NextRequest) {
     }
 
     console.error("Chat error:", error);
+    if (isEmptyChatJimmyResponse(error)) {
+      const tEmpty = Date.now();
+      const serverTiming = [
+        `mode;desc="${effectiveMode}"`,
+        `req_parse;dur=${tParsed - tEntry}`,
+        `build_prompt;dur=${tPromptBuilt - tParsed}`,
+        `chatjimmy;dur=${tEmpty - tPromptBuilt}`,
+        `weather;dur=0`,
+        `strip;dur=0`,
+        `total;dur=${tEmpty - tEntry}`,
+        `fallback;desc="compact_and_retry"`,
+      ].join(", ");
+
+      return streamControlResponse({
+        event: {
+          type: "context_compaction_required",
+          reason: "empty_response",
+          mode: effectiveMode,
+        },
+        serverTiming,
+      });
+    }
+
     return new Response(
       JSON.stringify({ error: "Failed to connect to chat API" }),
       { status: 500, headers: { "Content-Type": "application/json" } }

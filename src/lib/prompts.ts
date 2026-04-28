@@ -169,11 +169,15 @@ export function buildAnswerSystemPrompt(
     sources && sources.length > 0
       ? "available"
       : options.sourceStatus ?? "not_requested";
+  const answerToolSettings: ChatToolSettings = {
+    ...toolSettings,
+    search: toolSettings.search || sourceStatus !== "not_requested",
+  };
   const base = `You are AiKit, a helpful AI assistant. Today is ${date}.
 
 Answer the user's question directly and concisely. No preamble.
 
-${strictToolRules(toolSettings, "answer")}
+${strictToolRules(answerToolSettings, "answer")}
 
 This is the final answer step. Do not start with a "SEARCH:" control line; answer the user using the provided sources and conversation.
 

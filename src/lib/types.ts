@@ -104,10 +104,20 @@ export interface Message {
   timestamp: number;
 }
 
+export interface ChatContextCompaction {
+  summary: string;
+  tokenCount: number;
+  sourceMessageCount: number;
+  compactedAt: number;
+  compactedThroughMessageId: string;
+  compactedThroughTimestamp: number;
+}
+
 export interface Chat {
   id: string;
   title: string;
   messages: Message[];
+  contextCompaction?: ChatContextCompaction;
   createdAt: number;
   updatedAt: number;
 }

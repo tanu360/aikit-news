@@ -1,6 +1,8 @@
-import { encode } from "gpt-tokenizer/encoding/cl100k_base";
+import { decode, encode } from "gpt-tokenizer/encoding/cl100k_base";
 
 export const MODEL_CONTEXT_TOKEN_LIMIT = 6144;
+export const AUTO_COMPACT_TRIGGER_TOKEN_LIMIT = 5376;
+export const COMPACTED_CONTEXT_TOKEN_LIMIT = 768;
 export const FILE_TOKEN_LIMIT = Math.floor(MODEL_CONTEXT_TOKEN_LIMIT * (2 / 3));
 
 export function getSiteTokenCount(text: string): number {
@@ -19,4 +21,11 @@ export function getAttachmentTokenCount(file: {
   return typeof file.tokenCount === "number"
     ? file.tokenCount
     : getSiteTokenCount(file.content);
+}
+
+export function truncateToTokenLimit(text: string, tokenLimit: number): string {
+  if (!text || tokenLimit <= 0) return "";
+  const tokens = encode(` ${text}`);
+  if (tokens.length <= tokenLimit) return text;
+  return decode(tokens.slice(0, tokenLimit)).trim();
 }
