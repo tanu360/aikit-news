@@ -93,12 +93,12 @@ const CHAT_ID_PATTERN =
 
 const EMPTY_STATE_SUGGESTIONS = [
   {
-    label: "Deep research on latest AI news",
+    label: "Deep research on OpenAI",
     icon: ArtificialIntelligence04Icon,
     mode: "deepResearch",
   },
   {
-    label: "Search latest tech headlines",
+    label: "Search latest tech news",
     icon: Search01Icon,
     mode: "search",
   },
@@ -3465,7 +3465,7 @@ export default function Home() {
                 >
                   What do you want to know?
                 </h2>
-                <div className="mb-8" />
+                <div className="mb-4" />
 
                 <div className="flex flex-wrap justify-center gap-2">
                   {EMPTY_STATE_SUGGESTIONS.map((suggestion) => (
