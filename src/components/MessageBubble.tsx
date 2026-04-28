@@ -8,6 +8,7 @@ import {
   File01Icon,
   Copy01Icon,
   CopyCheckIcon,
+  Clock01Icon,
   ReloadIcon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
@@ -65,12 +66,24 @@ function getMessageCopyText(message: Message): string {
   return lines.join("\n");
 }
 
-function formatGenerationStats(
+function formatGenerationTime(
   stats: NonNullable<Message["generationStats"]>
 ): string {
-  const seconds = Math.max(0, stats.decodeTimeSeconds).toFixed(3);
+  return `${Math.max(0, stats.decodeTimeSeconds).toFixed(3)}s`;
+}
+
+function formatGenerationRate(
+  stats: NonNullable<Message["generationStats"]>
+): string {
   const rate = Math.round(stats.decodeRate).toLocaleString();
-  return `Generated in ${seconds}s • ${rate} tok/s`;
+  return `${rate} TPS`;
+}
+
+function formatCompletionTokens(
+  stats: NonNullable<Message["generationStats"]>
+): string {
+  const tokens = Math.round(stats.decodeTokens);
+  return `${tokens.toLocaleString()} ${tokens === 1 ? "Token" : "Tokens"}`;
 }
 
 const MESSAGE_ACTION_ICON_SIZE = 14;
@@ -239,6 +252,15 @@ export default function MessageBubble({
     (message.isDeepResearch
       ? message.researchStatus === "answering"
       : message.searchStatus === "done" || !message.searchQuery);
+  const generationTime = message.generationStats
+    ? formatGenerationTime(message.generationStats)
+    : "";
+  const generationRate = message.generationStats
+    ? formatGenerationRate(message.generationStats)
+    : "";
+  const completionTokens = message.generationStats
+    ? formatCompletionTokens(message.generationStats)
+    : "";
 
   return (
     <motion.div
@@ -303,13 +325,55 @@ export default function MessageBubble({
 
         {message.generationStats && !isStreaming && (
           <div
-            className="mt-2 text-[11px] font-medium tabular-nums"
+            className="inline-flex items-center gap-3 text-[12px] font-medium"
             style={{ color: "var(--color-ink-tertiary)" }}
-            title={`${message.generationStats.decodeTokens.toLocaleString()} decode tokens / ${Math.round(
+            title={`completion_tokens: ${message.generationStats.decodeTokens.toLocaleString()} / generation_speed: ${Math.round(
               message.generationStats.decodeRate
-            ).toLocaleString()} tok/s`}
+            ).toLocaleString()} TPS = ${Math.max(
+              0,
+              message.generationStats.decodeTimeSeconds
+            ).toFixed(6)}s`}
           >
-            {formatGenerationStats(message.generationStats)}
+            <span
+              aria-hidden="true"
+              className="inline-flex h-2.5 items-end gap-[2px]"
+            >
+              {[4, 7, 10].map((height, index) => (
+                <span
+                  key={height}
+                  style={{
+                    width: 2,
+                    height,
+                    borderRadius: 999,
+                    background: "oklch(68% 0.2 43)",
+                    opacity: [0.55, 0.78, 1][index],
+                  }}
+                />
+              ))}
+            </span>
+            <span>{completionTokens}</span>
+            <span className="inline-flex items-center gap-1">
+              <HugeiconsIcon
+                icon={Clock01Icon}
+                size={12}
+                strokeWidth={1.8}
+                primaryColor="currentColor"
+              />
+              <span>{generationTime}</span>
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span aria-hidden="true" style={{ fontSize: 12, lineHeight: 1 }}>
+                🔥
+              </span>
+              <span
+                style={{
+                  color: "oklch(68% 0.2 43)",
+                  fontWeight: 650,
+                }}
+              >
+                {generationRate}
+              </span>
+            </span>
           </div>
         )}
 
