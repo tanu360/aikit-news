@@ -1364,7 +1364,7 @@ export default function Home() {
             ? {
               ...m,
                 responseMode: "chat",
-                content: "Compacting older context and retrying...",
+                content: "",
                 generationStats: undefined,
                 weather: undefined,
                 searchQuery: undefined,
@@ -1734,7 +1734,6 @@ export default function Home() {
             });
             const canRetry = await prepareForcedCompactionRetry({
               responseMode: "search",
-              content: "Compacting older context and retrying answer...",
               searchQuery: refinedQuery,
               searchResults,
               searchStatus: "done",
@@ -1864,7 +1863,7 @@ export default function Home() {
             ? {
               ...m,
               responseMode: "chat",
-              content: "Compacting older context and retrying...",
+              content: "",
               generationStats: undefined,
               weather: undefined,
               searchQuery: undefined,
@@ -2231,7 +2230,6 @@ export default function Home() {
             if (!answerNeedsCompactionRetry) break;
             const canRetry = await prepareRegenerateCompactionRetry({
               responseMode: "search",
-              content: "Compacting older context and retrying answer...",
               searchQuery: refinedQuery,
               searchResults,
               searchStatus: "done",
@@ -2414,7 +2412,6 @@ export default function Home() {
           const retryMode = responseMode === "weather" ? "weather" : "chat";
           const canRetry = await prepareRegenerateCompactionRetry({
             responseMode: retryMode,
-            content: "Compacting older context and retrying...",
           });
           if (!canRetry) return;
           setMessages((prev) =>
