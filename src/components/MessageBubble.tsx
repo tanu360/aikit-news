@@ -334,25 +334,27 @@ export default function MessageBubble({
               message.generationStats.decodeTimeSeconds
             ).toFixed(6)}s`}
           >
-            <span
-              aria-hidden="true"
-              className="inline-flex h-2.5 items-end gap-0.5"
-            >
-              {[4, 7, 10].map((height, index) => (
-                <span
-                  key={height}
-                  style={{
-                    width: 2,
-                    height,
-                    borderRadius: 999,
-                    background: "oklch(68% 0.2 43)",
-                    opacity: [0.55, 0.78, 1][index],
-                  }}
-                />
-              ))}
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                aria-hidden="true"
+                className="inline-flex h-2.5 items-end gap-0.5"
+              >
+                {[4, 7, 10].map((height, index) => (
+                  <span
+                    key={height}
+                    style={{
+                      width: 2,
+                      height,
+                      borderRadius: 999,
+                      background: "oklch(68% 0.2 43)",
+                      opacity: [0.55, 0.78, 1][index],
+                    }}
+                  />
+                ))}
+              </span>
+              <span>{completionTokens}</span>
             </span>
-            <span>{completionTokens}</span>
-            <span className="inline-flex items-center gap-1">
+            <span className="inline-flex items-center gap-1.5">
               <HugeiconsIcon
                 icon={Clock01Icon}
                 size={12}
@@ -361,7 +363,7 @@ export default function MessageBubble({
               />
               <span>{generationTime}</span>
             </span>
-            <span className="inline-flex items-center gap-1">
+            <span className="inline-flex items-center gap-1.5">
               <span aria-hidden="true" style={{ fontSize: 12, lineHeight: 1 }}>
                 🔥
               </span>
