@@ -696,7 +696,7 @@ export default function ChatInput({
                     ? "Disable Weather to attach files"
                     : "Attach text file"
                 }
-                className="flex cursor-pointer items-center justify-center rounded-full transition-[background-color,border-color,color] duration-200 disabled:cursor-not-allowed disabled:opacity-30"
+                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition-[background-color,border-color,color] duration-200 disabled:cursor-not-allowed disabled:opacity-30"
                 style={{
                   backgroundColor: attachedFile ? "var(--color-ink-primary)" : "transparent",
                   color: attachedFile
@@ -709,7 +709,7 @@ export default function ChatInput({
               >
                 <HugeiconsIcon
                   icon={FileAddIcon}
-                  size={attachedFile ? 13 : 16}
+                  size={13}
                   strokeWidth={1.8}
                   primaryColor="currentColor"
                 />
