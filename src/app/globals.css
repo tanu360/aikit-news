@@ -73,6 +73,11 @@
   --color-source-row-dot-hover: oklch(49% 0.23 327);
   --color-source-chip-bg: oklch(97.8% 0 0);
   --color-source-chip-hover: oklch(96.9% 0 0);
+  --color-token-ring-track: color-mix(
+    in oklch,
+    var(--color-surface-primary) 38%,
+    transparent
+  );
   --color-suggestion-bg: oklch(98.8% 0 0);
   --color-suggestion-bg-hover: oklch(97.8% 0 0);
   --color-suggestion-border: oklch(92.8% 0 0);
@@ -139,6 +144,11 @@
     --color-source-row-dot-hover: oklch(78% 0.17 327);
     --color-source-chip-bg: oklch(1 0 0 / 0.035);
     --color-source-chip-hover: oklch(1 0 0 / 0.055);
+    --color-token-ring-track: color-mix(
+      in oklch,
+      var(--color-surface-primary) 24%,
+      transparent
+    );
     --color-suggestion-bg: oklch(1 0 0 / 0.03);
     --color-suggestion-bg-hover: oklch(1 0 0 / 0.055);
     --color-suggestion-border: oklch(1 0 0 / 0.09);
@@ -192,6 +202,11 @@
   --color-source-row-dot-hover: oklch(49% 0.23 327);
   --color-source-chip-bg: oklch(97.8% 0 0);
   --color-source-chip-hover: oklch(96.9% 0 0);
+  --color-token-ring-track: color-mix(
+    in oklch,
+    var(--color-surface-primary) 38%,
+    transparent
+  );
   --color-suggestion-bg: oklch(98.8% 0 0);
   --color-suggestion-bg-hover: oklch(97.8% 0 0);
   --color-suggestion-border: oklch(92.8% 0 0);
@@ -240,6 +255,11 @@
   --color-source-row-dot-hover: oklch(78% 0.17 327);
   --color-source-chip-bg: oklch(1 0 0 / 0.035);
   --color-source-chip-hover: oklch(1 0 0 / 0.055);
+  --color-token-ring-track: color-mix(
+    in oklch,
+    var(--color-surface-primary) 24%,
+    transparent
+  );
   --color-suggestion-bg: oklch(1 0 0 / 0.03);
   --color-suggestion-bg-hover: oklch(1 0 0 / 0.055);
   --color-suggestion-border: oklch(1 0 0 / 0.09);

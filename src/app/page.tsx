@@ -453,6 +453,70 @@ function getLiveContextTokens(
   return committedTokens + draftTokens + draftFileTokens;
 }
 
+function TokenCounterChip({
+  count,
+  limit,
+}: {
+  count: number;
+  limit: number;
+}) {
+  const safeCount = Math.max(0, Math.round(Number.isFinite(count) ? count : 0));
+  const safeLimit = Math.max(1, Math.round(Number.isFinite(limit) ? limit : 1));
+  const ratio = safeCount / safeLimit;
+  const percent = Math.min(100, ratio * 100);
+  const remaining = Math.max(0, safeLimit - safeCount);
+  const tone =
+    ratio >= 1
+      ? "oklch(58% 0.22 27)"
+      : ratio >= 0.82
+        ? "oklch(70% 0.16 73)"
+        : "oklch(62% 0.16 160)";
+  const track = "var(--color-token-ring-track)";
+
+  return (
+    <div
+      className="absolute bottom-full z-10 mb-3 flex max-w-[calc(100%-68px)] items-center gap-2 rounded-full px-3.5 py-2 text-[11px]"
+      style={{
+        right: 58,
+        backgroundColor: "var(--color-ink-primary)",
+        border:
+          "1px solid color-mix(in oklch, var(--color-surface-primary) 18%, transparent)",
+        boxShadow: "0 12px 26px oklch(35% 0.03 255 / 0.14)",
+        color: "var(--color-surface-primary)",
+      }}
+      title={`Total Tokens: ${safeCount.toLocaleString()} / ${safeLimit.toLocaleString()} (${remaining.toLocaleString()} left)`}
+      aria-label={`Total Tokens ${safeCount.toLocaleString()} out of ${safeLimit.toLocaleString()}`}
+    >
+      <span
+        aria-hidden="true"
+        className="grid h-7 w-7 shrink-0 place-items-center rounded-full"
+        style={{
+          background: `conic-gradient(${tone} ${percent}%, ${track} 0)`,
+        }}
+      >
+        <span
+          className="h-4.5 w-4.5 rounded-full"
+          style={{ backgroundColor: "var(--color-ink-primary)" }}
+        />
+      </span>
+      <span className="grid place-items-center gap-1 text-center leading-tight">
+        <span
+          className="block w-full text-center text-[13px] leading-none tabular-nums"
+          style={{ color: "currentColor", fontWeight: 700 }}
+        >
+          {safeCount}/{safeLimit}
+        </span>
+        <span
+          className="block w-full text-center text-[10px] leading-none"
+          style={{ color: "currentColor", opacity: 0.68 }}
+        >
+          Total Tokens
+        </span>
+      </span>
+    </div>
+  );
+}
+
 function getClientDate() {
   const now = new Date();
   const year = now.getFullYear();
@@ -2651,6 +2715,10 @@ export default function Home() {
             className="chat-shell relative mx-auto"
             style={{ width: "min(100%, 58rem)" }}
           >
+            <TokenCounterChip
+              count={contextTokenCount}
+              limit={MODEL_CONTEXT_TOKEN_LIMIT}
+            />
             <motion.div
               className="pointer-events-none absolute right-0 bottom-full mb-2"
               animate={{ y: [0, -5, 0, -5, 0], rotate: [0, -2, 0, 2, 0] }}
@@ -2683,8 +2751,6 @@ export default function Home() {
               showSettings={showSettings}
               onSettingsClick={() => setShowSettings((s) => !s)}
               onSettingsClose={() => setShowSettings(false)}
-              contextTokenCount={contextTokenCount}
-              contextTokenLimit={MODEL_CONTEXT_TOKEN_LIMIT}
               placeholder={
                 agentMode
                   ? "Ask a complex question for deep research..."
