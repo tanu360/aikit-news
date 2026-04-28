@@ -1362,8 +1362,10 @@ export default function Home() {
 
   const handleInstantSubmit = async (
     query: string,
-    fileForSubmit: AttachedFile | null
+    fileForSubmit: AttachedFile | null,
+    submitToolSettings: ChatToolSettings = toolSettings
   ) => {
+    const effectiveToolSettings = submitToolSettings;
     let retryDepth = 0;
     let activeCompaction = contextCompactionRef.current;
     const assistantId = generateId();
@@ -1484,7 +1486,7 @@ export default function Home() {
             messages: conversationHistory,
             mode: "router",
             topK,
-            toolSettings,
+            toolSettings: effectiveToolSettings,
             clientDate,
             ...(apiAttachment ? { attachment: apiAttachment } : {}),
             ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
@@ -1627,7 +1629,7 @@ export default function Home() {
           return;
         }
 
-        if (!toolSettings.search) {
+        if (!effectiveToolSettings.search) {
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantId
@@ -1668,7 +1670,10 @@ export default function Home() {
           const searchRes = await fetch("/api/search", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ query: refinedQuery, toolSettings }),
+            body: JSON.stringify({
+              query: refinedQuery,
+              toolSettings: effectiveToolSettings,
+            }),
           });
           const tSearchFirstByteWall = nowMs();
           const body = await searchRes.json().catch(() => null);
@@ -1725,7 +1730,7 @@ export default function Home() {
               })),
               mode: "answer",
               topK,
-              toolSettings,
+              toolSettings: effectiveToolSettings,
               clientDate,
               searchAttempted: true,
               ...(searchError ? { searchError } : {}),
@@ -2910,9 +2915,23 @@ export default function Home() {
     }
   };
 
-  const handleSubmit = async () => {
-    const query = input.trim();
-    const fileForSubmit = attachedFile;
+  const submitPrompt = async ({
+    queryOverride,
+    fileOverride,
+    agentModeOverride,
+    toolSettingsOverride,
+  }: {
+    queryOverride?: string;
+    fileOverride?: AttachedFile | null;
+    agentModeOverride?: boolean;
+    toolSettingsOverride?: ChatToolSettings;
+  } = {}) => {
+    const query = (queryOverride ?? input).trim();
+    const fileForSubmit =
+      fileOverride === undefined ? attachedFile : fileOverride;
+    const shouldRunDeepResearch = agentModeOverride ?? agentMode;
+    const effectiveToolSettings = toolSettingsOverride ?? toolSettings;
+
     if (
       (!query && !fileForSubmit) ||
       isLoading ||
@@ -2957,10 +2976,10 @@ export default function Home() {
     setInput("");
     clearAttachedFile();
 
-    if (agentMode) {
+    if (shouldRunDeepResearch) {
       await handleDeepResearch(query, fileForSubmit);
     } else {
-      await handleInstantSubmit(query, fileForSubmit);
+      await handleInstantSubmit(query, fileForSubmit, effectiveToolSettings);
     }
 
     queuePostTurnCompaction();
@@ -2973,27 +2992,46 @@ export default function Home() {
     }
   };
 
+  const handleSubmit = async () => {
+    await submitPrompt();
+  };
+
   function applyEmptyStateSuggestion(
     suggestion: (typeof EMPTY_STATE_SUGGESTIONS)[number]
   ) {
-    setInput(suggestion.label);
-    setShowSettings(false);
-
-    if (suggestion.mode === "deepResearch") {
-      setAgentMode(true);
-      setToolSettings({ search: false, weather: false });
+    if (
+      isLoading ||
+      isLoadingRef.current ||
+      isCompactingContext ||
+      !chatStoreReady
+    ) {
       return;
     }
 
-    setAgentMode(false);
-    setToolSettings({
-      search: suggestion.mode === "search",
-      weather: suggestion.mode === "weather",
-    });
+    const nextAgentMode = suggestion.mode === "deepResearch";
+    const nextToolSettings: ChatToolSettings = nextAgentMode
+      ? { search: false, weather: false }
+      : {
+        search: suggestion.mode === "search",
+        weather: suggestion.mode === "weather",
+      };
+    const nextFile = suggestion.mode === "weather" ? null : attachedFile;
+
+    setInput(suggestion.label);
+    setShowSettings(false);
+    setAgentMode(nextAgentMode);
+    setToolSettings(nextToolSettings);
 
     if (suggestion.mode === "weather") {
       clearAttachedFile();
     }
+
+    void submitPrompt({
+      queryOverride: suggestion.label,
+      fileOverride: nextFile,
+      agentModeOverride: nextAgentMode,
+      toolSettingsOverride: nextToolSettings,
+    });
   }
 
   const trackSidebarTouchStart = (touch: React.Touch) => {
@@ -3375,12 +3413,9 @@ export default function Home() {
                   {EMPTY_STATE_SUGGESTIONS.map((suggestion) => (
                     <button
                       key={suggestion.label}
-                      onPointerDown={(event) => {
-                        event.preventDefault();
-                        applyEmptyStateSuggestion(suggestion);
-                      }}
                       onClick={() => applyEmptyStateSuggestion(suggestion)}
-                      className="suggestion-chip inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[13px]"
+                      disabled={isLoading || isCompactingContext || !chatStoreReady}
+                      className="suggestion-chip inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[13px] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <HugeiconsIcon
                         icon={suggestion.icon}
