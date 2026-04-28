@@ -9,7 +9,7 @@ import type {
   ChatJimmyMessageContent,
   ChatJimmyTool,
 } from "@/lib/jimmy";
-import type { GenerationStats } from "@/lib/types";
+import type { GenerationStats, PriceCardData } from "@/lib/types";
 import { readJsonRecord } from "@/lib/api";
 import {
   appendUserSystemPrompt,
@@ -22,6 +22,7 @@ import type { WeatherCardData } from "@/lib/types";
 import type { ChatToolSettings } from "@/lib/toolSettings";
 import { normalizeChatToolSettings } from "@/lib/toolSettings";
 import { getWeather } from "@/lib/weather";
+import { BinanceSymbolError, getBinancePrice } from "@/lib/binance";
 
 const WEATHER_TOOL: ChatJimmyTool = {
   type: "function",
@@ -44,6 +45,26 @@ const WEATHER_TOOL: ChatJimmyTool = {
         },
       },
       required: ["location"],
+    },
+  },
+};
+
+const PRICE_TOOL: ChatJimmyTool = {
+  type: "function",
+  function: {
+    name: "get_binance_price",
+    description:
+      "Get live Binance Spot 24h ticker data for an explicit crypto coin or trading pair from the user's request. Single assets default to USDT.",
+    parameters: {
+      type: "object",
+      properties: {
+        symbol: {
+          type: "string",
+          description:
+            "Coin ticker, coin name, or Binance Spot pair from the user's request. Examples: BTC, bitcoin, BTCUSDT, ETHBTC.",
+        },
+      },
+      required: ["symbol"],
     },
   },
 };
@@ -147,12 +168,14 @@ function streamChatResponse({
   content,
   generationStats,
   weatherCard,
+  priceCard,
   serverTiming,
   status = 200,
 }: {
   content: string;
   generationStats?: GenerationStats;
   weatherCard?: WeatherCardData | null;
+  priceCard?: PriceCardData | null;
   serverTiming: string;
   status?: number;
 }) {
@@ -166,6 +189,17 @@ function streamChatResponse({
             sseData({
               type: "weather",
               weather: weatherCard,
+            })
+          )
+        );
+      }
+
+      if (priceCard) {
+        controller.enqueue(
+          encoder.encode(
+            sseData({
+              type: "price",
+              price: priceCard,
             })
           )
         );
@@ -292,6 +326,29 @@ function shouldEnableWeatherTool(messages: RequestBody["messages"]): boolean {
   return explicitWeather && !asksAboutDocument;
 }
 
+function shouldEnablePriceTool(messages: RequestBody["messages"]): boolean {
+  const text = latestUserText(messages).toLowerCase();
+  if (!text) return false;
+  const asksAboutDocument =
+    /\b(file|document|attachment|attached|uploaded|content|text|snippet)\b/.test(
+      text
+    );
+  if (asksAboutDocument) return false;
+
+  const pairPattern =
+    /\b[a-z0-9]{2,12}\s*(?:\/|-|:)?\s*(?:usdt|fdusd|usdc|tusd|busd|btc|eth|bnb|try|eur|brl|dai)\b/i;
+  const priceIntent =
+    /\b(?:price|ticker|quote|rate|current|live|latest|24h|high|low|bid|ask|volume)\b/i.test(
+      text
+    );
+  const cryptoAsset =
+    /\b(?:btc|bitcoin|eth|ethereum|bnb|sol|solana|xrp|ada|doge|dogecoin|ltc|litecoin|trx|link|avax|shib|ton|crypto)\b/i.test(
+      text
+    );
+
+  return pairPattern.test(text) || (priceIntent && cryptoAsset);
+}
+
 function formatWeatherAnswer(weather: WeatherCardData): string {
   const temp = `${weather.temperature}${weather.temperatureUnit}`;
   const feelsLike =
@@ -312,6 +369,16 @@ function formatWeatherAnswer(weather: WeatherCardData): string {
     details.length > 0 ? ` ${details.join(" and ")}.` : "";
 
   return `The current temperature in ${weather.location} is about ${temp}${feelsLike}, with ${weather.condition.toLowerCase()}.${hiLo}${detailText}`;
+}
+
+function formatPriceAnswer(price: PriceCardData): string {
+  const direction =
+    price.priceChangePercent > 0
+      ? "up"
+      : price.priceChangePercent < 0
+        ? "down"
+        : "flat";
+  return `${price.symbol} is ${price.priceText} ${price.quoteAsset} on Binance Spot, ${direction} ${price.priceChangePercentText} over 24h. The 24h range is ${price.lowPriceText}-${price.highPriceText} ${price.quoteAsset}.`;
 }
 
 function isEmptyChatJimmyResponse(error: unknown): boolean {
@@ -361,11 +428,13 @@ export async function POST(req: NextRequest) {
           ? "empty"
           : "not_requested";
   const shouldBuildToolPrompt =
-    effectiveMode === "router" && (toolSettings.search || toolSettings.weather);
+    effectiveMode === "router" &&
+    (toolSettings.search || toolSettings.weather || toolSettings.price);
   const shouldBuildSourcePrompt =
     effectiveMode === "answer" &&
     (toolSettings.search ||
       toolSettings.weather ||
+      toolSettings.price ||
       searchResults.length > 0 ||
       !!searchAttempted ||
       !!searchError);
@@ -387,51 +456,92 @@ export async function POST(req: NextRequest) {
   try {
     let weatherCard: WeatherCardData | null = null;
     let weatherDuration = 0;
+    let priceCard: PriceCardData | null = null;
+    let priceDuration = 0;
     let content = "";
     let generationStats: GenerationStats | undefined;
     let tChatjimmyDone = 0;
 
     if (effectiveMode === "router") {
-      const weatherTools: ChatJimmyTool[] =
-        toolSettings.weather && shouldEnableWeatherTool(messages)
-        ? [WEATHER_TOOL]
-        : [];
-      const completion = await chatJimmyWithTools(
-        jimmyMessages,
-        weatherTools,
-        jimmyOpts
-      );
-      tChatjimmyDone = Date.now();
-      const weatherCall = completion.toolCalls.find(
-        (toolCall) => toolCall.name === "get_weather"
-      );
-
-      if (weatherCall) {
-        generationStats = completion.generationStats;
-        const location = getStringArg(weatherCall.arguments, "location");
-        const units = getStringArg(weatherCall.arguments, "units");
-
-        if (!location) {
-          content = "Which city or place should I check the weather for?";
-        } else {
-          try {
-            const tWeatherStart = Date.now();
-            weatherCard = await getWeather(location, units);
-            weatherDuration = Date.now() - tWeatherStart;
-            content = formatWeatherAnswer(weatherCard);
-          } catch {
-            const fallbackCompletion = await chatJimmyCompletion(
-              jimmyMessages,
-              jimmyOpts
-            );
-            content = fallbackCompletion.content;
-            generationStats = fallbackCompletion.generationStats;
-            tChatjimmyDone = Date.now();
-          }
-        }
+      if (!toolSettings.price && shouldEnablePriceTool(messages)) {
+        tChatjimmyDone = Date.now();
+        content =
+          "Price is disabled. Enable Price in Tools settings to fetch live Binance Spot prices.";
       } else {
-        content = completion.content;
-        generationStats = completion.generationStats;
+        const routerTools: ChatJimmyTool[] = [
+          ...(toolSettings.weather && shouldEnableWeatherTool(messages)
+            ? [WEATHER_TOOL]
+            : []),
+          ...(toolSettings.price && shouldEnablePriceTool(messages)
+            ? [PRICE_TOOL]
+            : []),
+        ];
+        const completion = await chatJimmyWithTools(
+          jimmyMessages,
+          routerTools,
+          jimmyOpts
+        );
+        tChatjimmyDone = Date.now();
+        const weatherCall = completion.toolCalls.find(
+          (toolCall) => toolCall.name === "get_weather"
+        );
+        const priceCall = completion.toolCalls.find(
+          (toolCall) => toolCall.name === "get_binance_price"
+        );
+
+        if (weatherCall) {
+          generationStats = completion.generationStats;
+          const location = getStringArg(weatherCall.arguments, "location");
+          const units = getStringArg(weatherCall.arguments, "units");
+
+          if (!location) {
+            content = "Which city or place should I check the weather for?";
+          } else {
+            try {
+              const tWeatherStart = Date.now();
+              weatherCard = await getWeather(location, units);
+              weatherDuration = Date.now() - tWeatherStart;
+              content = formatWeatherAnswer(weatherCard);
+            } catch {
+              const fallbackCompletion = await chatJimmyCompletion(
+                jimmyMessages,
+                jimmyOpts
+              );
+              content = fallbackCompletion.content;
+              generationStats = fallbackCompletion.generationStats;
+              tChatjimmyDone = Date.now();
+            }
+          }
+        } else if (priceCall) {
+          generationStats = completion.generationStats;
+          const symbol = getStringArg(priceCall.arguments, "symbol");
+
+          if (!symbol) {
+            content = "Which coin or Binance Spot pair should I check?";
+          } else {
+            try {
+              const tPriceStart = Date.now();
+              priceCard = await getBinancePrice(symbol);
+              priceDuration = Date.now() - tPriceStart;
+              content = formatPriceAnswer(priceCard);
+            } catch (error) {
+              if (error instanceof BinanceSymbolError) {
+                content = error.message;
+              } else {
+                const fallbackCompletion = await chatJimmyCompletion(
+                  jimmyMessages,
+                  jimmyOpts
+                );
+                content = fallbackCompletion.content;
+                generationStats = fallbackCompletion.generationStats;
+                tChatjimmyDone = Date.now();
+              }
+            }
+          }
+        } else {
+          content = completion.content;
+          generationStats = completion.generationStats;
+        }
       }
     } else {
       const completion = await chatJimmyCompletion(jimmyMessages, jimmyOpts);
@@ -455,6 +565,7 @@ export async function POST(req: NextRequest) {
       `build_prompt;dur=${tPromptBuilt - tParsed}`,
       `chatjimmy;dur=${tChatjimmyDone - tPromptBuilt}`,
       `weather;dur=${weatherDuration}`,
+      `price;dur=${priceDuration}`,
       `strip;dur=${tStripped - tChatjimmyDone}`,
       `total;dur=${tStripped - tEntry}`,
     ].join(", ");
@@ -463,6 +574,7 @@ export async function POST(req: NextRequest) {
       content,
       generationStats,
       weatherCard,
+      priceCard,
       serverTiming,
     });
   } catch (error) {
@@ -474,6 +586,7 @@ export async function POST(req: NextRequest) {
         `build_prompt;dur=${tPromptBuilt - tParsed}`,
         `chatjimmy;dur=${tError - tPromptBuilt}`,
         `weather;dur=0`,
+        `price;dur=0`,
         `strip;dur=0`,
         `total;dur=${tError - tEntry}`,
       ].join(", ");
@@ -498,6 +611,7 @@ export async function POST(req: NextRequest) {
         `build_prompt;dur=${tPromptBuilt - tParsed}`,
         `chatjimmy;dur=${tEmpty - tPromptBuilt}`,
         `weather;dur=0`,
+        `price;dur=0`,
         `strip;dur=0`,
         `total;dur=${tEmpty - tEntry}`,
         `fallback;desc="compact_and_retry"`,

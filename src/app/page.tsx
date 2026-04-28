@@ -10,6 +10,7 @@ import {
   ArrowUp01Icon,
   PencilEdit01Icon,
   ArtificialIntelligence04Icon,
+  BitcoinIcon,
   GithubIcon,
   Search01Icon,
   MessageSearch01Icon,
@@ -23,6 +24,7 @@ import type {
   Message,
   MessageResponseMode,
   MessageVersion,
+  PriceCardData,
   SearchResult,
   ResearchStep,
   WeatherCardData,
@@ -104,6 +106,11 @@ const EMPTY_STATE_SUGGESTIONS = [
     label: "Delhi weather today",
     icon: SunCloud01Icon,
     mode: "weather",
+  },
+  {
+    label: "BTCUSDT price",
+    icon: BitcoinIcon,
+    mode: "price",
   },
 ] as const;
 
@@ -425,6 +432,7 @@ function captureAssistantVersion(message: Message): MessageVersion {
     responseMode: message.responseMode ?? "chat",
     generationStats: message.generationStats,
     weather: message.weather,
+    price: message.price,
     searchQuery: message.searchQuery,
     searchResults: message.searchResults,
     searchStatus: message.searchStatus,
@@ -452,6 +460,7 @@ function applyAssistantVersion(
     responseMode: version.responseMode ?? "chat",
     generationStats: version.generationStats,
     weather: version.weather,
+    price: version.price,
     searchQuery: version.searchQuery,
     searchResults: version.searchResults,
     searchStatus: version.searchStatus,
@@ -1426,6 +1435,7 @@ export default function Home() {
               content: "",
               generationStats: undefined,
               weather: undefined,
+              price: undefined,
               searchQuery: undefined,
               searchResults: undefined,
               searchStatus: undefined,
@@ -1555,6 +1565,23 @@ export default function Home() {
               if (routerDecision === "direct") {
                 applyGenerationStats(assistantId, stats);
               }
+              return;
+            }
+
+            if (event.type === "price") {
+              routerDecision = "direct";
+              directResponseMode = "price";
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantId
+                    ? {
+                      ...m,
+                      price: event.price as PriceCardData,
+                      responseMode: "price",
+                    }
+                    : m
+                )
+              );
               return;
             }
 
@@ -1928,6 +1955,7 @@ export default function Home() {
               content: "",
               generationStats: undefined,
               weather: undefined,
+              price: undefined,
               searchQuery: undefined,
               searchResults: undefined,
               searchStatus: undefined,
@@ -1969,6 +1997,7 @@ export default function Home() {
               responseMode: "deepResearch",
               generationStats: undefined,
               weather: undefined,
+              price: undefined,
               searchQuery: undefined,
               searchResults: undefined,
               searchStatus: undefined,
@@ -2177,6 +2206,7 @@ export default function Home() {
               responseMode: "search",
               generationStats: undefined,
               weather: undefined,
+              price: undefined,
               searchQuery: refinedQuery,
               searchResults: [],
               searchStatus: "searching" as const,
@@ -2346,8 +2376,14 @@ export default function Home() {
 
     const regenerationToolSettings: ChatToolSettings =
       responseMode === "weather"
-        ? { ...toolSettings, search: false, weather: true }
-        : { ...toolSettings, search: false, weather: false };
+        ? { ...toolSettings, search: false, weather: true, price: false }
+        : responseMode === "price"
+          ? { ...toolSettings, search: false, weather: false, price: true }
+          : { ...toolSettings, search: false, weather: false, price: false };
+    const initialDirectResponseMode: MessageResponseMode =
+      responseMode === "weather" || responseMode === "price"
+        ? responseMode
+        : "chat";
 
     setMessages((prev) =>
       prev.map((m) =>
@@ -2355,9 +2391,10 @@ export default function Home() {
           ? {
             ...m,
             content: "",
-            responseMode: responseMode === "weather" ? "weather" : "chat",
+            responseMode: initialDirectResponseMode,
             generationStats: undefined,
             weather: undefined,
+            price: undefined,
             searchQuery: undefined,
             searchResults: undefined,
             searchStatus: undefined,
@@ -2378,8 +2415,8 @@ export default function Home() {
     let routerContent = "";
     let routerDecision: "direct" | "search" | null = null;
     let weather: WeatherCardData | undefined;
-    let directResponseMode: MessageResponseMode =
-      responseMode === "weather" ? "weather" : "chat";
+    let price: PriceCardData | undefined;
+    let directResponseMode: MessageResponseMode = initialDirectResponseMode;
 
     try {
       while (true) {
@@ -2388,7 +2425,8 @@ export default function Home() {
         routerContent = "";
         routerDecision = null;
         weather = undefined;
-        directResponseMode = responseMode === "weather" ? "weather" : "chat";
+        price = undefined;
+        directResponseMode = initialDirectResponseMode;
         let routerNeedsCompactionRetry = false;
 
         const routerRes = await fetch("/api/chat", {
@@ -2450,6 +2488,20 @@ export default function Home() {
               return;
             }
 
+            if (event.type === "price") {
+              routerDecision = "direct";
+              price = event.price as PriceCardData;
+              directResponseMode = "price";
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMessageId
+                    ? { ...m, price, responseMode: "price" }
+                    : m
+                )
+              );
+              return;
+            }
+
             if (event.type !== "weather") return;
             routerDecision = "direct";
             weather = event.weather as WeatherCardData;
@@ -2471,7 +2523,7 @@ export default function Home() {
         }
 
         if (!routerNeedsCompactionRetry) break;
-        const retryMode = responseMode === "weather" ? "weather" : "chat";
+        const retryMode = initialDirectResponseMode;
         const canRetry = await prepareRegenerateCompactionRetry({
           responseMode: retryMode,
         });
@@ -2511,6 +2563,7 @@ export default function Home() {
           responseMode: directResponseMode,
           generationStats: routerGenerationStats,
           weather,
+          price,
         };
         setMessages((prev) =>
           prev.map((m) =>
@@ -2549,6 +2602,8 @@ export default function Home() {
               content: "",
               responseMode: "search",
               generationStats: undefined,
+              weather: undefined,
+              price: undefined,
               searchQuery: refinedQuery,
               searchResults: [],
               searchStatus: "searching" as const,
@@ -2662,7 +2717,7 @@ export default function Home() {
       const version: MessageVersion = {
         content:
           "Failed to connect to chat service. ChatJimmy may be temporarily unavailable.",
-        responseMode: responseMode === "weather" ? "weather" : "chat",
+        responseMode: initialDirectResponseMode,
       };
       setMessages((prev) =>
         prev.map((m) =>
@@ -3010,19 +3065,22 @@ export default function Home() {
 
     const nextAgentMode = suggestion.mode === "deepResearch";
     const nextToolSettings: ChatToolSettings = nextAgentMode
-      ? { search: false, weather: false }
+      ? { search: false, weather: false, price: false }
       : {
         search: suggestion.mode === "search",
         weather: suggestion.mode === "weather",
+        price: suggestion.mode === "price",
       };
-    const nextFile = suggestion.mode === "weather" ? null : attachedFile;
+    const clearsFile =
+      suggestion.mode === "weather" || suggestion.mode === "price";
+    const nextFile = clearsFile ? null : attachedFile;
 
     setInput(suggestion.label);
     setShowSettings(false);
     setAgentMode(nextAgentMode);
     setToolSettings(nextToolSettings);
 
-    if (suggestion.mode === "weather") {
+    if (clearsFile) {
       clearAttachedFile();
     }
 

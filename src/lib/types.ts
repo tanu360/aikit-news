@@ -59,7 +59,41 @@ export interface WeatherCardData {
   updatedAt: string;
 }
 
-export type MessageResponseMode = "chat" | "search" | "weather" | "deepResearch";
+export interface PriceCardData {
+  symbol: string;
+  baseAsset: string;
+  quoteAsset: string;
+  price: number;
+  priceText: string;
+  priceChange: number;
+  priceChangeText: string;
+  priceChangePercent: number;
+  priceChangePercentText: string;
+  highPrice: number;
+  highPriceText: string;
+  lowPrice: number;
+  lowPriceText: string;
+  openPrice: number;
+  openPriceText: string;
+  volume: number;
+  volumeText: string;
+  quoteVolume: number;
+  quoteVolumeText: string;
+  bidPrice?: number;
+  bidPriceText?: string;
+  askPrice?: number;
+  askPriceText?: string;
+  tradeCount?: number;
+  updatedAt: string;
+  source: "Binance Spot";
+}
+
+export type MessageResponseMode =
+  | "chat"
+  | "search"
+  | "weather"
+  | "price"
+  | "deepResearch";
 
 export interface GenerationStats {
   provider: "chatjimmy";
@@ -75,6 +109,7 @@ export interface MessageVersion {
   responseMode?: MessageResponseMode;
   generationStats?: GenerationStats;
   weather?: WeatherCardData;
+  price?: PriceCardData;
   searchQuery?: string;
   searchResults?: SearchResult[];
   searchStatus?: "searching" | "done";
@@ -92,6 +127,7 @@ export interface Message {
   generationStats?: GenerationStats;
   attachments?: AttachedFile[];
   weather?: WeatherCardData;
+  price?: PriceCardData;
   searchQuery?: string;
   searchResults?: SearchResult[];
   searchStatus?: "searching" | "done";

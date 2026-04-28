@@ -19,6 +19,7 @@ import SearchTimeline from "./SearchTimeline";
 import DeepResearchTimeline from "./DeepResearchTimeline";
 import MarkdownRenderer from "./MarkdownRenderer";
 import WeatherCard from "./WeatherCard";
+import PriceCard from "./PriceCard";
 
 interface MessageBubbleProps {
   message: Message;
@@ -295,6 +296,7 @@ export default function MessageBubble({
           )}
 
         {message.weather && <WeatherCard weather={message.weather} />}
+        {message.price && <PriceCard price={message.price} />}
 
         {message.content && (
           <div className="prose">

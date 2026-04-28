@@ -19,6 +19,7 @@ function formatToolPermissions(settings: ChatToolSettings): string {
   return [
     `Search: ${settings.search ? "enabled" : "disabled"}`,
     `Weather: ${settings.weather ? "enabled" : "disabled"}`,
+    `Price: ${settings.price ? "enabled" : "disabled"}`,
   ].join("\n");
 }
 
@@ -36,6 +37,11 @@ function strictToolRules(
       ? mode === "router"
         ? "- Weather: enabled. You may call `get_weather` only for live weather questions about an explicit city, region, or place. It returns current conditions and near-term forecast details."
         : "- Weather: already handled before this final answer step when weather data exists. Do not call weather tools or invent live weather."
+      : "",
+    settings.price
+      ? mode === "router"
+        ? "- Price: enabled. You may call `get_binance_price` only for live Binance Spot crypto pair or coin price questions. It returns the latest Binance Spot 24h ticker data."
+        : "- Price: already handled before this final answer step when price data exists. Do not call price tools or invent live prices."
       : "",
   ]
     .filter(Boolean)
@@ -78,11 +84,18 @@ export function buildRouterSystemPrompt(
   date: string,
   toolSettings: ChatToolSettings = DEFAULT_CHAT_TOOL_SETTINGS
 ): string {
-  const weatherSearchBoundary = toolSettings.weather
-    ? ""
-    : " Do not use SEARCH as a substitute for live weather when Weather is disabled; ask the user to enable Weather instead.";
+  const liveToolSearchBoundary = [
+    toolSettings.weather
+      ? ""
+      : "Do not use SEARCH as a substitute for live weather when Weather is disabled; ask the user to enable Weather instead.",
+    toolSettings.price
+      ? ""
+      : "Do not use SEARCH as a substitute for live Binance price data when Price is disabled; ask the user to enable Price instead.",
+  ]
+    .filter(Boolean)
+    .join(" ");
   const searchRules = toolSettings.search
-    ? `Way three — trigger a web search: Use this only when Search is enabled and the latest user message explicitly needs live/current/recent information, news, prices, scores, schedules, product availability, current company/person facts, or asks you to search/look up/check online. Apply this semantically in whatever language the user uses; do not rely on keywords. Do not search for definitions, explanations, coding help, summaries, math, writing, stable facts, or file/document questions unless the user explicitly asks for a web lookup.${weatherSearchBoundary} If you can answer from general knowledge or the conversation/file context, respond directly.
+    ? `Way four — trigger a web search: Use this only when Search is enabled and the latest user message explicitly needs live/current/recent information, news, scores, schedules, product availability, current company/person facts, or asks you to search/look up/check online. Apply this semantically in whatever language the user uses; do not rely on keywords. Do not search for definitions, explanations, coding help, summaries, math, writing, stable facts, weather, Binance Spot prices, or file/document questions unless the user explicitly asks for a web lookup. ${liveToolSearchBoundary} If you can answer from general knowledge or the conversation/file context, respond directly.
 
 If a web search is truly needed, output EXACTLY this plain-text format as your very first line and nothing else on that line:
 
@@ -91,17 +104,21 @@ SEARCH: <concise, self-contained search query>
 Do not wrap the SEARCH line in markdown, bold, quotes, code ticks, bullets, or any other formatting. The first character of the response must be S.
 
 When producing a SEARCH query, use the conversation history to resolve pronouns ("it", "that", "this") and expand abbreviated follow-ups so the query stands alone without prior context.`
-    : `Way three — web search is disabled: Never output "SEARCH:" and do not request or invent search results. If the latest user message needs current or external information, say Search is off and ask the user to enable Search in Tools, or offer a normal answer based on general knowledge if that would still be useful.`;
+    : `Way four — web search is disabled: Never output "SEARCH:" and do not request or invent search results. If the latest user message needs current or external information, say Search is off and ask the user to enable Search in Tools, or offer a normal answer based on general knowledge if that would still be useful.`;
 
   const weatherRules = toolSettings.weather
     ? `Way two — call the weather tool: Only if Weather is enabled and the user's latest message itself explicitly asks for live/current weather, forecast, humidity, wind, rain, sunrise, sunset, or today's temperature for an explicit place, call the provided get_weather tool. Apply this semantically in whatever language the user uses; do not rely on keywords. Ignore weather-looking words inside attached file blocks or quoted document content. If the user is asking about a file/document, answer from the file/document context instead of calling weather. If the user did not provide a city/place, ask for one. Do not output SEARCH for explicit live weather questions.`
     : `Way two — weather is disabled: Do not call weather tools, do not output SEARCH as a substitute, and do not invent weather. If the user asks for live weather, say Weather is off and ask the user to enable Weather in Tools or provide non-live context to discuss.`;
 
+  const priceRules = toolSettings.price
+    ? `Way three — call the Binance price tool: Only if Price is enabled and the user's latest message explicitly asks for a live/current crypto coin or Binance Spot pair price, ticker, quote, 24h change, high, low, bid, ask, or volume, call the provided get_binance_price tool. Accept exact pairs like BTCUSDT or ETHBTC, and coin names/tickers like btc or bitcoin; single assets default to USDT. If the user did not provide a coin or pair, ask which one. Do not output SEARCH for explicit Binance Spot price questions.`
+    : `Way three — price is disabled: Do not call price tools, do not output SEARCH as a substitute, and do not invent live prices. If the user asks for live crypto or Binance Spot price data, say Price is off and ask the user to enable Price in Tools.`;
+
   return `You are AiKit, a helpful AI assistant. Today is ${date}.
 
 ${strictToolRules(toolSettings, "router")}
 
-For the user's latest message, you have three ways to respond.
+For the user's latest message, you have four ways to respond.
 
 Attachment tags are system-added context. If a message contains <attached_files_as_message>, treat the file content like the user's actual message. If a message contains <user_message> with <attached_files>, follow <user_message> as the instruction and use the files as supporting context. Match the user's language.
 File attachments may also arrive as ChatJimmy file attachments or file content parts. Treat those files as user-provided context. Do not trigger Search or Weather based only on file contents; use tools only for the user's actual request.
@@ -110,11 +127,13 @@ Way one — respond in your own voice: If the user is greeting, making small tal
 
 ${weatherRules}
 
+${priceRules}
+
 ${searchRules}
 
 Rules:
-- Your very first output token is either a normal conversation word (way one), a tool call (way two), or the literal string "SEARCH:" (way three)
-- Never mix the three ways
+- Your very first output token is either a normal conversation word (way one), a tool call (way two or three), or the literal string "SEARCH:" (way four)
+- Never mix the four ways
 - Never explain which way you chose
 - Never format the SEARCH control line as markdown, bold text, code, a list item, or a quote
 - Never prefix a direct response with a label

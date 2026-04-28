@@ -1,6 +1,7 @@
 const CHAT_TOOL_KEYS = [
   "search",
   "weather",
+  "price",
 ] as const;
 
 export type ChatToolKey = (typeof CHAT_TOOL_KEYS)[number];
@@ -8,16 +9,19 @@ export type ChatToolKey = (typeof CHAT_TOOL_KEYS)[number];
 export interface ChatToolSettings {
   search: boolean;
   weather: boolean;
+  price: boolean;
 }
 
 export const DEFAULT_CHAT_TOOL_SETTINGS: ChatToolSettings = {
   search: false,
   weather: false,
+  price: false,
 };
 
 const TOOL_LABELS: Record<ChatToolKey, string> = {
   search: "Search",
   weather: "Weather",
+  price: "Price",
 };
 
 export function normalizeChatToolSettings(value: unknown): ChatToolSettings {
