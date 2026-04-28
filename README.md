@@ -1,101 +1,113 @@
 <div align="center">
-  <h1>🤖 AiKit News</h1>
+  <img src="./public/favicon.ico" width="76" height="76" alt="AiKit News logo" />
+
+  <h1>⚡ AiKit News</h1>
+
+  <h3>AI search, live sources, deep research, weather, files, and ChatJimmy speed stats</h3>
 
   <p>
-    <strong>AI-powered search and deep research app - powered by ChatJimmy and Exa</strong>
+    <a href="https://nextjs.org/"><img alt="Next.js" src="https://img.shields.io/badge/Next.js-16.2-151515?style=for-the-badge&logo=nextdotjs&logoColor=white" /></a>
+    <a href="https://react.dev/"><img alt="React" src="https://img.shields.io/badge/React-19-2B2B31?style=for-the-badge&logo=react&logoColor=61DAFB" /></a>
+    <a href="https://www.typescriptlang.org/"><img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3A3A42?style=for-the-badge&logo=typescript&logoColor=white" /></a>
+    <a href="https://tailwindcss.com/"><img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind-4-46464F?style=for-the-badge&logo=tailwindcss&logoColor=38BDF8" /></a>
+    <a href="https://chatjimmy.ai/"><img alt="ChatJimmy" src="https://img.shields.io/badge/ChatJimmy-API-F97316?style=for-the-badge" /></a>
+    <a href="https://exa.ai/"><img alt="Exa" src="https://img.shields.io/badge/Exa-Search-22C55E?style=for-the-badge" /></a>
+    <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/License-MIT-8B5CF6?style=for-the-badge" /></a>
   </p>
 
   <p>
-    <a href="#features">Features</a> &middot;
-    <a href="#endpoints">Endpoints</a> &middot;
-    <a href="#quick-start">Quick Start</a> &middot;
-    <a href="#examples">Examples</a> &middot;
-    <a href="#deep-research">Deep Research</a> &middot;
-    <a href="#architecture">Architecture</a> &middot;
-    <a href="#deploy">Deploy</a> &middot;
-    <a href="#license">License</a>
+    <a href="https://news.aikit.club">Live App</a> •
+    <a href="https://github.com/tanu360/aikit-news">Repository</a> •
+    <a href="#-features">Features</a> •
+    <a href="#-quick-start">Quick Start</a> •
+    <a href="#-environment">Environment</a> •
+    <a href="#-api-routes">API Routes</a> •
+    <a href="#-deploy">Deploy</a>
   </p>
-
-  <br/>
 </div>
 
-> **App:** AiKit
->
-> **Model:** `llama3.1-8B`
->
-> **Search:** Exa web search
-
 ---
-
-<a id="overview"></a>
 
 ## 🌟 Overview
 
-AiKit is a modern AI search app that combines fast chat, live web search, inline citations, and multi-step deep research. It uses a Next.js frontend, internal streaming API routes, Exa for web results, and ChatJimmy's `llama3.1-8B` backend for answers.
+AiKit News is a modern AI search and research app built with **Next.js**, **ChatJimmy**, and **Exa**. It can answer directly, search the live web, run multi-step Deep Research, render weather cards, read text/code attachments, keep local chat history, and show per-response generation stats.
 
-Ask a normal question for a quick answer, or turn on **Deep Research** when you want AiKit to search, analyze, follow up, and synthesize a richer response.
+<p align="center">
+  <img src="./public/og.webp" alt="AiKit News preview" width="720" />
+</p>
 
-This project is unofficial and is not affiliated with chatjimmy.ai or Exa.
+ChatJimmy is called in **non-streaming** mode so AiKit can read usage metadata such as `completion_tokens` and `generation_speed`. The app then replays the finished answer through its own Server-Sent Events stream, so users still get a smooth chat experience with a real stats footer.
 
----
+Example stats:
 
-<a id="features"></a>
+```txt
+241 Tokens   0.018s   13,514 TPS
+```
 
-## ✨ Key Features
+Powered by:
 
-- **Instant AI search** - routes questions through a smart search decision step
-- **Live web results** - uses Exa search with titles, URLs, highlights, and page text
-- **Inline citations** - answers cite sources with clean `[1]`, `[2]`, `[3]` markers
-- **Deep Research mode** - explores follow-up questions across multiple search steps
-- **Streaming responses** - SSE-style streaming for chat and research progress
-- **Research timeline** - visual progress for searching, analyzing, and answer writing
-- **Markdown rendering** - supports markdown, GitHub-flavored tables, code highlighting, and math
-- **Citation cleanup** - removes stale citations from conversation history
-- **Latency diagnostics** - logs client timing and server timing in DevTools
-- **Modern UI** - built with React, Tailwind CSS, and Framer Motion
+- [ChatJimmy official site](https://chatjimmy.ai/)
+- [ChatJimmy reverse API](https://github.com/tanu360/chatjimmy-reverse-api)
+- [Exa AI search](https://exa.ai/)
 
 ---
 
-<a id="endpoints"></a>
+## ✨ Features
 
-## 🛠️ Endpoints
-
-| Method | Path                 | Description                                   |
-| ------ | -------------------- | --------------------------------------------- |
-| `POST` | `/api/chat`          | Streams an AI answer using ChatJimmy          |
-| `POST` | `/api/search`        | Searches the web through Exa                  |
-| `POST` | `/api/deep-research` | Runs multi-step research and streams progress |
-
-All API routes are internal Next.js routes and return JSON or `text/event-stream`.
+- **ChatJimmy answers** using `llama3.1-8B`
+- **Free shared ChatJimmy config** prefilled for quick demos
+- **Non-stream upstream calls** with local SSE playback
+- **Generation stats footer** with completion tokens, decode time, and TPS
+- **Exa web search** with titles, URLs, highlights, and page text
+- **Inline citations** using clean `[1]`, `[2]`, `[3]` markers
+- **Deep Research mode** that searches, synthesizes, follows up, and writes a cited final answer
+- **Weather tool** for live conditions and short forecast cards
+- **Text/code file attachments** with token counting and context-safe limits
+- **Tool settings** for Search, Weather, custom system prompt, and `top_k`
+- **Regenerate and response versions** so older answers remain navigable
+- **IndexedDB local chat history** for saved conversations
+- **Light, dark, and system themes** with refined source hover states
+- **Markdown rendering** with GFM tables, code highlighting, math, and KaTeX
+- **Responsive app shell** with sidebar history and mobile-friendly controls
+- **Portless dev script** for Vercel Portless workflows
+- **Vercel and Cloudflare-ready scripts**
 
 ---
 
-<a id="quick-start"></a>
+## 🧱 Tech Stack
+
+| Layer | Tech |
+| ----- | ---- |
+| Framework | Next.js 16 App Router |
+| UI | React 19, Tailwind CSS 4, Framer Motion |
+| Language | TypeScript |
+| AI backend | ChatJimmy OpenAI-compatible API |
+| Search | Exa API |
+| Weather | Open-Meteo based weather helper |
+| Markdown | `react-markdown`, `remark-gfm`, `remark-math`, `rehype-katex`, `rehype-highlight` |
+| Local storage | IndexedDB |
+| Deployment | Vercel, OpenNext Cloudflare |
+
+---
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### Requirements
 
 - Node.js 20+
 - npm
-- Exa API key
+- Exa API key for web search and Deep Research
 
-### Setup
+### Install
 
 ```bash
-git clone <your-repo-url> AiKit
-cd AiKit
+git clone https://github.com/tanu360/aikit-news.git
+cd aikit-news
 npm install
 cp .env.example .env.local
 ```
 
-Add your Exa key:
-
-```bash
-EXA_API_KEY=your_exa_key_here
-```
-
-### Development
+Add your Exa key to `.env.local`, then run:
 
 ```bash
 npm run dev
@@ -103,22 +115,131 @@ npm run dev
 
 Open:
 
-```bash
+```txt
 http://localhost:3000
 ```
 
-### Production Build
+### Portless Dev
+
+If you use Vercel Portless:
 
 ```bash
-npm run build
-npm run start
+npm run dev:portless
 ```
 
 ---
 
-<a id="examples"></a>
+## 🔐 Environment
 
-## 💡 Usage Examples
+AiKit needs an Exa key for search. ChatJimmy is prefilled with the free shared key below.
+
+```env
+EXA_API_KEY=your_exa_api_key_here
+
+CHATJIMMY_API_URL=https://jimmy.aikit.club/v1/chat/completions
+CHATJIMMY_API_KEY=tarun-007007
+CHATJIMMY_MODEL=llama3.1-8B
+
+NEXT_PUBLIC_MODEL_NAME=llama3.1-8B
+NEXT_PUBLIC_SITE_URL=https://news.aikit.club
+```
+
+### Environment Variables
+
+| Variable | Required | Scope | Purpose |
+| -------- | -------- | ----- | ------- |
+| `EXA_API_KEY` | Yes | Server | Used by `/api/search` and `/api/deep-research` |
+| `CHATJIMMY_API_URL` | Yes | Server | OpenAI-compatible ChatJimmy completion endpoint |
+| `CHATJIMMY_API_KEY` | Yes | Server | ChatJimmy API key or shared demo key |
+| `CHATJIMMY_MODEL` | Yes | Server | Model sent to ChatJimmy |
+| `NEXT_PUBLIC_MODEL_NAME` | No | Browser | Model label shown in the input UI |
+| `NEXT_PUBLIC_SITE_URL` | No | Browser/server metadata | Canonical, Open Graph, and Twitter metadata origin |
+
+### ChatJimmy Free Config
+
+Use this exact change if your `.env.local` still has placeholders:
+
+```diff
+-CHATJIMMY_API_URL=your_chatjimmy_api_url_here
+-CHATJIMMY_API_KEY=your_chatjimmy_api_key_here
+-CHATJIMMY_MODEL=llama3.1-8B
++CHATJIMMY_API_URL=https://jimmy.aikit.club/v1/chat/completions
++CHATJIMMY_API_KEY=tarun-007007
++CHATJIMMY_MODEL=llama3.1-8B
+```
+
+`tarun-007007` is intentionally shared as a free ChatJimmy key for people trying AiKit News. You can swap it for your own ChatJimmy-compatible endpoint, or run the proxy from [tanu360/chatjimmy-reverse-api](https://github.com/tanu360/chatjimmy-reverse-api).
+
+### Get an Exa API Key
+
+1. Open [exa.ai](https://exa.ai/) or the [Exa dashboard](https://dashboard.exa.ai/).
+2. Sign in or create an account.
+3. Open the API keys section.
+4. Create a new API key.
+5. Put it in `.env.local`:
+
+```env
+EXA_API_KEY=your_real_exa_api_key_here
+```
+
+Exa is only called from server-side API routes. Keep it in `.env.local` and do not expose it as a `NEXT_PUBLIC_` variable.
+
+---
+
+## 🧠 How It Works
+
+```txt
+User prompt
+  |
+  v
+Next.js chat UI
+  |
+  +--> Direct answer
+  |      |
+  |      v
+  |   /api/chat -> ChatJimmy non-stream call -> local SSE playback
+  |
+  +--> Search answer
+  |      |
+  |      v
+  |   Router -> /api/search -> Exa -> /api/chat -> cited answer
+  |
+  +--> Weather
+  |      |
+  |      v
+  |   ChatJimmy tool call -> weather helper -> weather card + answer
+  |
+  +--> Deep Research
+         |
+         v
+     /api/deep-research -> search tree -> synthesis -> final cited answer
+```
+
+### Generation Stats Formula
+
+AiKit reads ChatJimmy usage metadata and calculates decode time with:
+
+```txt
+Decode Time = completion_tokens / generation_speed
+```
+
+Then the UI shows completion tokens, time in seconds, and TPS:
+
+```txt
+241 Tokens   0.018s   13,514 TPS
+```
+
+---
+
+## 🛠️ API Routes
+
+| Method | Route | What it does |
+| ------ | ----- | ------------ |
+| `POST` | `/api/chat` | Calls ChatJimmy, handles tools, streams UI chunks, emits generation stats |
+| `POST` | `/api/search` | Searches Exa with instant results and source text |
+| `POST` | `/api/deep-research` | Runs multi-step Exa research and final ChatJimmy synthesis |
+| `GET` | `/api/config` | Returns the active model name for the input UI |
+| `POST` | `/api/title` | Generates chat titles |
 
 ### Chat Request
 
@@ -128,73 +249,21 @@ curl http://localhost:3000/api/chat \
   -d '{
     "mode": "answer",
     "messages": [
-      { "role": "user", "content": "Explain RAG in simple words" }
+      { "role": "user", "content": "Explain AI search in simple words" }
     ]
   }'
 ```
 
-The response streams SSE chunks:
-
-```txt
-data: {"choices":[{"delta":{"content":"RAG "}}]}
-
-data: {"choices":[{"delta":{"content":"means..."}}]}
-
-data: [DONE]
-```
-
-### Web Search
+### Search Request
 
 ```bash
 curl http://localhost:3000/api/search \
   -H "Content-Type: application/json" \
   -d '{
-    "query": "latest AI search trends"
+    "query": "latest AI search products",
+    "toolSettings": { "search": true, "weather": false }
   }'
 ```
-
-### Chat With Sources
-
-```javascript
-const res = await fetch("/api/chat", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    mode: "answer",
-    messages: [{ role: "user", content: "What changed in AI search recently?" }],
-    searchResults: [
-      {
-        title: "Example source",
-        url: "https://example.com",
-        text: "Source text used as model context",
-      },
-    ],
-  }),
-});
-
-const reader = res.body.getReader();
-const decoder = new TextDecoder();
-
-while (true) {
-  const { done, value } = await reader.read();
-  if (done) break;
-  console.log(decoder.decode(value));
-}
-```
-
----
-
-<a id="deep-research"></a>
-
-## 🔎 Deep Research
-
-Deep Research mode turns one question into a small research tree:
-
-1. Search the original query
-2. Synthesize what was found
-3. Generate follow-up questions
-4. Search those follow-ups
-5. Write a final cited answer
 
 ### Deep Research Request
 
@@ -206,147 +275,164 @@ curl http://localhost:3000/api/deep-research \
   }'
 ```
 
-### Stream Events
+---
 
-| Event               | Meaning                             |
-| ------------------- | ----------------------------------- |
-| `step_start`        | A research step has started         |
-| `search_complete`   | Exa returned sources for the step   |
-| `synthesizing`      | AiKit is analyzing the sources      |
-| `step_done`         | Step synthesis is complete          |
-| `research_complete` | Source collection is complete       |
-| `answer_start`      | Final answer generation has started |
-| `answer_chunk`      | Final answer text chunk             |
-| `all_sources`       | Final citation source list          |
-| `done`              | Research finished                   |
+## 🔎 Deep Research
+
+Deep Research turns one prompt into a compact research tree:
+
+1. Search the original query.
+2. Synthesize the most useful findings.
+3. Generate follow-up questions.
+4. Search the follow-ups.
+5. Deduplicate sources.
+6. Write a final answer with citations.
+
+Stream events include:
+
+| Event | Meaning |
+| ----- | ------- |
+| `step_start` | A research query started |
+| `search_complete` | Exa returned sources |
+| `synthesizing` | ChatJimmy is analyzing the sources |
+| `step_done` | One research step finished |
+| `research_complete` | Source gathering finished |
+| `answer_start` | Final answer generation started |
+| `answer_chunk` | Final answer text chunk |
+| `generation_stats` | Tokens, decode time, and TPS |
+| `all_sources` | Final citation source list |
+| `done` | Research completed |
 
 ---
 
-<a id="architecture"></a>
+## 📎 Attachments
 
-## 🏗️ Architecture
+AiKit accepts text-like files and counts tokens before sending content to the model. Media uploads are intentionally blocked.
 
-```txt
-User Question
-  |
-  v
-Next.js UI
-  |
-  +--> Instant Mode
-  |      |
-  |      v
-  |   /api/chat router
-  |      |
-  |      +--> Direct answer
-  |      |
-  |      +--> SEARCH: refined query
-  |              |
-  |              v
-  |          /api/search
-  |              |
-  |              v
-  |          Exa results
-  |              |
-  |              v
-  |          /api/chat answer
-  |              |
-  |              v
-  |          Cited response
-  |
-  +--> Deep Research Mode
-         |
-         v
-     /api/deep-research
-         |
-         v
-     Search -> Synthesize -> Follow-ups
-         |
-         v
-     Final sourced answer
-```
+Supported examples:
 
-### Core Files
+- `.txt`, `.md`, `.csv`, `.json`
+- `.ts`, `.tsx`, `.js`, `.jsx`
+- `.py`, `.html`, `.css`, `.sql`
+- `.yaml`, `.toml`, `.xml`, `.log`
 
-| File                                      | Purpose                                         |
-| ----------------------------------------- | ----------------------------------------------- |
-| `src/app/page.tsx`                        | Main chat UI, routing logic, streaming handlers |
-| `src/app/api/chat/route.ts`               | Chat route using ChatJimmy                      |
-| `src/app/api/search/route.ts`             | Exa instant search route                        |
-| `src/app/api/deep-research/route.ts`      | Multi-step research route                       |
-| `src/lib/jimmy.ts`                        | ChatJimmy backend adapter                       |
-| `src/lib/prompts.ts`                      | Router and answer system prompts                |
-| `src/components/ChatInput.tsx`            | Prompt input and Deep Research toggle           |
-| `src/components/SearchTimeline.tsx`       | Live search progress UI                         |
-| `src/components/DeepResearchTimeline.tsx` | Multi-step research progress UI                 |
+Attachment content is sent server-side through the ChatJimmy adapter, and the UI shows file size plus token count before submission.
 
 ---
 
-<a id="configuration"></a>
+## 📁 Core Files
 
-## ⚙️ Configuration
-
-### Environment Variables
-
-| Variable      | Required | Description                                            |
-| ------------- | -------- | ------------------------------------------------------ |
-| `EXA_API_KEY` | Yes      | API key used by `/api/search` and `/api/deep-research` |
-
-### App Constants
-
-| Location                             | Value                         | Description                      |
-| ------------------------------------ | ----------------------------- | -------------------------------- |
-| `src/lib/jimmy.ts`                   | `llama3.1-8B`                 | ChatJimmy model                  |
-| `src/lib/jimmy.ts`                   | `topK: 8`                     | Sampling option sent upstream    |
-| `src/lib/jimmy.ts`                   | `MAX_SYSTEM_PROMPT = 20000`   | Max system prompt characters     |
-| `src/app/api/search/route.ts`        | `numResults: 8`               | Instant search result count      |
-| `src/app/api/deep-research/route.ts` | `MAX_DEPTH = 3`               | Deep research depth              |
-| `src/app/api/deep-research/route.ts` | `MAX_SOURCES_FOR_ANSWER = 18` | Sources passed into final answer |
+| File | Purpose |
+| ---- | ------- |
+| `src/app/page.tsx` | Main chat UI, routing, local history, streaming handlers |
+| `src/app/layout.tsx` | Metadata, favicon, Open Graph, theme boot script |
+| `src/app/api/chat/route.ts` | ChatJimmy route, tool calls, weather, stats SSE |
+| `src/app/api/search/route.ts` | Exa instant search route |
+| `src/app/api/deep-research/route.ts` | Multi-step research route |
+| `src/app/api/config/route.ts` | Runtime model name endpoint |
+| `src/lib/jimmy.ts` | ChatJimmy adapter, usage parsing, generation stats |
+| `src/lib/prompts.ts` | Router, answer, tool, and citation prompts |
+| `src/lib/weather.ts` | Weather lookup and card data shaping |
+| `src/lib/chatStore.ts` | IndexedDB chat persistence |
+| `src/components/ChatInput.tsx` | Input, tools, file upload, settings, model label |
+| `src/components/MessageBubble.tsx` | Messages, citations, actions, stats footer |
+| `src/components/SearchTimeline.tsx` | Search source timeline |
+| `src/components/DeepResearchTimeline.tsx` | Deep Research progress UI |
+| `src/components/WeatherCard.tsx` | Weather result card |
 
 ---
 
-<a id="deploy"></a>
+## 📜 Scripts
+
+| Command | Description |
+| ------- | ----------- |
+| `npm run dev` | Start Next.js dev server |
+| `npm run dev:fresh` | Clean caches, then start dev server |
+| `npm run dev:portless` | Clean caches, then run `portless run next dev` |
+| `npm run build` | Build the Next.js app |
+| `npm run build:fresh` | Clean caches, then build |
+| `npm run start` | Start production server |
+| `npm run lint` | Run ESLint |
+| `npm run build:cloudflare` | Build for Cloudflare with OpenNext |
+| `npm run preview:cloudflare` | Preview Cloudflare build |
+| `npm run deploy:cloudflare` | Deploy with OpenNext Cloudflare tooling |
+| `npm run clean` | Remove build/cache artifacts |
+
+---
 
 ## 🚀 Deploy
 
 ### Vercel
 
-1. Push the repo to GitHub
-2. Import it in Vercel
-3. Add `EXA_API_KEY` in Environment Variables
-4. Deploy
+1. Push this repo to GitHub.
+2. Import `tanu360/aikit-news` in Vercel.
+3. Add the environment variables from [Environment](#-environment).
+4. Deploy.
 
-### Self-hosted Node
+### Cloudflare
 
-```bash
-npm install
-npm run build
-npm run start
-```
-
-### Cloudflare Notes
-
-The repo includes OpenNext and Wrangler configuration files:
+This repo includes OpenNext Cloudflare support:
 
 - `open-next.config.ts`
 - `wrangler.jsonc`
+- `npm run build:cloudflare`
+- `npm run deploy:cloudflare`
 
-Use them if you want to deploy the Next.js app to Cloudflare Workers with OpenNext. Make sure your Cloudflare build command, output directory, routes, and environment variables match your deployment target.
+Add the same environment variables to your Cloudflare deployment before going live.
+
+### Production Checklist
+
+- Set `NEXT_PUBLIC_SITE_URL` to your deployed origin.
+- Keep `EXA_API_KEY` server-only.
+- Rotate the shared ChatJimmy key if you operate your own endpoint.
+- Run `npm run lint`.
+- Run `npm run build`.
 
 ---
 
-## 🧪 Scripts
+## 🔒 Security Notes
 
-| Command         | Description                        |
-| --------------- | ---------------------------------- |
-| `npm run dev`   | Start the local Next.js dev server |
-| `npm run build` | Build the production app           |
-| `npm run start` | Start the production server        |
-| `npm run lint`  | Run ESLint                         |
+- Keep `.env.local` private.
+- `.env.example` is safe to commit because the ChatJimmy key is intentionally public for demos.
+- Never put Exa keys in `NEXT_PUBLIC_` variables.
+- Search and weather are tool-controlled, so the model is prompted not to invent live facts when those tools are disabled.
+- Treat attached files as user-provided context. Do not upload secrets or private files to a public deployment.
 
 ---
 
-<a id="license"></a>
+## 🧯 Troubleshooting
 
-## 📜 License
+| Problem | Fix |
+| ------- | --- |
+| Search returns “Search is not configured.” | Add `EXA_API_KEY` to `.env.local` and restart the dev server. |
+| Chat returns missing env vars | Make sure `CHATJIMMY_API_URL`, `CHATJIMMY_API_KEY`, and `CHATJIMMY_MODEL` are present. |
+| Model label looks wrong | Set `NEXT_PUBLIC_MODEL_NAME` or `CHATJIMMY_MODEL`, then restart. |
+| Port is already in use | Use `npm run dev:portless` or start Next on another port. |
+| Cloudflare build fails | Run `npm run build:cloudflare` locally and confirm env vars are available. |
 
-No license file is included yet. Add a `LICENSE` file before publishing or distributing this project.
+---
+
+## 🤝 Contributing
+
+Contributions are welcome.
+
+1. Fork the repository.
+2. Create a feature branch.
+3. Keep changes focused.
+4. Run `npm run lint` and `npm run build`.
+5. Open a pull request with screenshots for UI changes.
+
+---
+
+## 🙏 Credits
+
+- Built by [tanu360](https://github.com/tanu360)
+- Powered by [ChatJimmy](https://chatjimmy.ai/)
+- Search by [Exa](https://exa.ai/)
+- ChatJimmy-compatible backend reference: [chatjimmy-reverse-api](https://github.com/tanu360/chatjimmy-reverse-api)
+
+---
+
+## 📄 License
+
+MIT License. See [LICENSE](./LICENSE).
