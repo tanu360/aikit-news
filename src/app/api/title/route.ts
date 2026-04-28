@@ -1,9 +1,13 @@
 import { NextRequest } from "next/server";
+import { readJsonRecord } from "@/lib/api";
 import { chatJimmy } from "@/lib/jimmy";
 
 export async function POST(req: NextRequest) {
-  const { message } = (await req.json()) as { message: string };
-  if (!message?.trim()) {
+  const parsed = await readJsonRecord(req);
+  if (parsed.errorResponse) return parsed.errorResponse;
+
+  const message = typeof parsed.body.message === "string" ? parsed.body.message : "";
+  if (!message.trim()) {
     return new Response(JSON.stringify({ title: "" }), {
       headers: { "Content-Type": "application/json" },
     });

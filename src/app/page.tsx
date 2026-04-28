@@ -38,7 +38,12 @@ import {
   parseSSEStream,
   stripCitations,
 } from "@/lib/utils";
-import { loadAllChats, persistChat, removeChat } from "@/lib/chatStore";
+import {
+  clearAllChats as clearStoredChats,
+  loadAllChats,
+  persistChat,
+  removeChat,
+} from "@/lib/chatStore";
 import {
   AUTO_COMPACT_TRIGGER_TOKEN_LIMIT,
   COMPACTED_CONTEXT_TOKEN_LIMIT,
@@ -629,6 +634,9 @@ function TokenCounterChip({
   const chipBackground = isOverLimit
     ? "oklch(0.58 0.23 27)"
     : "var(--color-ink-primary)";
+  const chipForeground = isOverLimit
+    ? "oklch(99% 0.004 27)"
+    : "var(--color-surface-primary)";
   const tokenStatus = isOverLimit
     ? `${overflow.toLocaleString()} over limit`
     : `${remaining.toLocaleString()} left`;
@@ -659,7 +667,7 @@ function TokenCounterChip({
         boxShadow: isOverLimit
           ? "0 12px 28px oklch(58% 0.23 27 / 0.24)"
           : "0 12px 26px oklch(35% 0.03 255 / 0.14)",
-        color: "var(--color-surface-primary)",
+        color: chipForeground,
       }}
       title={title}
       aria-label={`Total Tokens ${safeCount.toLocaleString()} out of ${safeLimit.toLocaleString()}`}
@@ -740,6 +748,10 @@ export default function Home() {
   const [contextCompactionError, setContextCompactionError] =
     useState<string | null>(null);
   const isDark = useIsDarkTheme();
+  const githubColor = isDark ? "oklch(96% 0.004 255)" : "oklch(18% 0.004 255)";
+  const githubHoverColor = isDark
+    ? "oklch(100% 0 0)"
+    : "oklch(8% 0.004 255)";
   const logo3DTheme = isDark ? LOGO_3D_THEME.dark : LOGO_3D_THEME.light;
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -1048,6 +1060,42 @@ export default function Home() {
     } else {
       resetDraftConversation("replace", { flush: false });
     }
+  }
+
+  function clearAllChats() {
+    if (
+      isLoadingRef.current ||
+      isCompactingContextRef.current ||
+      !chatStoreReady ||
+      chatsRef.current.length === 0
+    ) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Clear all chats? This cannot be undone."
+    );
+    if (!confirmed) return;
+
+    cancelPendingSave();
+    void clearStoredChats();
+    chatsRef.current = [];
+    activeChatIdRef.current = "";
+    messagesRef.current = [];
+    contextCompactionRef.current = null;
+    setChats([]);
+    setActiveChatId("");
+    setMessages([]);
+    setContextCompaction(null);
+    setContextCompactionError(null);
+    setSearchQuery("");
+    setSearchOpen(false);
+    setActiveSearchMatchIndex(0);
+    setSearchMatchCount(0);
+    setInput("");
+    setShowSettings(false);
+    clearAttachedFile();
+    writeHomeUrl("replace");
   }
 
   async function generateTitle(firstUserMsg: string, chatId: string) {
@@ -2867,7 +2915,6 @@ export default function Home() {
     }
 
     const isFirstMessage = messages.length === 0;
-    const currentChatId = materializeDraftChat("replace");
 
     setIsLoading(true);
     isLoadingRef.current = true;
@@ -2895,6 +2942,8 @@ export default function Home() {
       setIsLoading(false);
       return;
     }
+
+    const currentChatId = materializeDraftChat("replace");
 
     setInput("");
     clearAttachedFile();
@@ -3057,6 +3106,7 @@ export default function Home() {
         activeChatId={activeChatId}
         onSelectChat={loadChat}
         onDeleteChat={deleteChat}
+        onClearAllChats={clearAllChats}
         disabled={isLoading || isCompactingContext || !chatStoreReady}
       />
       <div className="square-grid-bg flex min-w-0 flex-1 flex-col">
@@ -3115,40 +3165,6 @@ export default function Home() {
             </div>
 
             <div className="flex shrink-0 items-center gap-2">
-              <a
-                href="https://github.com/tanu360"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors duration-150"
-                style={{ color: "var(--color-ink-secondary)", backgroundColor: "var(--color-surface-tertiary)" }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = "var(--color-ink-primary)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--color-ink-secondary)"; }}
-                aria-label="GitHub tanu360"
-                title="GitHub tanu360"
-              >
-                <HugeiconsIcon
-                  icon={GithubIcon}
-                  size={14}
-                  strokeWidth={1.8}
-                  primaryColor="currentColor"
-                />
-              </a>
-
-              <ThemeToggler
-                className="shrink-0 rounded-full transition-colors duration-150"
-                iconSize={14}
-                style={{
-                  width: 32,
-                  height: 32,
-                  color: "var(--color-ink-secondary)",
-                  backgroundColor: "var(--color-surface-tertiary)",
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = "var(--color-ink-primary)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--color-ink-secondary)"; }}
-                aria-label="Toggle theme"
-                title="Toggle theme"
-              />
-
               {searchOpen ? (
                 <div
                   className="flex h-8 w-40 shrink-0 items-center gap-1.5 rounded-full px-3 sm:w-56"
@@ -3231,6 +3247,43 @@ export default function Home() {
                   <HugeiconsIcon icon={Search01Icon} size={14} strokeWidth={1.8} primaryColor="currentColor" />
                 </button>
               )}
+
+              <ThemeToggler
+                className="shrink-0 rounded-full transition-colors duration-150"
+                iconSize={14}
+                style={{
+                  width: 32,
+                  height: 32,
+                  color: "var(--color-ink-secondary)",
+                  backgroundColor: "var(--color-surface-tertiary)",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "var(--color-ink-primary)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--color-ink-secondary)"; }}
+                aria-label="Toggle theme"
+                title="Toggle theme"
+              />
+
+              <a
+                href="https://github.com/tanu360"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors duration-150"
+                style={{
+                  color: githubColor,
+                  backgroundColor: "var(--color-surface-tertiary)",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = githubHoverColor; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = githubColor; }}
+                aria-label="GitHub tanu360"
+                title="GitHub tanu360"
+              >
+                <HugeiconsIcon
+                  icon={GithubIcon}
+                  size={14}
+                  strokeWidth={1.8}
+                  primaryColor="currentColor"
+                />
+              </a>
 
               <button
                 type="button"

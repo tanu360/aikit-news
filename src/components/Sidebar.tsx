@@ -103,6 +103,7 @@ interface SidebarProps {
   activeChatId: string;
   onSelectChat: (id: string) => void;
   onDeleteChat: (id: string) => void;
+  onClearAllChats: () => void;
   disabled?: boolean;
 }
 
@@ -113,6 +114,7 @@ export default function Sidebar({
   activeChatId,
   onSelectChat,
   onDeleteChat,
+  onClearAllChats,
   disabled,
 }: SidebarProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -132,6 +134,11 @@ export default function Sidebar({
     if (disabled) return;
     onSelectChat(id);
     if (isCompact && isOpen) onToggle();
+  };
+
+  const handleClearAllChats = () => {
+    if (disabled || chats.length === 0) return;
+    onClearAllChats();
   };
 
   const sidebarPanel = (
@@ -189,6 +196,41 @@ export default function Sidebar({
                 >
                   {chats.length}
                 </span>
+                <button
+                  type="button"
+                  onClick={handleClearAllChats}
+                  disabled={disabled || chats.length === 0}
+                  aria-label="Clear all chats"
+                  title="Clear all chats"
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-35"
+                  style={{
+                    color: "var(--color-ink-tertiary)",
+                    backgroundColor: "transparent",
+                    border: "none",
+                    WebkitTapHighlightColor: "transparent",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (disabled || chats.length === 0) return;
+                    e.currentTarget.style.color = "oklch(57% 0.22 27)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "var(--color-ink-tertiary)";
+                  }}
+                  onFocus={(e) => {
+                    if (disabled || chats.length === 0) return;
+                    e.currentTarget.style.color = "oklch(57% 0.22 27)";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.color = "var(--color-ink-tertiary)";
+                  }}
+                >
+                  <HugeiconsIcon
+                    icon={Delete02Icon}
+                    size={14}
+                    strokeWidth={1.8}
+                    primaryColor="currentColor"
+                  />
+                </button>
               </div>
               {isCompact && (
                 <button
@@ -256,6 +298,9 @@ export default function Sidebar({
                     <div
                       key={chat.id}
                       className="group relative flex cursor-pointer items-center rounded-xl"
+                      role="button"
+                      tabIndex={disabled ? -1 : 0}
+                      aria-disabled={disabled ? "true" : undefined}
                       style={{
                         paddingLeft: 12,
                         paddingRight: 12,
@@ -270,6 +315,12 @@ export default function Sidebar({
                         transition: "background-color 120ms ease, color 120ms ease",
                       }}
                       onClick={() => handleSelectChat(chat.id)}
+                      onKeyDown={(event) => {
+                        if (event.currentTarget !== event.target) return;
+                        if (event.key !== "Enter" && event.key !== " ") return;
+                        event.preventDefault();
+                        handleSelectChat(chat.id);
+                      }}
                       onMouseEnter={() => {
                         if (!isCompact) setHoveredId(chat.id);
                       }}

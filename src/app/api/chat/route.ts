@@ -10,6 +10,7 @@ import type {
   ChatJimmyTool,
 } from "@/lib/jimmy";
 import type { GenerationStats } from "@/lib/types";
+import { readJsonRecord } from "@/lib/api";
 import {
   appendUserSystemPrompt,
   buildAnswerSystemPrompt,
@@ -82,6 +83,60 @@ interface RequestBody {
   clientDate?: string;
   searchAttempted?: boolean;
   searchError?: string;
+}
+
+function isContentPart(value: unknown): value is Exclude<ChatJimmyMessageContent, string>[number] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const part = value as Record<string, unknown>;
+  if (part.type === "text") return typeof part.text === "string";
+  return (
+    part.type === "file" &&
+    typeof part.name === "string" &&
+    typeof part.content === "string" &&
+    (part.size === undefined || typeof part.size === "number")
+  );
+}
+
+function isMessageContent(value: unknown): value is ChatJimmyMessageContent {
+  return (
+    typeof value === "string" ||
+    (Array.isArray(value) && value.every(isContentPart))
+  );
+}
+
+function isRequestMessage(
+  value: unknown
+): value is RequestBody["messages"][number] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const message = value as Record<string, unknown>;
+  return typeof message.role === "string" && isMessageContent(message.content);
+}
+
+function isSearchResultInput(
+  value: unknown
+): value is NonNullable<RequestBody["searchResults"]>[number] {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function readFiniteOptionalNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function readAttachment(value: unknown): ChatJimmyAttachment | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const attachment = value as Record<string, unknown>;
+  if (
+    typeof attachment.name !== "string" ||
+    typeof attachment.content !== "string"
+  ) {
+    return undefined;
+  }
+
+  return {
+    name: attachment.name,
+    content: attachment.content,
+    size: readFiniteOptionalNumber(attachment.size),
+  };
 }
 
 function sseData(data: Record<string, unknown>): string {
@@ -265,20 +320,29 @@ function isEmptyChatJimmyResponse(error: unknown): boolean {
 
 export async function POST(req: NextRequest) {
   const tEntry = Date.now();
-  const body = (await req.json()) as RequestBody;
+  const parsed = await readJsonRecord(req);
+  if (parsed.errorResponse) return parsed.errorResponse;
+  const body = parsed.body;
   const tParsed = Date.now();
 
-  const {
-    messages = [],
-    searchResults = [],
-    mode,
-    topK,
-    systemPrompt,
-    attachment,
-    clientDate,
-    searchAttempted,
-    searchError,
-  } = body;
+  const messages = Array.isArray(body.messages)
+    ? body.messages.filter(isRequestMessage)
+    : [];
+  const searchResults = Array.isArray(body.searchResults)
+    ? body.searchResults.filter(isSearchResultInput)
+    : [];
+  const mode = body.mode === "router" || body.mode === "answer"
+    ? body.mode
+    : undefined;
+  const topK = readFiniteOptionalNumber(body.topK);
+  const systemPrompt =
+    typeof body.systemPrompt === "string" ? body.systemPrompt : undefined;
+  const attachment = readAttachment(body.attachment);
+  const clientDate =
+    typeof body.clientDate === "string" ? body.clientDate : undefined;
+  const searchAttempted = body.searchAttempted === true;
+  const searchError =
+    typeof body.searchError === "string" ? body.searchError : undefined;
   const toolSettings = normalizeChatToolSettings(body.toolSettings);
   const jimmyOpts = {
     ...(topK != null ? { topK } : {}),

@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { readJsonRecord } from "@/lib/api";
 import { normalizeChatToolSettings } from "@/lib/toolSettings";
 
 export async function POST(req: NextRequest) {
   const tEntry = Date.now();
-  const { query, toolSettings: rawToolSettings } = await req.json();
+  const parsed = await readJsonRecord(req);
+  if (parsed.errorResponse) return parsed.errorResponse;
+
+  const query = typeof parsed.body.query === "string" ? parsed.body.query.trim() : "";
+  const rawToolSettings = parsed.body.toolSettings;
   const tParsed = Date.now();
   const toolSettings = normalizeChatToolSettings(rawToolSettings);
 

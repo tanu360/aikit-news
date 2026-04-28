@@ -60,3 +60,15 @@ export async function removeChat(id: string): Promise<void> {
     });
   } catch {}
 }
+
+export async function clearAllChats(): Promise<void> {
+  try {
+    const db = await getDB();
+    const tx = db.transaction(STORE, "readwrite");
+    tx.objectStore(STORE).clear();
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch {}
+}

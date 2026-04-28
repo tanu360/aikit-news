@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { chatJimmy, chatJimmyCompletion } from "@/lib/jimmy";
 import type { ChatJimmyAttachment, ChatJimmyOptions } from "@/lib/jimmy";
+import { readJsonRecord } from "@/lib/api";
 import { appendUserSystemPrompt, normalizePromptDate } from "@/lib/prompts";
 
 const EXA_API_KEY = process.env.EXA_API_KEY || "";
@@ -210,6 +211,27 @@ function cleanResolvedQuery(value: string): string {
     .slice(0, 240);
 }
 
+function readFiniteOptionalNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function readAttachment(value: unknown): ChatJimmyAttachment | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const attachment = value as Record<string, unknown>;
+  if (
+    typeof attachment.name !== "string" ||
+    typeof attachment.content !== "string"
+  ) {
+    return undefined;
+  }
+
+  return {
+    name: attachment.name,
+    content: attachment.content,
+    size: readFiniteOptionalNumber(attachment.size),
+  };
+}
+
 async function resolveResearchQuery(
   query: string,
   conversationContext: string,
@@ -262,16 +284,20 @@ function streamAnswerText(
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const { query, topK, systemPrompt, attachment, clientDate, contextMessages } =
-    body as {
-    query: string;
-    topK?: number;
-    systemPrompt?: string;
-    attachment?: ChatJimmyAttachment;
-    clientDate?: string;
-    contextMessages?: ResearchContextMessage[];
-  };
+  const parsed = await readJsonRecord(req);
+  if (parsed.errorResponse) return parsed.errorResponse;
+
+  const body = parsed.body;
+  const query = typeof body.query === "string" ? body.query.trim() : "";
+  const topK = readFiniteOptionalNumber(body.topK);
+  const systemPrompt =
+    typeof body.systemPrompt === "string" ? body.systemPrompt : undefined;
+  const attachment = readAttachment(body.attachment);
+  const clientDate =
+    typeof body.clientDate === "string" ? body.clientDate : undefined;
+  const contextMessages = Array.isArray(body.contextMessages)
+    ? (body.contextMessages as ResearchContextMessage[])
+    : undefined;
   const jimmyOpts: ChatJimmyOptions = {
     ...(topK != null ? { topK } : {}),
     ...(attachment ? { attachment } : {}),

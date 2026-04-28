@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { readJsonRecord } from "@/lib/api";
 import { ChatJimmyError, chatJimmyCompletion } from "@/lib/jimmy";
 import type { ChatJimmyMessageContent } from "@/lib/jimmy";
 import {
@@ -122,7 +123,10 @@ function buildFallbackSummary({
 }
 
 export async function POST(req: NextRequest) {
-  const body = (await req.json().catch(() => ({}))) as RequestBody;
+  const parsed = await readJsonRecord(req);
+  if (parsed.errorResponse) return parsed.errorResponse;
+
+  const body = parsed.body as RequestBody;
   const messages = Array.isArray(body.messages) ? body.messages : [];
   const maxSummaryTokens = Math.min(
     COMPACTED_CONTEXT_TOKEN_LIMIT,
