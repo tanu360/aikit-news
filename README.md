@@ -34,8 +34,6 @@ AiKit News is a modern AI search and research app built with **Next.js**, **Chat
   <img src="./public/og.webp" alt="AiKit News preview" width="720" />
 </p>
 
-ChatJimmy is called in **non-streaming** mode so AiKit can read usage metadata such as `completion_tokens` and `generation_speed`. The app then replays the finished answer through its own Server-Sent Events stream, so users still get a smooth chat experience with a real stats footer.
-
 Example stats:
 
 ```txt
@@ -54,15 +52,17 @@ Powered by:
 
 - **ChatJimmy answers** using `llama3.1-8B`
 - **Free shared ChatJimmy config** prefilled for quick demos
-- **Non-stream upstream calls** with local SSE playback
 - **Generation stats footer** with completion tokens, decode time, and TPS
 - **Exa web search** with titles, URLs, highlights, and page text
-- **Inline citations** using clean `[1]`, `[2]`, `[3]` markers
+- **Inline citation pills** using clean `[1]`, `[2]`, `[3]` markers with source context
 - **Deep Research mode** that searches, synthesizes, follows up, and writes a cited final answer
 - **Weather tool** for live conditions and short forecast cards
 - **Text/code file attachments** with token counting and context-safe limits
 - **Tool settings** for Search, Weather, custom system prompt, and `top_k`
 - **Regenerate and response versions** so older answers remain navigable
+- **Conversation search** with highlighted matches and match navigation
+- **Copy actions** for full messages and individual code blocks
+- **Auto-generated chat titles** for cleaner history
 - **IndexedDB local chat history** for saved conversations
 - **Light, dark, and system themes** with refined source hover states
 - **Markdown rendering** with GFM tables, code highlighting, math, and KaTeX
@@ -195,7 +195,7 @@ Next.js chat UI
   +--> Direct answer
   |      |
   |      v
-  |   /api/chat -> ChatJimmy non-stream call -> local SSE playback
+  |   /api/chat -> ChatJimmy answer
   |
   +--> Search answer
   |      |
