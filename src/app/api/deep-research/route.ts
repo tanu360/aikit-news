@@ -26,6 +26,14 @@ type SearchExaResponse = {
   error?: string;
 };
 
+type ResearchContextMessage = {
+  role?: string;
+  content?: unknown;
+};
+
+const MAX_CONVERSATION_CONTEXT_CHARS = 5000;
+const MAX_CONTEXT_FILE_CHARS = 1200;
+
 async function searchExa(query: string): Promise<SearchExaResponse> {
   if (!EXA_API_KEY) {
     return {
@@ -142,8 +150,97 @@ function formatResultsForLLM(
         entry += `\nContent: ${r.text.slice(0, 400)}`;
       }
       return entry;
+      })
+      .join("\n\n");
+}
+
+function formatContextContent(content: unknown): string {
+  if (typeof content === "string") return content.trim();
+  if (!Array.isArray(content)) return "";
+
+  return content
+    .map((part) => {
+      if (!part || typeof part !== "object") return "";
+      const record = part as Record<string, unknown>;
+      if (record.type === "text" && typeof record.text === "string") {
+        return record.text.trim();
+      }
+      if (record.type === "file" && typeof record.content === "string") {
+        const name = typeof record.name === "string" ? record.name : "attached file";
+        return `[File: ${name}]\n${record.content.slice(0, MAX_CONTEXT_FILE_CHARS)}`;
+      }
+      return "";
     })
-    .join("\n\n");
+    .filter(Boolean)
+    .join("\n\n")
+    .trim();
+}
+
+function formatConversationContext(messages: unknown): string {
+  if (!Array.isArray(messages)) return "";
+
+  const formatted = messages
+    .map((message) => {
+      if (!message || typeof message !== "object") return "";
+      const record = message as ResearchContextMessage;
+      const role =
+        typeof record.role === "string" && record.role.trim()
+          ? record.role.trim()
+          : "message";
+      const content = formatContextContent(record.content);
+      return content ? `${role.toUpperCase()}:\n${content}` : "";
+    })
+    .filter(Boolean)
+    .join("\n\n")
+    .trim();
+
+  if (formatted.length <= MAX_CONVERSATION_CONTEXT_CHARS) return formatted;
+  return `[older conversation context omitted]\n${formatted.slice(
+    -MAX_CONVERSATION_CONTEXT_CHARS
+  )}`;
+}
+
+function cleanResolvedQuery(value: string): string {
+  return value
+    .trim()
+    .replace(/^["'“”‘’]+|["'“”‘’]+$/g, "")
+    .replace(/^(?:search query|resolved query|query)\s*:\s*/i, "")
+    .split("\n")[0]
+    .trim()
+    .slice(0, 240);
+}
+
+async function resolveResearchQuery(
+  query: string,
+  conversationContext: string,
+  today: string,
+  systemPrompt: string | undefined,
+  options?: ChatJimmyOptions
+): Promise<string> {
+  if (!conversationContext) return query;
+
+  try {
+    const resolved = await chatJimmy(
+      [
+        {
+          role: "system",
+          content: appendUserSystemPrompt(
+            `You rewrite follow-up research requests into one concise, standalone web search query. Today is ${today}. Use the conversation context only to resolve pronouns, missing topics, and "continue" style references. Return only the query text, with no explanation.`,
+            systemPrompt
+          ),
+        },
+        {
+          role: "user",
+          content: `Conversation context:\n${conversationContext}\n\nUser research request:\n${query}`,
+        },
+      ],
+      options
+    );
+    return cleanResolvedQuery(resolved) || query;
+  } catch (error) {
+    console.error("Deep research query resolution failed:", error);
+    return query;
+  }
 }
 
 function sseEvent(type: string, data: Record<string, unknown>): string {
@@ -166,18 +263,21 @@ function streamAnswerText(
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { query, topK, systemPrompt, attachment, clientDate } = body as {
+  const { query, topK, systemPrompt, attachment, clientDate, contextMessages } =
+    body as {
     query: string;
     topK?: number;
     systemPrompt?: string;
     attachment?: ChatJimmyAttachment;
     clientDate?: string;
+    contextMessages?: ResearchContextMessage[];
   };
   const jimmyOpts: ChatJimmyOptions = {
     ...(topK != null ? { topK } : {}),
     ...(attachment ? { attachment } : {}),
   };
   const today = normalizePromptDate(clientDate);
+  const conversationContext = formatConversationContext(contextMessages);
 
   if (!query) {
     return new Response(JSON.stringify({ error: "Query required" }), {
@@ -186,15 +286,24 @@ export async function POST(req: NextRequest) {
   }
 
   const encoder = new TextEncoder();
-  const stream = new ReadableStream({
-    async start(controller) {
-      const allResults: ExaSearchResult[] = [];
-      const allSyntheses: { query: string; synthesis: string }[] = [];
-      let queuesToResearch: string[] = [query];
+    const stream = new ReadableStream({
+      async start(controller) {
+        const allResults: ExaSearchResult[] = [];
+        const allSyntheses: { query: string; synthesis: string }[] = [];
+        let resolvedResearchQuery = query;
 
-      try {
-        for (
-          let depth = 0;
+        try {
+          resolvedResearchQuery = await resolveResearchQuery(
+            query,
+            conversationContext,
+            today,
+            systemPrompt,
+            jimmyOpts
+          );
+          let queuesToResearch: string[] = [resolvedResearchQuery];
+
+          for (
+            let depth = 0;
           depth < MAX_DEPTH && queuesToResearch.length > 0;
           depth++
         ) {
@@ -276,12 +385,15 @@ export async function POST(req: NextRequest) {
               systemPrompt
             );
 
-            const userPrompt =
-              previousContext +
-              (depth > 0
-                ? `Original query: ${query}\nNow researching: `
-                : "Query: ") +
-              currentQuery +
+              const userPrompt =
+                (conversationContext
+                  ? `Conversation context:\n${conversationContext}\n\n`
+                  : "") +
+                previousContext +
+                (depth > 0
+                  ? `Original query: ${query}\nNow researching: `
+                  : "Query: ") +
+                currentQuery +
               "\n\nSearch results:\n" +
               formatResultsForLLM(results);
 
@@ -369,7 +481,18 @@ export async function POST(req: NextRequest) {
           systemPrompt
         );
 
-        const finalUserPrompt = `${query}\n\nResearch notes:\n${researchContext}`;
+          const finalUserPrompt = [
+            conversationContext
+              ? `Conversation context:\n${conversationContext}`
+              : "",
+            `Original user request:\n${query}`,
+            resolvedResearchQuery !== query
+              ? `Resolved web research query:\n${resolvedResearchQuery}`
+              : "",
+            `Research notes:\n${researchContext}`,
+          ]
+            .filter(Boolean)
+            .join("\n\n");
 
         controller.enqueue(
           encoder.encode(sseEvent("answer_start", {}))

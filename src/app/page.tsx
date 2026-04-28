@@ -1337,7 +1337,9 @@ export default function Home() {
       assistantMessage,
     ]);
 
-    const prepareForcedCompactionRetry = async (): Promise<boolean> => {
+    const prepareForcedCompactionRetry = async (
+      retryPatch?: Partial<Message>
+    ): Promise<boolean> => {
       if (retryDepth >= 1) {
         setMessages((prev) =>
           prev.map((m) =>
@@ -1361,18 +1363,19 @@ export default function Home() {
           m.id === assistantId
             ? {
               ...m,
-              responseMode: "chat",
-              content: "Compacting older context and retrying...",
-              generationStats: undefined,
-              weather: undefined,
-              searchQuery: undefined,
-              searchResults: undefined,
-              searchStatus: undefined,
-              isDeepResearch: undefined,
-              researchSteps: undefined,
-              researchStatus: undefined,
-              allSources: undefined,
-            }
+                responseMode: "chat",
+                content: "Compacting older context and retrying...",
+                generationStats: undefined,
+                weather: undefined,
+                searchQuery: undefined,
+                searchResults: undefined,
+                searchStatus: undefined,
+                isDeepResearch: undefined,
+                researchSteps: undefined,
+                researchStatus: undefined,
+                allSources: undefined,
+                ...retryPatch,
+              }
             : m
         )
       );
@@ -1388,14 +1391,18 @@ export default function Home() {
     };
 
     while (true) {
-      const conversationHistory = buildModelConversationHistory(
-        messages,
-        activeCompaction
-      );
-      conversationHistory.push({
-        role: "user",
-        content: query,
-      });
+      const buildAttemptConversationHistory = () => {
+        const conversationHistory = buildModelConversationHistory(
+          messages,
+          activeCompaction
+        );
+        conversationHistory.push({
+          role: "user",
+          content: query,
+        });
+        return conversationHistory;
+      };
+      const conversationHistory = buildAttemptConversationHistory();
 
       if (retryDepth > 0) {
         setMessages((prev) =>
@@ -1416,8 +1423,8 @@ export default function Home() {
       const routerRes = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: conversationHistory,
+          body: JSON.stringify({
+            messages: conversationHistory,
           mode: "router",
           topK,
           toolSettings,
@@ -1646,102 +1653,118 @@ export default function Home() {
         )
       );
 
-      const tAnswerStartWall = nowMs();
-      const answerRes = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: conversationHistory,
-          searchResults: searchResults.map((r) => ({
-            title: r.title,
-            url: r.url,
-            text: r.text,
-            highlights: r.highlights,
-          })),
-          mode: "answer",
-          topK,
-          toolSettings,
-          clientDate,
-          searchAttempted: true,
-          ...(searchError ? { searchError } : {}),
-          ...(apiAttachment ? { attachment: apiAttachment } : {}),
-          ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
-        }),
-      });
-      const tAnswerFirstByteWall = nowMs();
+        while (true) {
+          const tAnswerStartWall = nowMs();
+          const answerRes = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              messages: buildAttemptConversationHistory(),
+              searchResults: searchResults.map((r) => ({
+                title: r.title,
+                url: r.url,
+                text: r.text,
+                highlights: r.highlights,
+              })),
+              mode: "answer",
+              topK,
+              toolSettings,
+              clientDate,
+              searchAttempted: true,
+              ...(searchError ? { searchError } : {}),
+              ...(apiAttachment ? { attachment: apiAttachment } : {}),
+              ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
+            }),
+          });
+          const tAnswerFirstByteWall = nowMs();
 
-      if (!answerRes.ok || !answerRes.body) throw new Error("Answer failed");
+          if (!answerRes.ok || !answerRes.body) throw new Error("Answer failed");
 
-      const answerServerTiming =
-        answerRes.headers.get("Server-Timing") ??
-        answerRes.headers.get("x-debug-timing");
-      const answerVercelId = answerRes.headers.get("x-vercel-id");
+          const answerServerTiming =
+            answerRes.headers.get("Server-Timing") ??
+            answerRes.headers.get("x-debug-timing");
+          const answerVercelId = answerRes.headers.get("x-vercel-id");
 
-      const answerReader = answerRes.body.getReader();
-      const answerDecoder = new TextDecoder();
-      let answerContent = "";
-      let answerGenerationStats: GenerationStats | undefined;
-      let answerNeedsCompactionRetry = false;
+          const answerReader = answerRes.body.getReader();
+          const answerDecoder = new TextDecoder();
+          let answerContent = "";
+          let answerGenerationStats: GenerationStats | undefined;
+          let answerNeedsCompactionRetry = false;
 
-      const answerParser = parseSSEStream(
-        (text) => {
-          answerContent += text;
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantId
-                ? { ...m, content: answerContent, responseMode: "search" }
-                : m
-            )
+          const answerParser = parseSSEStream(
+            (text) => {
+              answerContent += text;
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantId
+                    ? { ...m, content: answerContent, responseMode: "search" }
+                    : m
+                )
+              );
+            },
+            () => { },
+            (event) => {
+              if (event.type === "context_compaction_required") {
+                answerNeedsCompactionRetry = true;
+                return;
+              }
+
+              const stats = getGenerationStatsEvent(event);
+              if (!stats) return;
+              answerGenerationStats = stats;
+              applyGenerationStats(assistantId, stats);
+            }
           );
-        },
-        () => { },
-        (event) => {
-          if (event.type === "context_compaction_required") {
-            answerNeedsCompactionRetry = true;
-            return;
+
+          while (true) {
+            const { done, value } = await answerReader.read();
+            if (done) break;
+            answerParser.processChunk(answerDecoder.decode(value, { stream: true }));
           }
 
-          const stats = getGenerationStatsEvent(event);
-          if (!stats) return;
-          answerGenerationStats = stats;
-          applyGenerationStats(assistantId, stats);
+          const tAnswerEndWall = nowMs();
+          if (answerNeedsCompactionRetry) {
+            logTiming("Chat:answer", {
+              query: refinedQuery,
+              tStartWall: tAnswerStartWall,
+              tFirstByteWall: tAnswerFirstByteWall,
+              tEndWall: tAnswerEndWall,
+              serverTiming: answerServerTiming,
+              vercelId: answerVercelId,
+            });
+            const canRetry = await prepareForcedCompactionRetry({
+              responseMode: "search",
+              content: "Compacting older context and retrying answer...",
+              searchQuery: refinedQuery,
+              searchResults,
+              searchStatus: "done",
+            });
+            if (!canRetry) return;
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId
+                  ? { ...m, content: "", responseMode: "search" }
+                  : m
+              )
+            );
+            continue;
+          }
+
+          if (answerGenerationStats) {
+            applyGenerationStats(assistantId, answerGenerationStats);
+          }
+          logTiming("Chat:answer", {
+            query: refinedQuery,
+            tStartWall: tAnswerStartWall,
+            tFirstByteWall: tAnswerFirstByteWall,
+            tEndWall: tAnswerEndWall,
+            serverTiming: answerServerTiming,
+            vercelId: answerVercelId,
+          });
+
+          finishResponse();
+          return;
         }
-      );
-
-      while (true) {
-        const { done, value } = await answerReader.read();
-        if (done) break;
-        answerParser.processChunk(answerDecoder.decode(value, { stream: true }));
-      }
-
-      const tAnswerEndWall = nowMs();
-      if (answerNeedsCompactionRetry) {
-        logTiming("Chat:answer", {
-          query: refinedQuery,
-          tStartWall: tAnswerStartWall,
-          tFirstByteWall: tAnswerFirstByteWall,
-          tEndWall: tAnswerEndWall,
-          serverTiming: answerServerTiming,
-          vercelId: answerVercelId,
-        });
-        if (await prepareForcedCompactionRetry()) continue;
-        return;
-      }
-
-      if (answerGenerationStats) {
-        applyGenerationStats(assistantId, answerGenerationStats);
-      }
-      logTiming("Chat:answer", {
-        query: refinedQuery,
-        tStartWall: tAnswerStartWall,
-        tFirstByteWall: tAnswerFirstByteWall,
-        tEndWall: tAnswerEndWall,
-        serverTiming: answerServerTiming,
-        vercelId: answerVercelId,
-      });
-
-      finishResponse();
-      return;
     } catch (e) {
       console.error("Chat failed:", e);
       setMessages((prev) =>
@@ -1793,17 +1816,83 @@ export default function Home() {
     const existingVersions = normalizeMessageVersions(assistantMsg);
 
     const historyBefore = currentMessages.slice(0, assistantIdx - 1);
-    const conversationHistory = buildModelConversationHistory(
+    let regenerateRetryDepth = 0;
+    let activeRegenerateCompaction = getScopedCompaction(
       historyBefore,
-      getScopedCompaction(historyBefore, contextCompactionRef.current)
+      contextCompactionRef.current
     );
-    conversationHistory.push({
-      role: "user",
-      content: buildApiContent(userMsg),
-    });
-
     const apiAttachment = buildApiAttachment(userMsg.attachments?.[0] ?? null);
     const clientDate = getClientDate();
+
+    const buildRegenerateHistoryBeforeUser = () =>
+      buildModelConversationHistory(historyBefore, activeRegenerateCompaction);
+
+    const buildRegenerateConversationHistory = () => {
+      const conversationHistory = buildRegenerateHistoryBeforeUser();
+      conversationHistory.push({
+        role: "user",
+        content: buildApiContent(userMsg),
+      });
+      return conversationHistory;
+    };
+
+    const prepareRegenerateCompactionRetry = async (
+      retryPatch?: Partial<Message>
+    ): Promise<boolean> => {
+      if (regenerateRetryDepth >= 1) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessageId
+              ? {
+                ...m,
+                responseMode: "chat",
+                content:
+                  "The model returned an empty response even after compacting the older context. Please retry your last message.",
+                searchStatus: "done" as const,
+                ...retryPatch,
+              }
+              : m
+          )
+        );
+        finishResponse();
+        return false;
+      }
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMessageId
+            ? {
+              ...m,
+              responseMode: "chat",
+              content: "Compacting older context and retrying...",
+              generationStats: undefined,
+              weather: undefined,
+              searchQuery: undefined,
+              searchResults: undefined,
+              searchStatus: undefined,
+              isDeepResearch: undefined,
+              researchSteps: undefined,
+              researchStatus: undefined,
+              allSources: undefined,
+              ...retryPatch,
+            }
+            : m
+        )
+      );
+
+      const nextCompaction = await compactContextIfNeeded(
+        historyBefore,
+        userMsg.content,
+        userMsg.attachments?.[0] ?? null,
+        { force: true }
+      );
+      activeRegenerateCompaction = getScopedCompaction(
+        historyBefore,
+        nextCompaction
+      );
+      regenerateRetryDepth += 1;
+      return true;
+    };
 
     isLoadingRef.current = true;
     setIsLoading(true);
@@ -1880,13 +1969,14 @@ export default function Home() {
         const res = await fetch("/api/deep-research", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            query: userMsg.content,
-            topK,
-            clientDate,
-            ...(apiAttachment ? { attachment: apiAttachment } : {}),
-            ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
-          }),
+            body: JSON.stringify({
+              query: userMsg.content,
+              contextMessages: buildRegenerateHistoryBeforeUser(),
+              topK,
+              clientDate,
+              ...(apiAttachment ? { attachment: apiAttachment } : {}),
+              ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
+            }),
         });
 
         if (!res.ok || !res.body) throw new Error("Deep research failed");
@@ -2076,57 +2166,85 @@ export default function Home() {
           )
         );
 
-        const answerRes = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          while (true) {
+            answerContent = "";
+            answerGenerationStats = undefined;
+            let answerNeedsCompactionRetry = false;
+
+            const answerRes = await fetch("/api/chat", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            messages: conversationHistory,
-            searchResults: searchResults.map((r) => ({
-              title: r.title,
-              url: r.url,
-              text: r.text,
-              highlights: r.highlights,
-            })),
-            mode: "answer",
-            topK,
-            toolSettings: searchToolSettings,
-            clientDate,
-            searchAttempted: true,
-            ...(searchError ? { searchError } : {}),
-            ...(apiAttachment ? { attachment: apiAttachment } : {}),
-            ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
-          }),
-        });
+            messages: buildRegenerateConversationHistory(),
+                searchResults: searchResults.map((r) => ({
+                  title: r.title,
+                  url: r.url,
+                  text: r.text,
+                  highlights: r.highlights,
+                })),
+                mode: "answer",
+                topK,
+                toolSettings: searchToolSettings,
+                clientDate,
+                searchAttempted: true,
+                ...(searchError ? { searchError } : {}),
+                ...(apiAttachment ? { attachment: apiAttachment } : {}),
+                ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
+              }),
+            });
 
-        if (!answerRes.ok || !answerRes.body) throw new Error("Answer failed");
+            if (!answerRes.ok || !answerRes.body) throw new Error("Answer failed");
 
-        const answerReader = answerRes.body.getReader();
-        const answerDecoder = new TextDecoder();
-        const answerParser = parseSSEStream(
-          (text) => {
-            answerContent += text;
+            const answerReader = answerRes.body.getReader();
+            const answerDecoder = new TextDecoder();
+            const answerParser = parseSSEStream(
+              (text) => {
+                answerContent += text;
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantMessageId
+                      ? { ...m, content: answerContent, responseMode: "search" }
+                      : m
+                  )
+                );
+              },
+              () => { },
+              (event) => {
+                if (event.type === "context_compaction_required") {
+                  answerNeedsCompactionRetry = true;
+                  return;
+                }
+
+                const stats = getGenerationStatsEvent(event);
+                if (!stats) return;
+                answerGenerationStats = stats;
+                applyGenerationStats(assistantMessageId, stats);
+              }
+            );
+
+            while (true) {
+              const { done, value } = await answerReader.read();
+              if (done) break;
+              answerParser.processChunk(answerDecoder.decode(value, { stream: true }));
+            }
+
+            if (!answerNeedsCompactionRetry) break;
+            const canRetry = await prepareRegenerateCompactionRetry({
+              responseMode: "search",
+              content: "Compacting older context and retrying answer...",
+              searchQuery: refinedQuery,
+              searchResults,
+              searchStatus: "done",
+            });
+            if (!canRetry) return;
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === assistantMessageId
-                  ? { ...m, content: answerContent, responseMode: "search" }
+                  ? { ...m, content: "", responseMode: "search" }
                   : m
               )
             );
-          },
-          () => { },
-          (event) => {
-            const stats = getGenerationStatsEvent(event);
-            if (!stats) return;
-            answerGenerationStats = stats;
-            applyGenerationStats(assistantMessageId, stats);
           }
-        );
-
-        while (true) {
-          const { done, value } = await answerReader.read();
-          if (done) break;
-          answerParser.processChunk(answerDecoder.decode(value, { stream: true }));
-        }
 
         const version: MessageVersion = {
           content: answerContent,
@@ -2194,89 +2312,119 @@ export default function Home() {
       )
     );
 
-    let answerContent = "";
-    let answerGenerationStats: GenerationStats | undefined;
-    let routerGenerationStats: GenerationStats | undefined;
-
-    try {
-      const routerRes = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: conversationHistory,
-          mode: "router",
-          topK,
-          toolSettings: regenerationToolSettings,
-          clientDate,
-          ...(apiAttachment ? { attachment: apiAttachment } : {}),
-          ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
-        }),
-      });
-
-      if (!routerRes.ok || !routerRes.body) throw new Error("Router failed");
-
-      const routerReader = routerRes.body.getReader();
-      const routerDecoder = new TextDecoder();
+      let answerContent = "";
+      let answerGenerationStats: GenerationStats | undefined;
+      let routerGenerationStats: GenerationStats | undefined;
       let routerContent = "";
       let routerDecision: "direct" | "search" | null = null;
       let weather: WeatherCardData | undefined;
       let directResponseMode: MessageResponseMode =
         responseMode === "weather" ? "weather" : "chat";
 
-      const routerParser = parseSSEStream(
-        (text) => {
-          routerContent += text;
-          if (routerDecision === null && routerContent.trimStart().length >= 10) {
-            routerDecision =
-              extractSearchControlQuery(routerContent) !== null
-                ? "search"
-                : "direct";
-          }
-          if (routerDecision === "direct") {
-            answerContent = routerContent;
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantMessageId
-                  ? {
-                    ...m,
-                    content: routerContent,
-                    responseMode: directResponseMode,
-                  }
-                  : m
-              )
-            );
-          }
-        },
-        () => { },
-        (event) => {
-          const stats = getGenerationStatsEvent(event);
-          if (stats) {
-            routerGenerationStats = stats;
-            if (routerDecision === "direct") {
-              applyGenerationStats(assistantMessageId, stats);
+      try {
+        while (true) {
+          answerContent = "";
+          routerGenerationStats = undefined;
+          routerContent = "";
+          routerDecision = null;
+          weather = undefined;
+          directResponseMode = responseMode === "weather" ? "weather" : "chat";
+          let routerNeedsCompactionRetry = false;
+
+          const routerRes = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              messages: buildRegenerateConversationHistory(),
+              mode: "router",
+              topK,
+              toolSettings: regenerationToolSettings,
+              clientDate,
+              ...(apiAttachment ? { attachment: apiAttachment } : {}),
+              ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
+            }),
+          });
+
+          if (!routerRes.ok || !routerRes.body) throw new Error("Router failed");
+
+          const routerReader = routerRes.body.getReader();
+          const routerDecoder = new TextDecoder();
+
+          const routerParser = parseSSEStream(
+            (text) => {
+              routerContent += text;
+              if (routerDecision === null && routerContent.trimStart().length >= 10) {
+                routerDecision =
+                  extractSearchControlQuery(routerContent) !== null
+                    ? "search"
+                    : "direct";
+              }
+              if (routerDecision === "direct") {
+                answerContent = routerContent;
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantMessageId
+                      ? {
+                        ...m,
+                        content: routerContent,
+                        responseMode: directResponseMode,
+                      }
+                      : m
+                  )
+                );
+              }
+            },
+            () => { },
+            (event) => {
+              if (event.type === "context_compaction_required") {
+                routerNeedsCompactionRetry = true;
+                return;
+              }
+
+              const stats = getGenerationStatsEvent(event);
+              if (stats) {
+                routerGenerationStats = stats;
+                if (routerDecision === "direct") {
+                  applyGenerationStats(assistantMessageId, stats);
+                }
+                return;
+              }
+
+              if (event.type !== "weather") return;
+              routerDecision = "direct";
+              weather = event.weather as WeatherCardData;
+              directResponseMode = "weather";
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMessageId
+                    ? { ...m, weather, responseMode: "weather" }
+                    : m
+                )
+              );
             }
-            return;
+          );
+
+          while (true) {
+            const { done, value } = await routerReader.read();
+            if (done) break;
+            routerParser.processChunk(routerDecoder.decode(value, { stream: true }));
           }
 
-          if (event.type !== "weather") return;
-          routerDecision = "direct";
-          weather = event.weather as WeatherCardData;
-          directResponseMode = "weather";
+          if (!routerNeedsCompactionRetry) break;
+          const retryMode = responseMode === "weather" ? "weather" : "chat";
+          const canRetry = await prepareRegenerateCompactionRetry({
+            responseMode: retryMode,
+            content: "Compacting older context and retrying...",
+          });
+          if (!canRetry) return;
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantMessageId
-                ? { ...m, weather, responseMode: "weather" }
+                ? { ...m, content: "", responseMode: retryMode }
                 : m
             )
           );
         }
-      );
-
-      while (true) {
-        const { done, value } = await routerReader.read();
-        if (done) break;
-        routerParser.processChunk(routerDecoder.decode(value, { stream: true }));
-      }
 
       if (routerDecision === null) {
         routerDecision = "direct";
@@ -2387,7 +2535,7 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: conversationHistory,
+            messages: buildRegenerateConversationHistory(),
           searchResults: searchResults.map((r) => ({
             title: r.title,
             url: r.url,
@@ -2476,6 +2624,10 @@ export default function Home() {
     const attachments = fileForSubmit ? [fileForSubmit] : undefined;
     const apiAttachment = buildApiAttachment(fileForSubmit);
     const clientDate = getClientDate();
+    const contextMessages = buildModelConversationHistory(
+      messages,
+      getScopedCompaction(messages, contextCompactionRef.current)
+    );
 
     const userMsgId = generateId();
     scrollTargetRef.current = userMsgId;
@@ -2530,12 +2682,13 @@ export default function Home() {
       const res = await fetch("/api/deep-research", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query,
-          topK,
-          clientDate,
-          ...(apiAttachment ? { attachment: apiAttachment } : {}),
-          ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
+          body: JSON.stringify({
+            query,
+            contextMessages,
+            topK,
+            clientDate,
+            ...(apiAttachment ? { attachment: apiAttachment } : {}),
+            ...(systemPrompt.trim() ? { systemPrompt: systemPrompt.trim() } : {}),
         }),
       });
 
