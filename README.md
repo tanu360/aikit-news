@@ -1,7 +1,7 @@
 <div align="center">
   <img src="./public/favicon.ico" width="76" height="76" alt="AiKit News logo" />
 
-  <h1>⚡ AiKit News</h1>
+  <h1>AiKit News</h1>
 
   <h3>AI search, live sources, deep research, weather, files, and ChatJimmy speed stats</h3>
 
@@ -74,17 +74,17 @@ Powered by:
 
 ## 🧱 Tech Stack
 
-| Layer | Tech |
-| ----- | ---- |
-| Framework | Next.js 16 App Router |
-| UI | React 19, Tailwind CSS 4, Framer Motion |
-| Language | TypeScript |
-| AI backend | ChatJimmy OpenAI-compatible API |
-| Search | Exa API |
-| Weather | Open-Meteo based weather helper |
-| Markdown | `react-markdown`, `remark-gfm`, `remark-math`, `rehype-katex`, `rehype-highlight` |
-| Local storage | IndexedDB |
-| Deployment | Vercel, OpenNext Cloudflare |
+| Layer         | Tech                                                                              |
+| ------------- | --------------------------------------------------------------------------------- |
+| Framework     | Next.js 16 App Router                                                             |
+| UI            | React 19, Tailwind CSS 4, Framer Motion                                           |
+| Language      | TypeScript                                                                        |
+| AI backend    | ChatJimmy OpenAI-compatible API                                                   |
+| Search        | Exa API                                                                           |
+| Weather       | Open-Meteo based weather helper                                                   |
+| Markdown      | `react-markdown`, `remark-gfm`, `remark-math`, `rehype-katex`, `rehype-highlight` |
+| Local storage | IndexedDB                                                                         |
+| Deployment    | Vercel, OpenNext Cloudflare                                                       |
 
 ---
 
@@ -144,14 +144,14 @@ NEXT_PUBLIC_SITE_URL=https://news.aikit.club
 
 ### Environment Variables
 
-| Variable | Required | Scope | Purpose |
-| -------- | -------- | ----- | ------- |
-| `EXA_API_KEY` | Yes | Server | Used by `/api/search` and `/api/deep-research` |
-| `CHATJIMMY_API_URL` | Yes | Server | OpenAI-compatible ChatJimmy completion endpoint |
-| `CHATJIMMY_API_KEY` | Yes | Server | ChatJimmy API key or shared demo key |
-| `CHATJIMMY_MODEL` | Yes | Server | Model sent to ChatJimmy |
-| `NEXT_PUBLIC_MODEL_NAME` | No | Browser | Model label shown in the input UI |
-| `NEXT_PUBLIC_SITE_URL` | No | Browser/server metadata | Canonical, Open Graph, and Twitter metadata origin |
+| Variable                 | Required | Scope                   | Purpose                                            |
+| ------------------------ | -------- | ----------------------- | -------------------------------------------------- |
+| `EXA_API_KEY`            | Yes      | Server                  | Used by `/api/search` and `/api/deep-research`     |
+| `CHATJIMMY_API_URL`      | Yes      | Server                  | OpenAI-compatible ChatJimmy completion endpoint    |
+| `CHATJIMMY_API_KEY`      | Yes      | Server                  | ChatJimmy API key or shared demo key               |
+| `CHATJIMMY_MODEL`        | Yes      | Server                  | Model sent to ChatJimmy                            |
+| `NEXT_PUBLIC_MODEL_NAME` | No       | Browser                 | Model label shown in the input UI                  |
+| `NEXT_PUBLIC_SITE_URL`   | No       | Browser/server metadata | Canonical, Open Graph, and Twitter metadata origin |
 
 ### ChatJimmy Free Config
 
@@ -231,13 +231,13 @@ Then the UI shows completion tokens, time in seconds, and TPS:
 
 ## 🛠️ API Routes
 
-| Method | Route | What it does |
-| ------ | ----- | ------------ |
-| `POST` | `/api/chat` | Calls ChatJimmy, handles tools, streams UI chunks, emits generation stats |
-| `POST` | `/api/search` | Searches Exa with instant results and source text |
-| `POST` | `/api/deep-research` | Runs multi-step Exa research and final ChatJimmy synthesis |
-| `GET` | `/api/config` | Returns the active model name for the input UI |
-| `POST` | `/api/title` | Generates chat titles |
+| Method | Route                | What it does                                                              |
+| ------ | -------------------- | ------------------------------------------------------------------------- |
+| `POST` | `/api/chat`          | Calls ChatJimmy, handles tools, streams UI chunks, emits generation stats |
+| `POST` | `/api/search`        | Searches Exa with instant results and source text                         |
+| `POST` | `/api/deep-research` | Runs multi-step Exa research and final ChatJimmy synthesis                |
+| `GET`  | `/api/config`        | Returns the active model name for the input UI                            |
+| `POST` | `/api/title`         | Generates chat titles                                                     |
 
 ### Chat Request
 
@@ -288,36 +288,36 @@ Deep Research turns one prompt into a compact research tree:
 
 Stream events include:
 
-| Event | Meaning |
-| ----- | ------- |
-| `step_start` | A research query started |
-| `search_complete` | Exa returned sources |
-| `synthesizing` | ChatJimmy is analyzing the sources |
-| `step_done` | One research step finished |
-| `research_complete` | Source gathering finished |
-| `answer_start` | Final answer generation started |
-| `answer_chunk` | Final answer text chunk |
-| `generation_stats` | Tokens, decode time, and TPS |
-| `all_sources` | Final citation source list |
-| `done` | Research completed |
+| Event               | Meaning                            |
+| ------------------- | ---------------------------------- |
+| `step_start`        | A research query started           |
+| `search_complete`   | Exa returned sources               |
+| `synthesizing`      | ChatJimmy is analyzing the sources |
+| `step_done`         | One research step finished         |
+| `research_complete` | Source gathering finished          |
+| `answer_start`      | Final answer generation started    |
+| `answer_chunk`      | Final answer text chunk            |
+| `generation_stats`  | Tokens, decode time, and TPS       |
+| `all_sources`       | Final citation source list         |
+| `done`              | Research completed                 |
 
 ---
 
 ## 📜 Scripts
 
-| Command | Description |
-| ------- | ----------- |
-| `npm run dev` | Start Next.js dev server |
-| `npm run dev:fresh` | Clean caches, then start dev server |
-| `npm run dev:portless` | Clean caches, then run `portless run next dev` |
-| `npm run build` | Build the Next.js app |
-| `npm run build:fresh` | Clean caches, then build |
-| `npm run start` | Start production server |
-| `npm run lint` | Run ESLint |
-| `npm run build:cloudflare` | Build for Cloudflare with OpenNext |
-| `npm run preview:cloudflare` | Preview Cloudflare build |
-| `npm run deploy:cloudflare` | Deploy with OpenNext Cloudflare tooling |
-| `npm run clean` | Remove build/cache artifacts |
+| Command                      | Description                                    |
+| ---------------------------- | ---------------------------------------------- |
+| `npm run dev`                | Start Next.js dev server                       |
+| `npm run dev:fresh`          | Clean caches, then start dev server            |
+| `npm run dev:portless`       | Clean caches, then run `portless run next dev` |
+| `npm run build`              | Build the Next.js app                          |
+| `npm run build:fresh`        | Clean caches, then build                       |
+| `npm run start`              | Start production server                        |
+| `npm run lint`               | Run ESLint                                     |
+| `npm run build:cloudflare`   | Build for Cloudflare with OpenNext             |
+| `npm run preview:cloudflare` | Preview Cloudflare build                       |
+| `npm run deploy:cloudflare`  | Deploy with OpenNext Cloudflare tooling        |
+| `npm run clean`              | Remove build/cache artifacts                   |
 
 ---
 
@@ -363,13 +363,13 @@ Add the same environment variables to your Cloudflare deployment before going li
 
 ## 🧯 Troubleshooting
 
-| Problem | Fix |
-| ------- | --- |
-| Search returns “Search is not configured.” | Add `EXA_API_KEY` to `.env.local` and restart the dev server. |
-| Chat returns missing env vars | Make sure `CHATJIMMY_API_URL`, `CHATJIMMY_API_KEY`, and `CHATJIMMY_MODEL` are present. |
-| Model label looks wrong | Set `NEXT_PUBLIC_MODEL_NAME` or `CHATJIMMY_MODEL`, then restart. |
-| Port is already in use | Use `npm run dev:portless` or start Next on another port. |
-| Cloudflare build fails | Run `npm run build:cloudflare` locally and confirm env vars are available. |
+| Problem                                    | Fix                                                                                    |
+| ------------------------------------------ | -------------------------------------------------------------------------------------- |
+| Search returns “Search is not configured.” | Add `EXA_API_KEY` to `.env.local` and restart the dev server.                          |
+| Chat returns missing env vars              | Make sure `CHATJIMMY_API_URL`, `CHATJIMMY_API_KEY`, and `CHATJIMMY_MODEL` are present. |
+| Model label looks wrong                    | Set `NEXT_PUBLIC_MODEL_NAME` or `CHATJIMMY_MODEL`, then restart.                       |
+| Port is already in use                     | Use `npm run dev:portless` or start Next on another port.                              |
+| Cloudflare build fails                     | Run `npm run build:cloudflare` locally and confirm env vars are available.             |
 
 ---
 
