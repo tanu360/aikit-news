@@ -765,6 +765,10 @@ export default function ChatInput({
                   <span className="hidden sm:inline">Deep Research</span>
                 </span>
                 <motion.span
+                  initial={{
+                    scale: agentMode ? 1 : 0.6,
+                    opacity: agentMode ? 1 : 0,
+                  }}
                   animate={{
                     scale: agentMode ? 1 : 0.6,
                     opacity: agentMode ? 1 : 0,
