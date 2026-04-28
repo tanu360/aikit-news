@@ -573,15 +573,21 @@ textarea::placeholder {
 .source-row {
   background-color: transparent;
   color: var(--color-ink-primary);
+}
+.source-row-surface {
+  background-color: transparent;
   transition:
     background-color 150ms ease,
     color 150ms ease;
 }
-.source-row:hover,
-.source-row:focus-visible {
+.source-row:hover .source-row-surface,
+.source-row:focus-visible .source-row-surface {
   background-color: var(--color-result-row-hover);
 }
 .source-row:focus-visible {
+  outline: none;
+}
+.source-row:focus-visible .source-row-surface {
   outline: 1px solid var(--color-input-ring);
   outline-offset: 2px;
 }

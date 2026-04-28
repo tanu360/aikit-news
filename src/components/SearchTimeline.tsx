@@ -33,6 +33,7 @@ export default function SearchTimeline({
   }, [results.length, visibleCount]);
 
   const visibleResults = results.slice(0, visibleCount);
+  const timelineAccent = "oklch(67% 0.24 327)";
 
   return (
     <div className="mb-4">
@@ -137,7 +138,7 @@ export default function SearchTimeline({
                 style={{
                   left: 3,
                   background:
-                    "color-mix(in oklch, var(--color-accent) 34%, var(--color-border-light))",
+                    `color-mix(in oklch, ${timelineAccent} 28%, var(--color-border-light))`,
                 }}
               />
               {visibleResults.map((result, i) => (
@@ -152,61 +153,63 @@ export default function SearchTimeline({
                     duration: 0.25,
                     ease: "easeOut",
                   }}
-                  className="source-row group/item relative flex min-h-11 items-center gap-2.5 rounded-md py-2 pl-8 pr-2 sm:min-h-0 sm:py-1.5"
+                  className="source-row group/item relative block pl-8"
                 >
                   <div
                     className="absolute left-0 top-1/2 h-1.75 w-1.75 -translate-y-1/2 rounded-full border-[1.5px] transition-colors"
                     style={{
                       borderColor:
                         i === visibleResults.length - 1 && status === "searching"
-                          ? "var(--color-accent)"
-                          : "color-mix(in oklch, var(--color-accent) 62%, var(--color-border-default))",
+                          ? timelineAccent
+                          : `color-mix(in oklch, ${timelineAccent} 68%, var(--color-border-default))`,
                       background:
                         i === visibleResults.length - 1 && status === "searching"
-                          ? "var(--color-accent-light)"
-                          : "color-mix(in oklch, var(--color-accent) 10%, var(--color-surface-primary))",
+                          ? `color-mix(in oklch, ${timelineAccent} 16%, var(--color-surface-primary))`
+                          : `color-mix(in oklch, ${timelineAccent} 10%, var(--color-surface-primary))`,
                     }}
                   />
 
-                  <Image
-                    src={getFaviconUrl(result.url)}
-                    alt=""
-                    width={16}
-                    height={16}
-                    unoptimized
-                    className="h-4 w-4 shrink-0 rounded-sm"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
-                    }}
-                  />
-
-                  <div className="flex flex-1 items-center gap-2 overflow-hidden">
-                    <span
-                      className="source-row-title truncate text-[12.5px]"
-                    >
-                      {result.title}
-                    </span>
-                    <span
-                      className="source-row-domain shrink-0 text-[11px]"
-                    >
-                      {getDomain(result.url)}
-                    </span>
-                  </div>
-
-                  <svg
-                    width="10"
-                    height="10"
-                    viewBox="0 0 12 12"
-                    className="source-row-icon shrink-0"
-                  >
-                    <path
-                      d="M4.5 2H10V7.5M10 2L3 9"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                  <div className="source-row-surface flex min-h-11 items-center gap-2.5 rounded-md px-2 py-2 sm:min-h-0 sm:py-1.5">
+                    <Image
+                      src={getFaviconUrl(result.url)}
+                      alt=""
+                      width={16}
+                      height={16}
+                      unoptimized
+                      className="h-4 w-4 shrink-0 rounded-sm"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
                     />
-                  </svg>
+
+                    <div className="flex flex-1 items-center gap-2 overflow-hidden">
+                      <span
+                        className="source-row-title truncate text-[12.5px]"
+                      >
+                        {result.title}
+                      </span>
+                      <span
+                        className="source-row-domain shrink-0 text-[11px]"
+                      >
+                        {getDomain(result.url)}
+                      </span>
+                    </div>
+
+                    <svg
+                      width="10"
+                      height="10"
+                      viewBox="0 0 12 12"
+                      className="source-row-icon shrink-0"
+                    >
+                      <path
+                        d="M4.5 2H10V7.5M10 2L3 9"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
                 </motion.a>
               ))}
 
