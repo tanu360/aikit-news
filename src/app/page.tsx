@@ -688,7 +688,7 @@ function TokenCounterChip({
           style={{ backgroundColor: chipBackground }}
         />
       </span>
-      <span className="grid place-items-center gap-0.5 text-center leading-tight sm:gap-1">
+      <span className="grid place-items-center gap-1 text-center leading-tight sm:gap-1">
         <span
           className="block w-full text-center text-[10px] leading-none tabular-nums sm:text-[13px]"
           style={{ color: "currentColor", fontWeight: 600 }}
