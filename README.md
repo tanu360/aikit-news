@@ -6,10 +6,8 @@
   <h3>AI search, live sources, deep research, weather, files, and ChatJimmy speed stats</h3>
 
   <p>
-    <a href="https://nextjs.org/"><img alt="Next.js" src="https://img.shields.io/badge/Next.js-16.2-151515?style=for-the-badge&logo=nextdotjs&logoColor=white" /></a>
-    <a href="https://react.dev/"><img alt="React" src="https://img.shields.io/badge/React-19-2B2B31?style=for-the-badge&logo=react&logoColor=61DAFB" /></a>
-    <a href="https://www.typescriptlang.org/"><img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3A3A42?style=for-the-badge&logo=typescript&logoColor=white" /></a>
-    <a href="https://tailwindcss.com/"><img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind-4-46464F?style=for-the-badge&logo=tailwindcss&logoColor=38BDF8" /></a>
+    <a href="https://nextjs.org/"><img alt="Next.js" src="https://img.shields.io/badge/Next.js-16.2-64748B?style=for-the-badge&logo=nextdotjs&logoColor=white" /></a>
+    <a href="https://react.dev/"><img alt="React" src="https://img.shields.io/badge/React-19-2563EB?style=for-the-badge&logo=react&logoColor=white" /></a>
     <a href="https://chatjimmy.ai/"><img alt="ChatJimmy" src="https://img.shields.io/badge/ChatJimmy-API-F97316?style=for-the-badge" /></a>
     <a href="https://exa.ai/"><img alt="Exa" src="https://img.shields.io/badge/Exa-Search-22C55E?style=for-the-badge" /></a>
     <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/License-MIT-8B5CF6?style=for-the-badge" /></a>
@@ -302,43 +300,6 @@ Stream events include:
 | `generation_stats` | Tokens, decode time, and TPS |
 | `all_sources` | Final citation source list |
 | `done` | Research completed |
-
----
-
-## 📎 Attachments
-
-AiKit accepts text-like files and counts tokens before sending content to the model. Media uploads are intentionally blocked.
-
-Supported examples:
-
-- `.txt`, `.md`, `.csv`, `.json`
-- `.ts`, `.tsx`, `.js`, `.jsx`
-- `.py`, `.html`, `.css`, `.sql`
-- `.yaml`, `.toml`, `.xml`, `.log`
-
-Attachment content is sent server-side through the ChatJimmy adapter, and the UI shows file size plus token count before submission.
-
----
-
-## 📁 Core Files
-
-| File | Purpose |
-| ---- | ------- |
-| `src/app/page.tsx` | Main chat UI, routing, local history, streaming handlers |
-| `src/app/layout.tsx` | Metadata, favicon, Open Graph, theme boot script |
-| `src/app/api/chat/route.ts` | ChatJimmy route, tool calls, weather, stats SSE |
-| `src/app/api/search/route.ts` | Exa instant search route |
-| `src/app/api/deep-research/route.ts` | Multi-step research route |
-| `src/app/api/config/route.ts` | Runtime model name endpoint |
-| `src/lib/jimmy.ts` | ChatJimmy adapter, usage parsing, generation stats |
-| `src/lib/prompts.ts` | Router, answer, tool, and citation prompts |
-| `src/lib/weather.ts` | Weather lookup and card data shaping |
-| `src/lib/chatStore.ts` | IndexedDB chat persistence |
-| `src/components/ChatInput.tsx` | Input, tools, file upload, settings, model label |
-| `src/components/MessageBubble.tsx` | Messages, citations, actions, stats footer |
-| `src/components/SearchTimeline.tsx` | Search source timeline |
-| `src/components/DeepResearchTimeline.tsx` | Deep Research progress UI |
-| `src/components/WeatherCard.tsx` | Weather result card |
 
 ---
 
