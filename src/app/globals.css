@@ -68,6 +68,7 @@
   --color-sidebar-taskbar-active: oklch(88.6% 0.022 260);
   --color-selection: color-mix(in oklch, var(--color-accent) 18%, transparent);
   --color-control-hover: var(--color-surface-hover);
+  --color-timeline-trigger-hover: oklch(95.2% 0.006 255);
   --color-result-row-hover: var(--color-surface-secondary);
   --color-source-chip-bg: oklch(97.8% 0 0);
   --color-source-chip-hover: oklch(96.9% 0 0);
@@ -132,6 +133,7 @@
     --color-sidebar-taskbar-active: oklch(0.382 0.026 255);
     --color-selection: oklch(0.68 0.18 255 / 0.22);
     --color-control-hover: var(--color-surface-tertiary);
+    --color-timeline-trigger-hover: var(--color-control-hover);
     --color-result-row-hover: var(--color-surface-tertiary);
     --color-source-chip-bg: oklch(1 0 0 / 0.035);
     --color-source-chip-hover: oklch(1 0 0 / 0.055);
@@ -183,6 +185,7 @@
   --color-sidebar-taskbar-active: oklch(88.6% 0.022 260);
   --color-selection: color-mix(in oklch, var(--color-accent) 18%, transparent);
   --color-control-hover: var(--color-surface-hover);
+  --color-timeline-trigger-hover: oklch(95.2% 0.006 255);
   --color-result-row-hover: var(--color-surface-secondary);
   --color-source-chip-bg: oklch(97.8% 0 0);
   --color-source-chip-hover: oklch(96.9% 0 0);
@@ -229,6 +232,7 @@
   --color-sidebar-taskbar-active: oklch(0.382 0.026 255);
   --color-selection: oklch(0.68 0.18 255 / 0.22);
   --color-control-hover: var(--color-surface-tertiary);
+  --color-timeline-trigger-hover: var(--color-control-hover);
   --color-result-row-hover: var(--color-surface-tertiary);
   --color-source-chip-bg: oklch(1 0 0 / 0.035);
   --color-source-chip-hover: oklch(1 0 0 / 0.055);
@@ -564,7 +568,7 @@ textarea::placeholder {
 }
 .timeline-trigger:hover,
 .timeline-trigger:focus-visible {
-  background-color: var(--color-control-hover);
+  background-color: var(--color-timeline-trigger-hover);
 }
 .source-row {
   background-color: transparent;
