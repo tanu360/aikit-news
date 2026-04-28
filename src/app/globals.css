@@ -29,6 +29,8 @@
   --color-ink-secondary: oklch(50% 0 0);
   --color-ink-tertiary: oklch(66% 0 0);
   --color-ink-ghost: oklch(80% 0 0);
+  --color-github-icon: oklch(18% 0.004 255);
+  --color-github-icon-hover: oklch(8% 0.004 255);
   --color-accent: oklch(56% 0.19 260);
   --color-accent-light: oklch(95.5% 0.025 260);
   --color-accent-hover: oklch(50% 0.2 260);
@@ -134,6 +136,8 @@
     --color-ink-secondary: oklch(0.75 0 0);
     --color-ink-tertiary: oklch(0.6 0 0);
     --color-ink-ghost: oklch(0.45 0 0);
+    --color-github-icon: oklch(96% 0.004 255);
+    --color-github-icon-hover: oklch(100% 0 0);
     --color-accent: oklch(0.68 0.18 255);
     --color-accent-light: oklch(0.28 0.052 255);
     --color-accent-hover: oklch(0.76 0.17 255);
@@ -188,6 +192,8 @@
   --color-ink-secondary: oklch(50% 0 0);
   --color-ink-tertiary: oklch(66% 0 0);
   --color-ink-ghost: oklch(80% 0 0);
+  --color-github-icon: oklch(18% 0.004 255);
+  --color-github-icon-hover: oklch(8% 0.004 255);
   --color-accent: oklch(56% 0.19 260);
   --color-accent-light: oklch(95.5% 0.025 260);
   --color-accent-hover: oklch(50% 0.2 260);
@@ -245,6 +251,8 @@
   --color-ink-secondary: oklch(0.75 0 0);
   --color-ink-tertiary: oklch(0.6 0 0);
   --color-ink-ghost: oklch(0.45 0 0);
+  --color-github-icon: oklch(96% 0.004 255);
+  --color-github-icon-hover: oklch(100% 0 0);
   --color-accent: oklch(0.68 0.18 255);
   --color-accent-light: oklch(0.28 0.052 255);
   --color-accent-hover: oklch(0.76 0.17 255);
@@ -483,6 +491,17 @@ html[data-magicui-theme-vt="active"]::view-transition-group(root) {
 .theme-toggle-icon {
   transform-origin: center;
   will-change: transform;
+}
+.theme-toggle-mode-icon {
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+:root:not([data-theme]) .theme-toggle-mode-icon[data-theme-icon="system"],
+:root[data-theme="system"] .theme-toggle-mode-icon[data-theme-icon="system"],
+:root[data-theme="light"] .theme-toggle-mode-icon[data-theme-icon="light"],
+:root[data-theme="dark"] .theme-toggle-mode-icon[data-theme-icon="dark"] {
+  display: inline-flex;
 }
 html[data-magicui-theme-vt="active"] .theme-toggle-button {
   background-color: transparent;

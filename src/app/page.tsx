@@ -93,12 +93,12 @@ const CHAT_ID_PATTERN =
 
 const EMPTY_STATE_SUGGESTIONS = [
   {
-    label: "Deep research on OpenAI",
+    label: "Research on OpenAI",
     icon: ArtificialIntelligence04Icon,
     mode: "deepResearch",
   },
   {
-    label: "Search latest tech news",
+    label: "Search tech news",
     icon: Search01Icon,
     mode: "search",
   },
@@ -766,10 +766,6 @@ export default function Home() {
   const [contextCompactionError, setContextCompactionError] =
     useState<string | null>(null);
   const isDark = useIsDarkTheme();
-  const githubColor = isDark ? "oklch(96% 0.004 255)" : "oklch(18% 0.004 255)";
-  const githubHoverColor = isDark
-    ? "oklch(100% 0 0)"
-    : "oklch(8% 0.004 255)";
   const logo3DTheme = isDark ? LOGO_3D_THEME.dark : LOGO_3D_THEME.light;
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -3374,11 +3370,11 @@ export default function Home() {
                 rel="noopener noreferrer"
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors duration-150"
                 style={{
-                  color: githubColor,
+                  color: "var(--color-github-icon)",
                   backgroundColor: "var(--color-surface-tertiary)",
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = githubHoverColor; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = githubColor; }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "var(--color-github-icon-hover)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--color-github-icon)"; }}
                 aria-label="GitHub tanu360"
                 title="GitHub tanu360"
               >

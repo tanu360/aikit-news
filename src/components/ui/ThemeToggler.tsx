@@ -267,12 +267,6 @@ export const AnimatedThemeToggler = ({
   const shape = variant ?? "circle";
   const themeMode = useThemeMode();
   const nextThemeMode = getNextThemeMode(themeMode);
-  const themeIcon =
-    themeMode === "system"
-      ? Tv01Icon
-      : themeMode === "light"
-        ? Sun01Icon
-        : Moon02Icon;
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const toggleTheme = useCallback(() => {
@@ -388,12 +382,30 @@ export const AnimatedThemeToggler = ({
       )}
     >
       <span className="theme-toggle-icon inline-flex items-center justify-center">
-        <HugeiconsIcon
-          icon={themeIcon}
-          size={iconSize}
-          strokeWidth={1.9}
-          primaryColor="currentColor"
-        />
+        <span className="theme-toggle-mode-icon" data-theme-icon="system" aria-hidden="true">
+          <HugeiconsIcon
+            icon={Tv01Icon}
+            size={iconSize}
+            strokeWidth={1.9}
+            primaryColor="currentColor"
+          />
+        </span>
+        <span className="theme-toggle-mode-icon" data-theme-icon="light" aria-hidden="true">
+          <HugeiconsIcon
+            icon={Sun01Icon}
+            size={iconSize}
+            strokeWidth={1.9}
+            primaryColor="currentColor"
+          />
+        </span>
+        <span className="theme-toggle-mode-icon" data-theme-icon="dark" aria-hidden="true">
+          <HugeiconsIcon
+            icon={Moon02Icon}
+            size={iconSize}
+            strokeWidth={1.9}
+            primaryColor="currentColor"
+          />
+        </span>
       </span>
       {children}
       <span className="sr-only">Toggle theme</span>
