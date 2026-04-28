@@ -336,7 +336,7 @@ export default function MessageBubble({
           >
             <span
               aria-hidden="true"
-              className="inline-flex h-2.5 items-end gap-[2px]"
+              className="inline-flex h-2.5 items-end gap-0.5"
             >
               {[4, 7, 10].map((height, index) => (
                 <span

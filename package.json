@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:fresh": "npm run clean && next dev",
+    "dev:portless": "npm run clean && portless run next dev",
     "build": "next build",
     "build:fresh": "npm run clean && next build",
     "build:cloudflare": "opennextjs-cloudflare build",
@@ -40,6 +41,7 @@
     "@types/react-dom": "^19.2.3",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "portless": "^0.11.1",
     "postcss": "^8.5.12",
     "tailwindcss": "^4",
     "typescript": "^5",
