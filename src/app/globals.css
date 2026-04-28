@@ -70,6 +70,7 @@
   --color-control-hover: var(--color-surface-hover);
   --color-timeline-trigger-hover: oklch(95.2% 0.006 255);
   --color-result-row-hover: var(--color-surface-secondary);
+  --color-source-row-dot-hover: oklch(49% 0.23 327);
   --color-source-chip-bg: oklch(97.8% 0 0);
   --color-source-chip-hover: oklch(96.9% 0 0);
   --color-suggestion-bg: oklch(98.8% 0 0);
@@ -135,6 +136,7 @@
     --color-control-hover: var(--color-surface-tertiary);
     --color-timeline-trigger-hover: var(--color-control-hover);
     --color-result-row-hover: var(--color-surface-tertiary);
+    --color-source-row-dot-hover: oklch(78% 0.17 327);
     --color-source-chip-bg: oklch(1 0 0 / 0.035);
     --color-source-chip-hover: oklch(1 0 0 / 0.055);
     --color-suggestion-bg: oklch(1 0 0 / 0.03);
@@ -187,6 +189,7 @@
   --color-control-hover: var(--color-surface-hover);
   --color-timeline-trigger-hover: oklch(95.2% 0.006 255);
   --color-result-row-hover: var(--color-surface-secondary);
+  --color-source-row-dot-hover: oklch(49% 0.23 327);
   --color-source-chip-bg: oklch(97.8% 0 0);
   --color-source-chip-hover: oklch(96.9% 0 0);
   --color-suggestion-bg: oklch(98.8% 0 0);
@@ -234,6 +237,7 @@
   --color-control-hover: var(--color-surface-tertiary);
   --color-timeline-trigger-hover: var(--color-control-hover);
   --color-result-row-hover: var(--color-surface-tertiary);
+  --color-source-row-dot-hover: oklch(78% 0.17 327);
   --color-source-chip-bg: oklch(1 0 0 / 0.035);
   --color-source-chip-hover: oklch(1 0 0 / 0.055);
   --color-suggestion-bg: oklch(1 0 0 / 0.03);
@@ -590,6 +594,15 @@ textarea::placeholder {
 .source-row:focus-visible .source-row-surface {
   outline: 1px solid var(--color-input-ring);
   outline-offset: 2px;
+}
+.source-row:hover .source-row-dot,
+.source-row:focus-visible .source-row-dot {
+  border-color: var(--color-source-row-dot-hover) !important;
+  background: color-mix(
+    in oklch,
+    var(--color-source-row-dot-hover) 16%,
+    var(--color-surface-primary)
+  ) !important;
 }
 .source-row-title {
   color: var(--color-ink-secondary);

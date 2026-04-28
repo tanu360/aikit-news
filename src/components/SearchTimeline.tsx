@@ -33,7 +33,6 @@ export default function SearchTimeline({
   }, [results.length, visibleCount]);
 
   const visibleResults = results.slice(0, visibleCount);
-  const timelineAccent = "oklch(67% 0.24 327)";
 
   return (
     <div className="mb-4">
@@ -138,7 +137,7 @@ export default function SearchTimeline({
                 style={{
                   left: 3,
                   background:
-                    `color-mix(in oklch, ${timelineAccent} 28%, var(--color-border-light))`,
+                    "color-mix(in oklch, var(--color-accent) 34%, var(--color-border-light))",
                 }}
               />
               {visibleResults.map((result, i) => (
@@ -156,16 +155,16 @@ export default function SearchTimeline({
                   className="source-row group/item relative block pl-8"
                 >
                   <div
-                    className="absolute left-0 top-1/2 h-1.75 w-1.75 -translate-y-1/2 rounded-full border-[1.5px] transition-colors"
+                    className="source-row-dot absolute left-0 top-1/2 h-1.75 w-1.75 -translate-y-1/2 rounded-full border-[1.5px] transition-colors"
                     style={{
                       borderColor:
                         i === visibleResults.length - 1 && status === "searching"
-                          ? timelineAccent
-                          : `color-mix(in oklch, ${timelineAccent} 68%, var(--color-border-default))`,
+                          ? "var(--color-accent)"
+                          : "color-mix(in oklch, var(--color-accent) 62%, var(--color-border-default))",
                       background:
                         i === visibleResults.length - 1 && status === "searching"
-                          ? `color-mix(in oklch, ${timelineAccent} 16%, var(--color-surface-primary))`
-                          : `color-mix(in oklch, ${timelineAccent} 10%, var(--color-surface-primary))`,
+                          ? "var(--color-accent-light)"
+                          : "color-mix(in oklch, var(--color-accent) 10%, var(--color-surface-primary))",
                     }}
                   />
 
