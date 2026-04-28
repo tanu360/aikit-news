@@ -135,7 +135,7 @@ AiKit needs an Exa key for search. ChatJimmy is prefilled with the free shared k
 EXA_API_KEY=your_exa_api_key_here
 
 CHATJIMMY_API_URL=https://jimmy.aikit.club/v1/chat/completions
-CHATJIMMY_API_KEY=tarun-007007
+CHATJIMMY_API_KEY=tarun-dummy
 CHATJIMMY_MODEL=llama3.1-8B
 
 NEXT_PUBLIC_MODEL_NAME=llama3.1-8B
@@ -162,11 +162,11 @@ Use this exact change if your `.env.local` still has placeholders:
 -CHATJIMMY_API_KEY=your_chatjimmy_api_key_here
 -CHATJIMMY_MODEL=llama3.1-8B
 +CHATJIMMY_API_URL=https://jimmy.aikit.club/v1/chat/completions
-+CHATJIMMY_API_KEY=tarun-007007
++CHATJIMMY_API_KEY=tarun-dummy
 +CHATJIMMY_MODEL=llama3.1-8B
 ```
 
-`tarun-007007` is intentionally shared as a free ChatJimmy key for people trying AiKit News. You can swap it for your own ChatJimmy-compatible endpoint, or run the proxy from [tanu360/chatjimmy-reverse-api](https://github.com/tanu360/chatjimmy-reverse-api).
+`tarun-dummy` is intentionally shared as a free ChatJimmy key for people trying AiKit News. You can swap it for your own ChatJimmy-compatible endpoint, or run the proxy from [tanu360/chatjimmy-reverse-api](https://github.com/tanu360/chatjimmy-reverse-api).
 
 ### Get an Exa API Key
 
