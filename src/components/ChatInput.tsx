@@ -674,7 +674,7 @@ export default function ChatInput({
           />
 
           <div className="flex min-h-9 items-center gap-3 px-4 pt-2 pb-2">
-            <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
               <button
                 type="button"
                 onClick={() => {
@@ -709,7 +709,7 @@ export default function ChatInput({
               >
                 <HugeiconsIcon
                   icon={FileAddIcon}
-                  size={16}
+                  size={attachedFile ? 13 : 16}
                   strokeWidth={1.8}
                   primaryColor="currentColor"
                 />
