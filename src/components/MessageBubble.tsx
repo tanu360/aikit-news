@@ -300,7 +300,12 @@ export default function MessageBubble({
 
         {message.content && (
           <div className="prose">
-            <MarkdownRenderer content={message.content} sources={sources} searchQuery={searchQuery} />
+            <MarkdownRenderer
+              content={message.content}
+              sources={sources}
+              searchQuery={searchQuery}
+              compactHeadings={!!message.searchQuery && !message.isDeepResearch}
+            />
             {isStreaming && (
               <span
                 className="ml-0.5 inline-block h-4.5 w-0.5 align-text-bottom animate-pulse-soft"

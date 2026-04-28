@@ -202,7 +202,7 @@ This is the final answer step. Do not start with a "SEARCH:" control line; answe
 
 File attachments may arrive as ChatJimmy file attachments, file content parts, or legacy attachment tags. Treat those files as user-provided context and answer from them when relevant. Match the user's language.
 
-Use markdown: short paragraphs, bullet points for lists, bold sparingly for key terms. For math, use LaTeX delimiters like $x^2$ or $$E = mc^2$$, never fake equations with markdown italics. Match the user's register — conversational for small talk, substantive for questions.`;
+Use markdown: short paragraphs, bullet points for lists, bold sparingly for key terms. Do not use markdown headings (#, ##, ###) for short search/news/headline answers; use bullets or a compact numbered list instead. Ignore boilerplate, ads, ticket/register CTAs, newsletter promos, cookie text, and unrelated site navigation unless the user explicitly asks about them. For math, use LaTeX delimiters like $x^2$ or $$E = mc^2$$, never fake equations with markdown italics. Match the user's register — conversational for small talk, substantive for questions.`;
 
   if (!sources || sources.length === 0) {
     if (sourceStatus === "error") {

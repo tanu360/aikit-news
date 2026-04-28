@@ -28,6 +28,7 @@ interface MarkdownRendererProps {
   content: string;
   sources?: SearchResult[];
   searchQuery?: string;
+  compactHeadings?: boolean;
 }
 
 type MarkdownCodeProps = JSX.IntrinsicElements["code"] & ExtraProps;
@@ -410,6 +411,7 @@ export default function MarkdownRenderer({
   content,
   sources = [],
   searchQuery = "",
+  compactHeadings = false,
 }: MarkdownRendererProps) {
   const processedContent = useMemo(
     () => preprocessCitations(content),
@@ -435,6 +437,39 @@ export default function MarkdownRenderer({
         </a>
       );
     },
+    h1: ({ children }) =>
+      compactHeadings ? (
+        <p
+          className="mb-2 text-[15px] font-semibold leading-snug sm:text-[16px]"
+          style={{ color: "var(--color-ink-primary)" }}
+        >
+          {highlightNodes(children, searchQuery)}
+        </p>
+      ) : (
+        <h1>{highlightNodes(children, searchQuery)}</h1>
+      ),
+    h2: ({ children }) =>
+      compactHeadings ? (
+        <p
+          className="mb-2 text-[15px] font-semibold leading-snug sm:text-[16px]"
+          style={{ color: "var(--color-ink-primary)" }}
+        >
+          {highlightNodes(children, searchQuery)}
+        </p>
+      ) : (
+        <h2>{highlightNodes(children, searchQuery)}</h2>
+      ),
+    h3: ({ children }) =>
+      compactHeadings ? (
+        <p
+          className="mb-2 text-[14px] font-semibold leading-snug sm:text-[15px]"
+          style={{ color: "var(--color-ink-primary)" }}
+        >
+          {highlightNodes(children, searchQuery)}
+        </p>
+      ) : (
+        <h3>{highlightNodes(children, searchQuery)}</h3>
+      ),
     pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
     table: ({ children }) => (
       <div
@@ -491,7 +526,7 @@ export default function MarkdownRenderer({
       <li>{highlightNodes(children, searchQuery)}</li>
     ),
     code: MarkdownCode,
-  }), [searchQuery, sources]);
+  }), [compactHeadings, searchQuery, sources]);
 
   return (
     <ReactMarkdown
