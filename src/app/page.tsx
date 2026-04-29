@@ -3519,7 +3519,7 @@ export default function Home() {
           )}
         </div>
 
-        <div className="shrink-0 px-4 pt-2">
+        <div className="shrink-0 px-4 pb-4 pt-2 sm:pb-5">
           <div
             className="chat-shell relative mx-auto"
             style={{ width: "min(100%, 58rem)" }}
@@ -3578,40 +3578,6 @@ export default function Home() {
             />
           </div>
         </div>
-        <p
-          className="shrink-0 px-4 pb-4 text-center text-[11px] font-medium leading-none sm:pb-5"
-          style={{
-            marginTop: 16,
-            color: "var(--color-ink-tertiary)",
-          }}
-        >
-          Powered by{" "}
-          <a
-            href="https://jimmy.aikit.club/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="no-underline transition-colors hover:no-underline focus-visible:no-underline"
-            style={{
-              color: "var(--color-ink-secondary)",
-              textDecoration: "none",
-            }}
-          >
-            ChatJimmy API
-          </a>{" "}
-          &amp;{" "}
-          <a
-            href="https://exa.ai/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="no-underline transition-colors hover:no-underline focus-visible:no-underline"
-            style={{
-              color: "var(--color-ink-secondary)",
-              textDecoration: "none",
-            }}
-          >
-            Exa API
-          </a>
-        </p>
       </div>
     </div>
   );
