@@ -6,8 +6,8 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Cancel01Icon,
   MessageDownload01Icon,
-  CopyrightIcon,
   Delete02Icon,
+  Plug01Icon,
 } from "@hugeicons/core-free-icons";
 import type { Chat } from "@/lib/types";
 
@@ -465,26 +465,44 @@ export default function Sidebar({
               color: "var(--color-ink-secondary)",
             }}
           >
-            <div
-              className="flex min-w-0 items-center justify-center text-[14px] font-semibold"
+            <p
+              className="flex min-w-0 items-center justify-center gap-0.5 truncate text-center text-[12px] font-semibold"
               style={{ letterSpacing: 0 }}
             >
               <span
-                className="flex shrink-0 items-center justify-center"
-                style={{
-                  width: 18,
-                  height: 18,
-                }}
+                aria-hidden="true"
+                className="grid h-5 w-5 shrink-0 place-items-center"
               >
                 <HugeiconsIcon
-                  icon={CopyrightIcon}
-                  size={11}
+                  icon={Plug01Icon}
+                  size={12}
                   strokeWidth={2}
                   primaryColor="currentColor"
                 />
               </span>
-              <span className="truncate">tanu360</span>
-            </div>
+              <span className="min-w-0 truncate">
+                Powered by{" "}
+                <a
+                  href="https://jimmy.aikit.club/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="no-underline transition-colors hover:no-underline focus-visible:no-underline"
+                  style={{ color: "var(--color-ink-primary)" }}
+                >
+                  ChatJimmy
+                </a>{" "}
+                &amp;{" "}
+                <a
+                  href="https://exa.ai/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="no-underline transition-colors hover:no-underline focus-visible:no-underline"
+                  style={{ color: "var(--color-ink-primary)" }}
+                >
+                  Exa
+                </a>
+              </span>
+            </p>
           </div>
         </div>
       )}
