@@ -3587,7 +3587,7 @@ export default function Home() {
         >
           Powered by{" "}
           <a
-            href="https://chatjimmy.ai/"
+            href="https://jimmy.aikit.club/"
             target="_blank"
             rel="noopener noreferrer"
             className="no-underline transition-colors hover:no-underline focus-visible:no-underline"
@@ -3598,7 +3598,7 @@ export default function Home() {
           >
             ChatJimmy API
           </a>{" "}
-          and{" "}
+          &amp;{" "}
           <a
             href="https://exa.ai/"
             target="_blank"
