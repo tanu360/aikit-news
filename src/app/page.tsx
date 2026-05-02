@@ -3213,7 +3213,8 @@ export default function Home() {
       <div className="square-grid-bg flex min-w-0 flex-1 flex-col">
         <header className="relative z-10 shrink-0 px-3 pt-3 pb-2 sm:px-4 sm:pt-4">
           <nav
-            className="mx-auto flex h-12 items-center justify-between border px-2.5 sm:h-13 sm:px-3"
+            className="aikit-header-nav mx-auto flex h-12 items-center justify-between gap-2 border px-2.5 sm:h-13 sm:px-3"
+            data-search-open={searchOpen ? "true" : "false"}
             style={{
               width: "min(100%, 58rem)",
               borderRadius: 22,
@@ -3221,7 +3222,7 @@ export default function Home() {
               borderColor: "var(--color-border-light)",
             }}
           >
-            <div className="flex min-w-0 flex-1 items-center">
+            <div className="aikit-header-brand flex min-w-0 flex-1 items-center">
               <button
                 type="button"
                 onClick={() => setSidebarOpen((s) => !s)}
@@ -3258,17 +3259,20 @@ export default function Home() {
                 </svg>
               </button>
               <span
-                className="select-none font-semibold"
+                className="aikit-header-brand-text select-none font-semibold"
                 style={{ fontSize: 16, color: "var(--color-ink-primary)", letterSpacing: 0 }}
               >
                 AiKit
               </span>
             </div>
 
-            <div className="flex shrink-0 items-center gap-2">
+            <div
+              className="aikit-header-actions flex shrink-0 items-center gap-2"
+              data-search-open={searchOpen ? "true" : "false"}
+            >
               {searchOpen ? (
                 <div
-                  className="flex h-8 w-40 shrink-0 items-center gap-1.5 rounded-full px-3 sm:w-56"
+                  className="aikit-header-search flex h-8 w-40 shrink-0 items-center gap-1.5 rounded-full px-3 sm:w-56"
                   style={{ backgroundColor: "var(--color-surface-tertiary)" }}
                 >
                   <HugeiconsIcon icon={MessageSearch01Icon} size={13} strokeWidth={1.8} primaryColor="var(--color-ink-tertiary)" />
@@ -3368,7 +3372,7 @@ export default function Home() {
                 href="https://github.com/tanu360"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors duration-150"
+                className="aikit-header-github flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors duration-150"
                 style={{
                   color: "var(--color-github-icon)",
                   backgroundColor: "var(--color-surface-tertiary)",

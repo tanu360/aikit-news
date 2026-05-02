@@ -488,6 +488,41 @@ html[data-magicui-theme-vt="active"]::view-transition-group(root) {
 .header-action-button:active {
   transform: scale(0.94);
 }
+.aikit-header-nav {
+  min-width: 0;
+}
+.aikit-header-brand {
+  min-width: max-content;
+}
+.aikit-header-actions {
+  min-width: 0;
+}
+.aikit-header-search {
+  min-width: 0;
+}
+@media (max-width: 639px) {
+  .aikit-header-nav[data-search-open="true"] .aikit-header-brand {
+    flex: 0 0 auto;
+  }
+  .aikit-header-actions[data-search-open="true"] {
+    flex: 1 1 0;
+  }
+  .aikit-header-actions[data-search-open="true"] .aikit-header-search {
+    flex: 1 1 0;
+    width: auto;
+    padding-inline: 0.625rem;
+  }
+}
+@media (max-width: 360px) {
+  .aikit-header-actions[data-search-open="true"] .aikit-header-github {
+    display: none;
+  }
+}
+@media (max-width: 300px) {
+  .aikit-header-nav[data-search-open="true"] .aikit-header-brand-text {
+    display: none;
+  }
+}
 .theme-toggle-icon {
   transform-origin: center;
   will-change: transform;
