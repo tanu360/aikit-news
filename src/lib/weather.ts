@@ -84,6 +84,36 @@ const MONTHS = [
   "Nov",
   "Dec",
 ];
+const WEATHER_FETCH_TIMEOUT_MS = 30000;
+
+type WeatherFetchInit = RequestInit & {
+  next?: unknown;
+};
+
+async function fetchWeatherApi(
+  url: string,
+  init: WeatherFetchInit
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    WEATHER_FETCH_TIMEOUT_MS
+  );
+
+  try {
+    return await fetch(url, {
+      ...init,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Weather API timed out");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 function conditionFor(code: number | undefined): string {
   return WEATHER_CODES[code ?? -1] || "Weather";
@@ -143,7 +173,7 @@ async function geocodeLocation(location: string): Promise<GeocodingResult> {
     format: "json",
   });
 
-  const response = await fetch(
+  const response = await fetchWeatherApi(
     `https://geocoding-api.open-meteo.com/v1/search?${params.toString()}`,
     { next: { revalidate: 60 * 60 * 12 } }
   );
@@ -208,7 +238,7 @@ export async function getWeather(
     wind_speed_unit: "kmh",
   });
 
-  const response = await fetch(
+  const response = await fetchWeatherApi(
     `https://api.open-meteo.com/v1/forecast?${forecastParams.toString()}`,
     { next: { revalidate: 60 * 10 } }
   );
