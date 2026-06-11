@@ -29,7 +29,7 @@ export class BinanceSymbolError extends Error {
   }
 }
 
-const BINANCE_BASE_URL = "https://data-api.binance.vision";
+const BINANCE_BASE_URL = "https://api-gcp.binance.com";
 const DEFAULT_QUOTE_ASSET = "USDT";
 const QUOTE_ASSETS = [
   "USDT",
