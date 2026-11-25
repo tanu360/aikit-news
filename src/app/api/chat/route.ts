@@ -22,7 +22,11 @@ import type { WeatherCardData } from "@/lib/types";
 import type { ChatToolSettings } from "@/lib/toolSettings";
 import { normalizeChatToolSettings } from "@/lib/toolSettings";
 import { getWeather } from "@/lib/weather";
-import { BinanceSymbolError, getBinancePrice } from "@/lib/binance";
+import {
+  BinanceSymbolError,
+  BinanceUnavailableError,
+  getBinancePrice,
+} from "@/lib/binance";
 
 const WEATHER_TOOL: ChatJimmyTool = {
   type: "function",
@@ -540,7 +544,10 @@ export async function POST(req: NextRequest) {
               priceDuration = Date.now() - tPriceStart;
               content = formatPriceAnswer(priceCard);
             } catch (error) {
-              if (error instanceof BinanceSymbolError) {
+              if (
+                error instanceof BinanceSymbolError ||
+                error instanceof BinanceUnavailableError
+              ) {
                 content = error.message;
               } else {
                 const fallbackCompletion = await chatJimmyCompletion(

@@ -1,4 +1,5 @@
 import type { PriceCardData } from "@/lib/types";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 interface BinanceTicker24hrResponse {
   symbol?: string;
@@ -29,7 +30,17 @@ export class BinanceSymbolError extends Error {
   }
 }
 
+export class BinanceUnavailableError extends Error {
+  constructor() {
+    super(
+      "Binance price data is unavailable right now. Please try again in a moment."
+    );
+    this.name = "BinanceUnavailableError";
+  }
+}
+
 const BINANCE_BASE_URL = "https://api-gcp.binance.com";
+const BINANCE_FETCH_TIMEOUT_MS = 8_000;
 const DEFAULT_QUOTE_ASSET = "USDT";
 const QUOTE_ASSETS = [
   "USDT",
@@ -270,15 +281,31 @@ async function fetchBinanceTicker(
   symbol: string
 ): Promise<BinanceTicker24hrResponse> {
   const params = new URLSearchParams({ symbol });
-  const response = await fetch(
-    `${BINANCE_BASE_URL}/api/v3/ticker/24hr?${params.toString()}`,
-    { next: { revalidate: 10 } }
-  );
+  let response: Response;
+  try {
+    response = await fetchWithTimeout(
+      `${BINANCE_BASE_URL}/api/v3/ticker/24hr?${params.toString()}`,
+      { next: { revalidate: 10 } },
+      BINANCE_FETCH_TIMEOUT_MS,
+      "Binance"
+    );
+  } catch (error) {
+    console.error("Binance request failed:", error);
+    throw new BinanceUnavailableError();
+  }
 
-  if (!response.ok) {
+  // Binance answers 400 (code -1121) for an unknown symbol. Any other
+  // failure (429 rate limit, 451 region block, 5xx) is an outage, not a
+  // bad symbol.
+  if (response.status === 400) {
     throw new BinanceSymbolError(
       `${symbol} was not found on Binance Spot. Try a pair like BTCUSDT.`
     );
+  }
+
+  if (!response.ok) {
+    console.error("Binance request failed:", response.status);
+    throw new BinanceUnavailableError();
   }
 
   const data = (await response.json()) as BinanceTicker24hrResponse;
