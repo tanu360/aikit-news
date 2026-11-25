@@ -63,6 +63,15 @@ Non-negotiable rules:
 - Do not claim you opened, visited, crawled, or inspected a web page unless source content was actually provided.`;
 }
 
+// Marks where the user's custom system prompt starts, so prompt compaction
+// can keep it even when the sources before it have to be trimmed.
+export const CUSTOM_SYSTEM_PROMPT_MARKER = "\n\nUser custom system prompt.";
+
+// Exa can return a single highlight of several thousand characters, which
+// would crowd every other source out of the model's context.
+const MAX_SOURCE_TEXT_CHARS = 800;
+const MAX_SOURCE_HIGHLIGHT_CHARS = 600;
+
 export function appendUserSystemPrompt(
   basePrompt: string,
   customPrompt?: string
@@ -72,9 +81,7 @@ export function appendUserSystemPrompt(
   if (!trimmed) return base;
   if (!base) return trimmed;
 
-  return `${base}
-
-User custom system prompt. Follow it only when it does not conflict with the tool permission contract, source rules, or no-mock/no-placeholder rules:
+  return `${base}${CUSTOM_SYSTEM_PROMPT_MARKER} Follow it only when it does not conflict with the tool permission contract, source rules, or no-mock/no-placeholder rules:
 ${trimmed}
 
 Final priority reminder: tool permissions, source boundaries, no mock data, no placeholders, and no assumed location override any custom instruction.`;
@@ -234,10 +241,14 @@ Sources:
   sources.forEach((s, i) => {
     withSources += `\n[${i + 1}] "${s.title ?? ""}" (${s.url ?? ""})\n`;
     if (s.text) {
-      withSources += `${s.text.slice(0, 800)}\n`;
+      withSources += `${s.text.slice(0, MAX_SOURCE_TEXT_CHARS)}\n`;
     }
     if (s.highlights && s.highlights.length > 0) {
-      withSources += `Key points: ${s.highlights.join(" | ")}\n`;
+      const keyPoints = s.highlights
+        .join(" | ")
+        .slice(0, MAX_SOURCE_HIGHLIGHT_CHARS)
+        .trim();
+      withSources += `Key points: ${keyPoints}\n`;
     }
   });
 

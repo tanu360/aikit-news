@@ -1,4 +1,5 @@
 import type { GenerationStats } from "./types";
+import { CUSTOM_SYSTEM_PROMPT_MARKER } from "./prompts";
 
 const CHATJIMMY_API_URL = process.env.CHATJIMMY_API_URL;
 const CHATJIMMY_API_KEY = process.env.CHATJIMMY_API_KEY;
@@ -119,23 +120,38 @@ function compactSystemPrompt(text: string): string {
     return text.slice(0, MAX_SYSTEM_PROMPT_CHARS).trimEnd();
   }
 
-  const prefix = text.slice(0, markerIndex + SOURCES_MARKER.length);
-  const sources = text.slice(markerIndex + SOURCES_MARKER.length);
+  const sourcesStart = markerIndex + SOURCES_MARKER.length;
+  // The user's custom system prompt is appended after the sources. Keep it
+  // out of the trimmable section so it is never dropped with the sources.
+  const customIndex = text.indexOf(CUSTOM_SYSTEM_PROMPT_MARKER, sourcesStart);
+  const sourcesEnd = customIndex === -1 ? text.length : customIndex;
+  const suffix =
+    customIndex === -1 ? "" : `\n\n${text.slice(customIndex).trim()}`;
+  const prefix = text.slice(0, sourcesStart);
+  const sources = text.slice(sourcesStart, sourcesEnd);
   const omission = "\n\n[Additional sources omitted to fit context.]";
-  const budget = MAX_SYSTEM_PROMPT_CHARS - omission.length;
+  const budget = MAX_SYSTEM_PROMPT_CHARS - omission.length - suffix.length;
 
   if (prefix.length >= budget) {
     return text.slice(0, MAX_SYSTEM_PROMPT_CHARS).trimEnd();
   }
 
   let compacted = prefix;
+  let omitted = false;
   for (const source of sources.split(/\n(?=\[\d+\]\s)/g)) {
-    const next = `${compacted}${source.trim()}\n\n`;
-    if (next.length > budget) break;
+    const trimmed = source.trim();
+    if (!trimmed) continue;
+    const next = `${compacted}${trimmed}\n\n`;
+    // Skip an oversized source but keep trying the smaller ones after it.
+    // Their [n] numbers stay unchanged, so citations still match the UI.
+    if (next.length > budget) {
+      omitted = true;
+      continue;
+    }
     compacted = next;
   }
 
-  return `${compacted.trimEnd()}${omission}`.trimEnd();
+  return `${compacted.trimEnd()}${omitted ? omission : ""}${suffix}`.trimEnd();
 }
 
 function prepareMessages(messages: ChatJimmyMessage[]): ChatJimmyMessage[] {
