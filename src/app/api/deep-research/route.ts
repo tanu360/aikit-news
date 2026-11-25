@@ -3,8 +3,10 @@ import { chatJimmy, chatJimmyCompletion } from "@/lib/jimmy";
 import type { ChatJimmyAttachment, ChatJimmyOptions } from "@/lib/jimmy";
 import { readJsonRecord } from "@/lib/api";
 import { appendUserSystemPrompt, normalizePromptDate } from "@/lib/prompts";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 const EXA_API_KEY = process.env.EXA_API_KEY || "";
+const EXA_SEARCH_TIMEOUT_MS = 20_000;
 
 // Controlled research tree:
 //   Depth 0: 1 search (original query)        -> 2 follow-ups
@@ -44,22 +46,27 @@ async function searchExa(query: string): Promise<SearchExaResponse> {
   }
 
   try {
-    const response = await fetch("https://api.exa.ai/search", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": EXA_API_KEY,
-      },
-      body: JSON.stringify({
-        query,
-        type: "auto",
-        numResults: 5,
-        contents: {
-          text: { maxCharacters: 1000 },
-          highlights: { numSentences: 2 },
+    const response = await fetchWithTimeout(
+      "https://api.exa.ai/search",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": EXA_API_KEY,
         },
-      }),
-    });
+        body: JSON.stringify({
+          query,
+          type: "auto",
+          numResults: 5,
+          contents: {
+            text: { maxCharacters: 1000 },
+            highlights: { numSentences: 2 },
+          },
+        }),
+      },
+      EXA_SEARCH_TIMEOUT_MS,
+      "Exa search"
+    );
 
     if (!response.ok) {
       console.error("Exa search failed:", await response.text());

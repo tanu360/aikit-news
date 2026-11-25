@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readJsonRecord } from "@/lib/api";
 import { normalizeChatToolSettings } from "@/lib/toolSettings";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
+
+const EXA_SEARCH_TIMEOUT_MS = 15_000;
 
 export async function POST(req: NextRequest) {
   const tEntry = Date.now();
@@ -39,27 +42,32 @@ export async function POST(req: NextRequest) {
 
   try {
     const tFetchStart = Date.now();
-    const response = await fetch("https://api.exa.ai/search", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-      },
-      body: JSON.stringify({
-        query,
-        type: "instant",
-        numResults: 8,
-        moderation: true,
-        contents: {
-          text: { maxCharacters: 1500 },
-          highlights: {
-            maxCharacters: 3000,
-            query,
-          },
-          maxAgeHours: 24,
+    const response = await fetchWithTimeout(
+      "https://api.exa.ai/search",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
         },
-      }),
-    });
+        body: JSON.stringify({
+          query,
+          type: "instant",
+          numResults: 8,
+          moderation: true,
+          contents: {
+            text: { maxCharacters: 1500 },
+            highlights: {
+              maxCharacters: 3000,
+              query,
+            },
+            maxAgeHours: 24,
+          },
+        }),
+      },
+      EXA_SEARCH_TIMEOUT_MS,
+      "Exa search"
+    );
     const tFetchHeaders = Date.now();
 
     if (!response.ok) {

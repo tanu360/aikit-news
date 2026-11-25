@@ -1,9 +1,11 @@
 import type { GenerationStats } from "./types";
+import { FetchTimeoutError, fetchWithTimeout } from "./fetchWithTimeout";
 import { CUSTOM_SYSTEM_PROMPT_MARKER } from "./prompts";
 
 const CHATJIMMY_API_URL = process.env.CHATJIMMY_API_URL;
 const CHATJIMMY_API_KEY = process.env.CHATJIMMY_API_KEY;
 const CHATJIMMY_MODEL = process.env.CHATJIMMY_MODEL;
+const CHATJIMMY_TIMEOUT_MS = 30_000;
 const MAX_SYSTEM_PROMPT_CHARS = 16384;
 const SOURCES_MARKER = "\nSources:\n";
 
@@ -266,23 +268,41 @@ async function requestChatJimmy(
 
   const preparedMessages = prepareMessages(messages);
 
-  const response = await fetch(CHATJIMMY_API_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${CHATJIMMY_API_KEY}`,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({
-      model: CHATJIMMY_MODEL,
-      messages: preparedMessages,
-      stream: false,
-      ...(options?.topK != null ? { top_k: options.topK } : {}),
-      ...(options?.systemPrompt ? { chatOptions: { systemPrompt: options.systemPrompt } } : {}),
-      ...(options?.attachment ? { attachment: options.attachment } : {}),
-      ...(tools && tools.length > 0 ? { tools, tool_choice: "auto" } : {}),
-    }),
-  });
+  let response: Response;
+  try {
+    response = await fetchWithTimeout(
+      CHATJIMMY_API_URL,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${CHATJIMMY_API_KEY}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          model: CHATJIMMY_MODEL,
+          messages: preparedMessages,
+          stream: false,
+          ...(options?.topK != null ? { top_k: options.topK } : {}),
+          ...(options?.systemPrompt ? { chatOptions: { systemPrompt: options.systemPrompt } } : {}),
+          ...(options?.attachment ? { attachment: options.attachment } : {}),
+          ...(tools && tools.length > 0 ? { tools, tool_choice: "auto" } : {}),
+        }),
+      },
+      CHATJIMMY_TIMEOUT_MS,
+      "ChatJimmy"
+    );
+  } catch (error) {
+    if (error instanceof FetchTimeoutError) {
+      throw new ChatJimmyError({
+        message: "ChatJimmy took too long to respond. Please try again in a moment.",
+        status: 504,
+        responseBody: "",
+        retryable: true,
+      });
+    }
+    throw error;
+  }
 
   if (!response.ok) {
     const errorText = await response.text();
