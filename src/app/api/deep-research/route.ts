@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { chatJimmy, chatJimmyCompletion } from "@/lib/jimmy";
+import { ChatJimmyError, chatJimmy, chatJimmyCompletion } from "@/lib/jimmy";
 import type { ChatJimmyAttachment, ChatJimmyOptions } from "@/lib/jimmy";
 import { readJsonRecord } from "@/lib/api";
 import { appendUserSystemPrompt, normalizePromptDate } from "@/lib/prompts";
@@ -7,6 +7,7 @@ import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 const EXA_API_KEY = process.env.EXA_API_KEY || "";
 const EXA_SEARCH_TIMEOUT_MS = 20_000;
+const CHATJIMMY_RETRY_DELAY_MS = 1_500;
 
 // Controlled research tree:
 //   Depth 0: 1 search (original query)        -> 2 follow-ups
@@ -84,6 +85,18 @@ async function searchExa(query: string): Promise<SearchExaResponse> {
       results: [],
       error: "Search failed before returning usable sources.",
     };
+  }
+}
+
+// Retry once when ChatJimmy is busy or slow, so one hiccup does not end the
+// whole research run.
+async function withChatJimmyRetry<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    if (!(error instanceof ChatJimmyError) || !error.retryable) throw error;
+    await new Promise((resolve) => setTimeout(resolve, CHATJIMMY_RETRY_DELAY_MS));
+    return run();
   }
 }
 
@@ -434,15 +447,22 @@ export async function POST(req: NextRequest) {
               encoder.encode(sseEvent("synthesizing", { stepId }))
             );
 
-            const rawResponse = await synthesize(
-              researchSystemPrompt,
-              userPrompt,
-              jimmyOpts
-            );
-            const { synthesis, followUps } = parseFollowUps(
-              rawResponse,
-              maxFollowUpsPerStep
-            );
+            let synthesis: string;
+            let followUps: string[];
+            try {
+              const rawResponse = await withChatJimmyRetry(() =>
+                synthesize(researchSystemPrompt, userPrompt, jimmyOpts)
+              );
+              ({ synthesis, followUps } = parseFollowUps(
+                rawResponse,
+                maxFollowUpsPerStep
+              ));
+            } catch (error) {
+              // Keep the sources from this step and carry on with the rest.
+              console.error("Deep research step synthesis failed:", error);
+              synthesis = `Found ${results.length} sources for "${currentQuery}", but could not summarize them.`;
+              followUps = [];
+            }
 
             allSyntheses.push({ query: currentQuery, synthesis });
 
@@ -531,10 +551,12 @@ export async function POST(req: NextRequest) {
           encoder.encode(sseEvent("answer_start", {}))
         );
 
-        const finalCompletion = await chatJimmyCompletion([
-          { role: "system", content: finalSystemPrompt },
-          { role: "user", content: finalUserPrompt },
-        ], jimmyOpts);
+        const finalCompletion = await withChatJimmyRetry(() =>
+          chatJimmyCompletion([
+            { role: "system", content: finalSystemPrompt },
+            { role: "user", content: finalUserPrompt },
+          ], jimmyOpts)
+        );
         let fullAnswer = finalCompletion.content;
 
         fullAnswer = fullAnswer
